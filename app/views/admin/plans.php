@@ -90,7 +90,7 @@ if ($editId) {
                 <p style="text-align:center; margin-top:15px;"><a href="?action=admin&tab=plans" style="color:var(--primary); text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Cancel Edit</a></p>
             </form>
         <?php else: ?>
-            <h3><i class="fa-solid fa-circle-plus"></i> Create New Plan</h3>
+            <h3><i class="fa-solid fa-circle-plus"></i> Create New Membership Plan</h3>
             <form method="post" action="?action=add_plan">
                 <?= csrf_input() ?>
 
@@ -116,6 +116,77 @@ if ($editId) {
             </form>
         <?php endif; ?>
     </div>
+</div>
+
+<!-- Work Shift Management & Custom Shift Timing Configuration -->
+<div class="card" style="margin-top: 20px; border-left: 4px solid var(--primary);">
+    <h3 style="margin-top:0;"><i class="fa-solid fa-clock"></i> Library Work Shift Timings & Login Window Master Control</h3>
+    <p style="font-size:13px; color:var(--text-muted); margin-bottom:15px;">
+        Define login time windows for assigned member shifts. Members assigned to a shift will be restricted from logging in before or after their specified shift window.
+    </p>
+
+    <form method="post" action="?action=save_shift_times">
+        <?= csrf_input() ?>
+        <div class="table-responsive" style="margin-bottom:15px;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Shift Name</th>
+                        <th>Login Allowed From (Start Time)</th>
+                        <th>Login Allowed Until (End Time)</th>
+                        <th>Access Window Preview</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php 
+                    $shiftsList = $db->query("SELECT * FROM work_shifts ORDER BY id ASC");
+                    while ($sf = $shiftsList->fetch_assoc()):
+                        $sStart = date('h:i A', strtotime($sf['start_time']));
+                        $sEnd = date('h:i A', strtotime($sf['end_time']));
+                    ?>
+                        <tr>
+                            <td style="font-weight:700; color:var(--navy-dark);">
+                                <input type="hidden" name="shift_name[]" value="<?= e($sf['name']) ?>">
+                                <i class="fa-solid fa-clock" style="color:var(--primary);"></i> <?= e($sf['name']) ?> Shift
+                            </td>
+                            <td>
+                                <input type="time" name="start_time[]" value="<?= e($sf['start_time']) ?>" required style="margin:0; padding:6px 10px; font-size:13px;">
+                            </td>
+                            <td>
+                                <input type="time" name="end_time[]" value="<?= e($sf['end_time']) ?>" required style="margin:0; padding:6px 10px; font-size:13px;">
+                            </td>
+                            <td>
+                                <span class="badge badge-blue" style="font-size:11.5px; padding:4px 10px;">
+                                    <i class="fa-solid fa-business-time"></i> <?= $sStart ?> &rarr; <?= $sEnd ?>
+                                </span>
+                            </td>
+                        </tr>
+                    <?php endwhile; ?>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Add Custom Shift Creation Row -->
+        <div style="background:var(--bg-slate); padding:14px; border-radius:10px; border:1px solid var(--border-color); margin-bottom:15px;">
+            <h4 style="margin:0 0 10px 0; font-size:13px; color:var(--navy-dark);"><i class="fa-solid fa-plus-circle"></i> Add Custom Shift (Market Standard)</h4>
+            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px;">
+                <div>
+                    <label style="font-size:11px; margin-bottom:2px;">Custom Shift Name</label>
+                    <input name="custom_shift_name" placeholder="e.g. Night Shift, Weekend" style="margin:0;">
+                </div>
+                <div>
+                    <label style="font-size:11px; margin-bottom:2px;">Start Time</label>
+                    <input type="time" name="custom_start_time" style="margin:0;">
+                </div>
+                <div>
+                    <label style="font-size:11px; margin-bottom:2px;">End Time</label>
+                    <input type="time" name="custom_end_time" style="margin:0;">
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" class="btn" style="padding:8px 20px;"><i class="fa-solid fa-floppy-disk"></i> Save Shift Timing Configurations</button>
+    </form>
 </div>
 
 <script>

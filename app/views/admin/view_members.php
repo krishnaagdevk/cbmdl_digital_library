@@ -25,6 +25,13 @@ if ($viewId) {
                     <label for="upd_name">Full Name *</label>
                     <input id="upd_name" name="name" value="<?= e($selected['name']) ?>" required>
                     
+                    <label for="upd_gender">Gender *</label>
+                    <select id="upd_gender" name="gender" required>
+                        <option value="Male" <?= ($selected['gender'] ?? 'Male') === 'Male' ? 'selected' : '' ?>>Male</option>
+                        <option value="Female" <?= ($selected['gender'] ?? '') === 'Female' ? 'selected' : '' ?>>Female</option>
+                        <option value="Other" <?= ($selected['gender'] ?? '') === 'Other' ? 'selected' : '' ?>>Others</option>
+                    </select>
+                    
                     <label for="upd_guardian">Father / Husband Name *</label>
                     <input id="upd_guardian" name="guardian_name" value="<?= e($selected['guardian_name']) ?>" required>
                     
@@ -40,14 +47,28 @@ if ($viewId) {
                     <label for="upd_aadhar">Aadhar ID No. *</label>
                     <input id="upd_aadhar" name="aadhar_no" value="<?= e($selected['aadhar_no']) ?>" required>
                     
+                    <label for="upd_shift">Library Work Shift *</label>
+                    <select id="upd_shift" name="shift" required>
+                        <?php 
+                        $shiftsRes = $db->query("SELECT * FROM work_shifts ORDER BY id ASC");
+                        while ($s = $shiftsRes->fetch_assoc()) {
+                            $sName = $s['name'];
+                            $sel = (($selected['shift'] ?? 'Both') === $sName) ? 'selected' : '';
+                            $sStart = date('h:i A', strtotime($s['start_time']));
+                            $sEnd = date('h:i A', strtotime($s['end_time']));
+                            echo '<option value="' . e($sName) . '" ' . $sel . '>' . e($sName) . ' Shift (' . $sStart . ' - ' . $sEnd . ')</option>';
+                        }
+                        ?>
+                    </select>
+
                     <label for="upd_status">Account Status</label>
                     <select id="upd_status" name="is_active">
                         <option value="1" <?= $selected['is_active'] == 1 ? 'selected' : '' ?>>Active</option>
-                        <option value="0" <?= $selected['is_active'] == 0 ? 'selected' : '' ?>>Suspended / Inactive</option>
+                        <option value="0" <?= $selected['is_active'] == 0 ? 'selected' : '' ?>>Inactive</option>
                     </select>
 
                     <label for="upd_pwd">New Password (leave blank to keep current)</label>
-                    <input id="upd_pwd" type="password" name="password" placeholder="Enter new password to override">
+                    <input id="upd_pwd" type="password" name="password" placeholder="Enter new password to override" maxlength="15">
                     
                     <button style="margin-top:10px;"><i class="fa-solid fa-floppy-disk"></i> Commit Profile Updates</button>
                 </form>
@@ -61,9 +82,13 @@ if ($viewId) {
                     <p><strong>Payment ID:</strong> <?= e($selected['payment_id']) ?></p>
                     <?php 
                         $isExpired = strtotime($selected['end_date']) < time();
-                        echo $isExpired 
-                            ? '<span class="badge badge-red" style="display:block; text-align:center; font-size:13px; padding:6px;"><i class="fa-solid fa-circle-exclamation"></i> Membership Expired</span>' 
-                            : '<span class="badge badge-green" style="display:block; text-align:center; font-size:13px; padding:6px;"><i class="fa-solid fa-circle-check"></i> Membership Active</span>';
+                        if ($selected['is_active'] == 0) {
+                            echo '<span class="badge badge-red" style="display:block; text-align:center; font-size:13px; padding:6px;"><i class="fa-solid fa-circle-xmark"></i> Membership Suspended/Inactive</span>';
+                        } elseif ($isExpired) {
+                            echo '<span class="badge badge-red" style="display:block; text-align:center; font-size:13px; padding:6px;"><i class="fa-solid fa-circle-exclamation"></i> Membership Expired</span>';
+                        } else {
+                            echo '<span class="badge badge-green" style="display:block; text-align:center; font-size:13px; padding:6px;"><i class="fa-solid fa-circle-check"></i> Membership Active</span>';
+                        }
                     ?>
                 </div>
 
@@ -109,6 +134,10 @@ if ($viewId) {
                                 </div>
                             </div>
                             <div style="background: #f8fafc; padding: 6px 12px; border-top: 1px dashed #cbd5e1; font-size: 9px; color: #334155; display: flex; justify-content: space-between;">
+                                <div>
+                                    <span style="color: #64748b; font-size: 7px; text-transform: uppercase; display:block;">Shift</span>
+                                    <strong style="color:var(--primary);"><?= e($selected['shift'] ?? 'Both') ?></strong>
+                                </div>
                                 <div>
                                     <span style="color: #64748b; font-size: 7px; text-transform: uppercase; display:block;">Issued</span>
                                     <strong><?= date('d-m-Y', strtotime($selected['start_date'])) ?></strong>
@@ -220,17 +249,105 @@ if ($viewId) {
         <p style="margin-top:20px;"><a class="btn" href="?action=admin&tab=<?= $tab ?>" style="background:var(--navy-light);"><i class="fa-solid fa-arrow-left"></i> Back to Directory</a></p>
     </div>
 <?php else: ?>
+    <?php
+    // Fetch stats
+    $total_active = (int)$db->query("SELECT COUNT(*) c FROM members WHERE approved = 1 AND is_active = 1 AND end_date >= CURDATE()")->fetch_assoc()['c'];
+    $total_inactive = (int)$db->query("SELECT COUNT(*) c FROM members WHERE approved = 1 AND is_active = 0")->fetch_assoc()['c'];
+    $total_expired = (int)$db->query("SELECT COUNT(*) c FROM members WHERE approved = 1 AND is_active = 1 AND end_date < CURDATE()")->fetch_assoc()['c'];
+    
+    // Status Filter logic
+    $status_filter = $_GET['status_filter'] ?? 'all';
+    $whereClause = "approved = 1";
+    if ($status_filter === 'active') {
+        $whereClause .= " AND is_active = 1 AND end_date >= CURDATE()";
+    } elseif ($status_filter === 'inactive') {
+        $whereClause .= " AND is_active = 0";
+    } elseif ($status_filter === 'expired') {
+        $whereClause .= " AND is_active = 1 AND end_date < CURDATE()";
+    }
+
+    // Sort logic
+    $sort = $_GET['sort'] ?? 'default';
+    $orderBy = 'id DESC';
+    if ($sort === 'shift_asc') {
+        $orderBy = "CASE WHEN shift = 'Morning' THEN 1 WHEN shift = 'Evening' THEN 2 ELSE 3 END ASC, id DESC";
+    } elseif ($sort === 'shift_desc') {
+        $orderBy = "CASE WHEN shift = 'Evening' THEN 1 WHEN shift = 'Morning' THEN 2 ELSE 3 END ASC, id DESC";
+    }
+    ?>
     <div class="card">
-        <h3><i class="fa-solid fa-address-book"></i> Member Accounts Registry</h3>
-        <input type="text" id="viewMembersFilter" placeholder="Instant Search Directory..." style="margin-bottom:12px;">
+        <h3>
+            <i class="fa-solid fa-address-book"></i> Membership Details 
+            <?php if ($status_filter !== 'all'): ?>
+                <span style="font-size:13px; font-weight:normal; margin-left:10px;">
+                    (Filtered: <strong style="text-transform:capitalize;"><?= $status_filter ?></strong>) 
+                    <a href="?action=admin&tab=view_members<?= $sort !== 'default' ? '&sort='.$sort : '' ?>" class="btn" style="padding:4px 8px; font-size:11px; background:var(--bg-slate); color:var(--text-color); border:1px solid var(--border-color);"><i class="fa-solid fa-filter-circle-xmark"></i> Clear Filter</a>
+                </span>
+            <?php endif; ?>
+        </h3>
+        
+        <!-- Member Stats Summary Cards -->
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px;">
+            <a href="?action=admin&tab=view_members&status_filter=active<?= $sort !== 'default' ? '&sort='.$sort : '' ?>" style="text-decoration:none; color:inherit; display:block;">
+                <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:12px; padding:15px; display:flex; align-items:center; gap:12px; transition: transform 0.2s, box-shadow 0.2s; <?= $status_filter === 'active' ? 'box-shadow: 0 0 0 3px #16a34a;' : '' ?>" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                    <div style="width:40px; height:40px; border-radius:50%; background:rgba(16, 185, 129, 0.1); color:var(--accent-green); display:flex; align-items:center; justify-content:center; font-size:18px;">
+                        <i class="fa-solid fa-circle-check"></i>
+                    </div>
+                    <div>
+                        <span style="font-size:11px; font-weight:600; color:#15803d; text-transform:uppercase; display:block;">Active Members</span>
+                        <h3 style="margin:2px 0 0 0; font-size:20px; font-weight:700; color:#166534;"><?= $total_active ?></h3>
+                    </div>
+                </div>
+            </a>
+
+            <a href="?action=admin&tab=view_members&status_filter=inactive<?= $sort !== 'default' ? '&sort='.$sort : '' ?>" style="text-decoration:none; color:inherit; display:block;">
+                <div style="background:#fff1f2; border:1px solid #fecdd3; border-radius:12px; padding:15px; display:flex; align-items:center; gap:12px; transition: transform 0.2s, box-shadow 0.2s; <?= $status_filter === 'inactive' ? 'box-shadow: 0 0 0 3px #dc2626;' : '' ?>" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                    <div style="width:40px; height:40px; border-radius:50%; background:rgba(239, 68, 68, 0.1); color:var(--accent-red); display:flex; align-items:center; justify-content:center; font-size:18px;">
+                        <i class="fa-solid fa-circle-xmark"></i>
+                    </div>
+                    <div>
+                        <span style="font-size:11px; font-weight:600; color:#b91c1c; text-transform:uppercase; display:block;">Inactive Members</span>
+                        <h3 style="margin:2px 0 0 0; font-size:20px; font-weight:700; color:#991b1b;"><?= $total_inactive ?></h3>
+                    </div>
+                </div>
+            </a>
+
+            <a href="?action=admin&tab=view_members&status_filter=expired<?= $sort !== 'default' ? '&sort='.$sort : '' ?>" style="text-decoration:none; color:inherit; display:block;">
+                <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:12px; padding:15px; display:flex; align-items:center; gap:12px; transition: transform 0.2s, box-shadow 0.2s; <?= $status_filter === 'expired' ? 'box-shadow: 0 0 0 3px #d97706;' : '' ?>" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                    <div style="width:40px; height:40px; border-radius:50%; background:rgba(245, 158, 11, 0.1); color:var(--accent-orange); display:flex; align-items:center; justify-content:center; font-size:18px;">
+                        <i class="fa-solid fa-circle-exclamation"></i>
+                    </div>
+                    <div>
+                        <span style="font-size:11px; font-weight:600; color:#b45309; text-transform:uppercase; display:block;">Expired Members</span>
+                        <h3 style="margin:2px 0 0 0; font-size:20px; font-weight:700; color:#92400e;"><?= $total_expired ?></h3>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:15px; margin-bottom:15px; flex-wrap:wrap;">
+            <input type="text" id="viewMembersFilter" placeholder="Instant Search Directory..." style="margin-bottom:0; flex:1; min-width:200px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+                <label for="memberSort" style="margin:0; font-size:13px; font-weight:600; color:var(--text-muted); white-space:nowrap;"><i class="fa-solid fa-sort"></i> Sort by:</label>
+                <select id="memberSort" onchange="location.href=this.value;" style="margin:0; padding:8px 12px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-card); font-size:13px; font-weight:600; color:var(--navy-dark); cursor:pointer;">
+                    <option value="?action=admin&tab=view_members&sort=default<?= $status_filter !== 'all' ? '&status_filter='.$status_filter : '' ?>" <?= $sort === 'default' ? 'selected' : '' ?>>Newest First</option>
+                    <option value="?action=admin&tab=view_members&sort=shift_asc<?= $status_filter !== 'all' ? '&status_filter='.$status_filter : '' ?>" <?= $sort === 'shift_asc' ? 'selected' : '' ?>>Morning Shift</option>
+                    <option value="?action=admin&tab=view_members&sort=shift_desc<?= $status_filter !== 'all' ? '&status_filter='.$status_filter : '' ?>" <?= $sort === 'shift_desc' ? 'selected' : '' ?>>Evening Shift</option>
+                </select>
+            </div>
+        </div>
+
         <div class="table-responsive">
             <table id="viewMembersTable">
                 <thead>
                     <tr>
                         <th>Member Code</th>
                         <th>Full Name</th>
+                        <th>Gender</th>
                         <th>Mobile Phone</th>
+                        <th>Work Shift</th>
                         <th>Term Validity Span</th>
+                        <th>Status</th>
                         <th>Action</th>
                     </tr>
                 </thead>
@@ -239,26 +356,46 @@ if ($viewId) {
                     $p_limit = 10;
                     $p_page = max(1, (int)($_GET['p_page'] ?? 1));
 
-                    $cnt_res = $db->query("SELECT COUNT(*) c FROM members WHERE approved = 1");
+                    $cnt_res = $db->query("SELECT COUNT(*) c FROM members WHERE $whereClause");
                     $total_items = (int)($cnt_res ? $cnt_res->fetch_assoc()['c'] : 0);
                     $total_pages = ceil($total_items / $p_limit);
                     $p_offset = ($p_page - 1) * $p_limit;
 
-                    $x = $db->query("SELECT * FROM members WHERE approved = 1 ORDER BY id DESC LIMIT $p_limit OFFSET $p_offset");
+                    $x = $db->query("SELECT * FROM members WHERE $whereClause ORDER BY $orderBy LIMIT $p_limit OFFSET $p_offset");
                     $mCount = 0;
                     while($r = $x->fetch_assoc()) {
                         $mCount++;
+                        $shiftBadge = ($r['shift'] ?? 'Both') === 'Morning' 
+                            ? '<span class="badge badge-orange" style="font-size:11px;"><i class="fa-solid fa-sun"></i> Morning</span>' 
+                            : (($r['shift'] ?? 'Both') === 'Evening' 
+                                ? '<span class="badge badge-purple" style="font-size:11px; background:#f3e8ff; color:#7e22ce;"><i class="fa-solid fa-moon"></i> Evening</span>' 
+                                : '<span class="badge badge-blue" style="font-size:11px;"><i class="fa-solid"></i> Both Shifts</span>');
+                        $gText = e($r['gender'] ?? 'Male');
+                        if ($gText === 'Other') $gText = 'Others';
+                        
+                        $isExpired = strtotime($r['end_date']) < time();
+                        if ($r['is_active'] == 0) {
+                            $statusBadge = '<span class="badge badge-red" style="font-size:11px;"><i class="fa-solid fa-circle-xmark"></i> Inactive</span>';
+                        } elseif ($isExpired) {
+                            $statusBadge = '<span class="badge badge-red" style="font-size:11px;"><i class="fa-solid fa-circle-exclamation"></i> Expired</span>';
+                        } else {
+                            $statusBadge = '<span class="badge badge-green" style="font-size:11px;"><i class="fa-solid fa-circle-check"></i> Active</span>';
+                        }
+                        
                         echo '
                         <tr>
                             <td><strong>' . $r['membership_id'] . '</strong></td>
                             <td>' . e($r['name']) . '</td>
+                            <td><span class="badge badge-blue" style="font-size:11px;">' . $gText . '</span></td>
                             <td>' . e($r['mobile']) . '</td>
+                            <td>' . $shiftBadge . '</td>
                             <td>' . date('d-m-Y', strtotime($r['start_date'])) . ' to ' . date('d-m-Y', strtotime($r['end_date'])) . '</td>
-                            <td><a class="btn" href="?action=admin&tab=view_members&view=' . $r['id'] . '"><i class="fa-solid fa-user-gear"></i> Inspect / Edit</a></td>
+                            <td>' . $statusBadge . '</td>
+                            <td><a class="btn" href="?action=admin&tab=view_members&view=' . $r['id'] . '"><i class="fa-solid fa-user-gear"></i>Edit</a></td>
                         </tr>';
                     }
                     if ($mCount === 0) {
-                        echo '<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--text-muted);">No member accounts registered yet.</td></tr>';
+                        echo '<tr><td colspan="8" style="text-align:center; padding:30px; color:var(--text-muted);">No member accounts registered yet.</td></tr>';
                     }
                     ?>
                 </tbody>

@@ -9,12 +9,9 @@ $side_prt_count = (int)$db->query("SELECT COUNT(*) c FROM print_requests WHERE s
     
     <!-- Sidebar Nav with Icons -->
     <div class="sidebar">
-        <a href="?action=admin&tab=dashboard" class="<?= $tab === 'dashboard' ? 'active' : '' ?>"><i class="fa-solid fa-chart-pie"></i> Live Analytics</a>
-        <a href="?action=admin&tab=categories" class="<?= $tab === 'categories' ? 'active' : '' ?>"><i class="fa-solid fa-folder-open"></i> E-Book Categories</a>
+        <a href="?action=admin&tab=dashboard" class="<?= $tab === 'dashboard' ? 'active' : '' ?>"><i class="fa-solid fa-chart-pie"></i>Home</a>
         <a href="?action=admin&tab=ebooks" class="<?= $tab === 'ebooks' ? 'active' : '' ?>"><i class="fa-solid fa-file-pdf"></i> Manage E-Books</a>
         <a href="?action=admin&tab=view_ebooks" class="<?= $tab === 'view_ebooks' ? 'active' : '' ?>"><i class="fa-solid fa-book-open"></i> View E-Books</a>
-        <a href="?action=admin&tab=physical" class="<?= $tab === 'physical' ? 'active' : '' ?>"><i class="fa-solid fa-book"></i> Manage Physical Books</a>
-        <a href="?action=admin&tab=view_physical" class="<?= $tab === 'view_physical' ? 'active' : '' ?>"><i class="fa-solid fa-boxes-stacked"></i> View Physical Books</a>
         <a href="?action=admin&tab=requests" class="<?= $tab === 'requests' ? 'active' : '' ?>">
             <i class="fa-solid fa-receipt"></i> Reading Requests
             <span id="sidebarReadingBadge" class="badge badge-orange" style="margin-left:auto; font-size:10px; padding:2px 6px; font-weight:700; <?= $side_req_count > 0 ? '' : 'display:none;' ?>"><?= $side_req_count ?></span>
@@ -23,13 +20,16 @@ $side_prt_count = (int)$db->query("SELECT COUNT(*) c FROM print_requests WHERE s
             <i class="fa-solid fa-print"></i> Print Requests
             <span id="sidebarPrintBadge" class="badge badge-blue" style="margin-left:auto; font-size:10px; padding:2px 6px; font-weight:700; <?= $side_prt_count > 0 ? '' : 'display:none;' ?>"><?= $side_prt_count ?></span>
         </a>
+        <a href="?action=admin&tab=physical" class="<?= $tab === 'physical' ? 'active' : '' ?>"><i class="fa-solid fa-book"></i> Manage Physical Books</a>
+        <a href="?action=admin&tab=view_physical" class="<?= $tab === 'view_physical' ? 'active' : '' ?>"><i class="fa-solid fa-book"></i> View Physical Books</a>
+        <a href="?action=admin&tab=lending" class="<?= $tab === 'lending' ? 'active' : '' ?>"><i class="fa-solid fa-hand-holding-hand"></i>Issue Physical Book</a>
+        <a href="?action=admin&tab=view_lending" class="<?= $tab === 'view_lending' ? 'active' : '' ?>"><i class="fa-solid fa-clock-rotate-left"></i>View Lending List</a>
         <a href="?action=admin&tab=members" class="<?= $tab === 'members' ? 'active' : '' ?>"><i class="fa-solid fa-user-plus"></i> Add Membership</a>
-        <a href="?action=admin&tab=view_members" class="<?= $tab === 'view_members' ? 'active' : '' ?>"><i class="fa-solid fa-users"></i> View Membership</a>
-        <a href="?action=admin&tab=plans" class="<?= $tab === 'plans' ? 'active' : '' ?>"><i class="fa-solid fa-address-book"></i> Membership Plans</a>
-        <a href="?action=admin&tab=lending" class="<?= $tab === 'lending' ? 'active' : '' ?>"><i class="fa-solid fa-hand-holding-hand"></i> Lend Book / Lookup</a>
-        <a href="?action=admin&tab=view_lending" class="<?= $tab === 'view_lending' ? 'active' : '' ?>"><i class="fa-solid fa-clock-rotate-left"></i> View Lending List</a>
-        <a href="?action=admin&tab=profile" class="<?= $tab === 'profile' ? 'active' : '' ?>"><i class="fa-solid fa-user-shield"></i> Librarian Profile</a>
-        <a href="?action=logout" style="margin-top:15px; color:#ef4444; border-top:1px solid var(--border-color); padding-top:12px; font-weight:600;"><i class="fa-solid fa-right-from-bracket"></i> Logout Panel</a>
+        <a href="?action=admin&tab=view_members" class="<?= $tab === 'view_members' ? 'active' : '' ?>"><i class="fa-solid fa-users"></i>View Membership</a>
+        <a href="?action=admin&tab=plans" class="<?= $tab === 'plans' ? 'active' : '' ?>"><i class="fa-solid fa-user-master"></i>Master Data</a>
+        <a href="?action=admin&tab=categories" class="<?= $tab === 'categories' ? 'active' : '' ?>"><i class="fa-solid fa-folder-open"></i>E-Book Categories</a>
+        <a href="?action=admin&tab=profile" class="<?= $tab === 'profile' ? 'active' : '' ?>"><i class="fa-solid fa-user-shield"></i>Librarian Profile</a>
+        <a href="?action=logout" style="margin-top:15px; color:#ef4444; border-top:1px solid var(--border-color); padding-top:12px; font-weight:600;"><i class="fa-solid fa-right-from-bracket"></i>Logout Panel</a>
     </div>
 
     <!-- Admin Dynamic Sub-view Content -->

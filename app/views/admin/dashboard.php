@@ -73,8 +73,8 @@ while ($r_row = $rl_query->fetch_assoc()) {
         <div class="stat-info" style="flex:1;">
             <h4>Physical Books</h4>
             <div style="display:flex; align-items:baseline; gap:12px; margin-top:4px;">
-                <span style="font-size:22px; font-weight:700; color:var(--navy-dark);"><?= $avail_physical ?> <span style="font-size:12px; color:var(--accent-green); font-weight:600;">Avail</span></span>
-                <span style="font-size:16px; font-weight:600; color:var(--accent-red);"><?= $tot_lent ?> <span style="font-size:11px; color:var(--text-muted); font-weight:500;">Lent</span></span>
+                <span style="font-size:22px; font-weight:700; color:var(--navy-dark);"><?= $avail_physical ?> <span style="font-size:12px; color:var(--accent-green); font-weight:600;">Available</span></span>
+                <span style="font-size:16px; font-weight:600; color:var(--accent-red);"><?= $tot_lent ?> <span style="font-size:11px; color:var(--text-muted); font-weight:500;">Lend</span></span>
             </div>
             <span style="font-size:11px; color:var(--text-muted); display:block; margin-top:2px;">Total: <?= $tot_physical ?> books</span>
         </div>
@@ -106,7 +106,7 @@ while ($r_row = $rl_query->fetch_assoc()) {
         <div class="stat-info">
             <h4>Pending Inbox</h4>
             <p style="font-size:20px; color:var(--primary);"><?= $tot_requests + $tot_prints ?></p>
-            <span style="font-size:11px; color:var(--text-muted);"><?= $tot_requests ?> req / <?= $tot_prints ?> print</span>
+            <span style="font-size:11px; color:var(--text-muted);"><?= $tot_requests ?> reading / <?= $tot_prints ?> print</span>
         </div>
         <div class="stat-icon stat-blue"><i class="fa-solid fa-inbox"></i></div>
     </div>
@@ -290,8 +290,9 @@ while ($r_row = $rl_query->fetch_assoc()) {
             <table>
                 <thead>
                     <tr>
+                        <th>Member ID</th>
                         <th>Member Name</th>
-                        <th>E-Book Target</th>
+                        <th>E-Book Title</th>
                         <th>Category Type</th>
                         <th>Details / Specs</th>
                         <th>Request Time</th>
@@ -301,9 +302,10 @@ while ($r_row = $rl_query->fetch_assoc()) {
                 <tbody>
                     <?php 
                     $p_read = [];
-                    $pr_q = $db->query("SELECT r.*, m.name, e.title FROM reading_requests r JOIN members m ON m.id = r.member_id JOIN ebooks e ON e.id = r.ebook_id WHERE r.status = 'Pending'");
+                    $pr_q = $db->query("SELECT r.*, m.name, m.membership_id, e.title FROM reading_requests r JOIN members m ON m.id = r.member_id JOIN ebooks e ON e.id = r.ebook_id WHERE r.status = 'Pending'");
                     while($row = $pr_q->fetch_assoc()) {
                         $p_read[] = [
+                            'mid' => $row['membership_id'],
                             'name' => $row['name'],
                             'title' => $row['title'],
                             'type' => 'Reading',
@@ -314,9 +316,10 @@ while ($r_row = $rl_query->fetch_assoc()) {
                     }
 
                     $p_print = [];
-                    $pp_q = $db->query("SELECT p.*, m.name, e.title FROM print_requests p JOIN members m ON m.id = p.member_id JOIN ebooks e ON e.id = p.ebook_id WHERE p.status = 'Pending'");
+                    $pp_q = $db->query("SELECT p.*, m.name, m.membership_id, e.title FROM print_requests p JOIN members m ON m.id = p.member_id JOIN ebooks e ON e.id = p.ebook_id WHERE p.status = 'Pending'");
                     while($row = $pp_q->fetch_assoc()) {
                         $p_print[] = [
+                            'mid' => $row['membership_id'],
                             'name' => $row['name'],
                             'title' => $row['title'],
                             'type' => 'Print',
@@ -332,7 +335,7 @@ while ($r_row = $rl_query->fetch_assoc()) {
                     });
 
                     if (empty($all_pending)) {
-                        echo '<tr><td colspan="6" style="text-align:center; color:var(--text-muted)"><i class="fa-solid fa-circle-check" style="color:var(--accent-green);"></i> All member inbox queues are empty! Excellent work.</td></tr>';
+                        echo '<tr><td colspan="7" style="text-align:center; color:var(--text-muted)"><i class="fa-solid fa-circle-check" style="color:var(--accent-green);"></i> All member inbox queues are empty! Excellent work.</td></tr>';
                     } else {
                         foreach ($all_pending as $item) {
                             $badge = $item['type'] === 'Reading' 
@@ -340,7 +343,8 @@ while ($r_row = $rl_query->fetch_assoc()) {
                                 : '<span class="badge badge-orange"><i class="fa-solid fa-print"></i> Print Request</span>';
                             echo '
                             <tr>
-                                <td>' . e($item['name']) . '</td>
+                                <td><code>' . e($item['mid']) . '</code></td>
+                                <td><strong style="color:var(--navy-dark);">' . e($item['name']) . '</strong></td>
                                 <td>' . e($item['title']) . '</td>
                                 <td>' . $badge . '</td>
                                 <td><strong style="font-size:12px;">' . e($item['details']) . '</strong></td>

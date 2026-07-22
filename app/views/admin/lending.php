@@ -31,10 +31,21 @@ if ($lookup !== '') {
         <?php if ($lookup !== ''): ?>
             <div style="margin-top: 15px; padding: 15px; background: var(--bg-slate); border-radius: 10px; border:1px solid var(--border-color);">
                 <?php if ($looked): ?>
+                    <?php
+                    $isExpired = strtotime($looked['end_date']) < time();
+                    if ($looked['is_active'] == 0) {
+                        $statusBadge = '<span class="badge badge-red"><i class="fa-solid fa-circle-xmark"></i> Suspended / Inactive</span>';
+                    } elseif ($isExpired) {
+                        $statusBadge = '<span class="badge badge-red"><i class="fa-solid fa-circle-exclamation"></i> Expired</span>';
+                    } else {
+                        $statusBadge = '<span class="badge badge-green"><i class="fa-solid fa-circle-check"></i> Active</span>';
+                    }
+                    ?>
                     <p style="margin:0; font-size:14px; font-weight:600; color:var(--navy-dark);">
                         Matched Account: <span style="color:var(--primary); font-weight:700;"><?= e($looked['name']) ?></span> &nbsp;|&nbsp; 
                         Code: <code><?= e($looked['membership_id']) ?></code> &nbsp;|&nbsp; 
-                        Validity: <span class="badge badge-green"><?= date('d-m-Y', strtotime($looked['end_date'])) ?></span>
+                        Validity: <span class="badge badge-green"><?= date('d-m-Y', strtotime($looked['end_date'])) ?></span> &nbsp;|&nbsp;
+                        Status: <?= $statusBadge ?>
                     </p>
                 <?php else: ?>
                     <p style="margin:0; font-size:14px; font-weight:600; color:var(--accent-red);"><i class="fa-solid fa-triangle-exclamation"></i> No matched active account found in database.</p>
@@ -64,14 +75,14 @@ if ($lookup !== '') {
                 <input id="ld_tx" name="transaction_id" placeholder="Enter Transaction ID" required>
             </div>
             <div style="grid-column: span 2; display:flex; align-items:flex-end; margin-top: 10px;">
-                <button style="width:100%;"><i class="fa-solid fa-square-check"></i> Register Lending Issue</button>
+                <button style="width:100%;"><i class="fa-solid fa-square-check"></i>Register Lending Issue</button>
             </div>
         </form>
     </div>
 </div>
 
 <div class="card">
-    <h3><i class="fa-solid fa-clock-rotate-left"></i> Current Active Lending Index</h3>
+    <h3><i class="fa-solid fa-clock-rotate-left"></i>Lending History</h3>
     <div class="table-responsive">
         <table>
             <thead>

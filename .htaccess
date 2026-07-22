@@ -3,6 +3,11 @@ Options -MultiViews
 RewriteEngine On
 RewriteBase /cbmdl/
 
+# Deny direct access to sensitive files and directories
+<FilesMatch "(^\.env|^\.git|schema\.sql|error_log|config\.php)$">
+    Require all denied
+</FilesMatch>
+
 # Redirect index.php to root URL
 RewriteCond %{THE_REQUEST} \s/+cbmdl/index\.php(?:[?\s]|$) [NC]
 RewriteRule ^index\.php$ /cbmdl/ [R=301,L]

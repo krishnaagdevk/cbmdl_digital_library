@@ -10,7 +10,7 @@
             <i class="fa-solid fa-chevron-right"></i>
         </a>
         <div style="background:white; padding:20px; border-radius:12px; border:1px solid var(--border-color); display:flex; flex-direction:column; gap:8px;">
-            <p style="margin:0; font-weight:600; color:var(--navy-dark);"><i class="fa-solid fa-envelope" style="color:var(--primary);"></i> Email: cbmeerut@gmail.com</p>
+            <p style="margin:0; font-weight:600; color:var(--navy-dark);"><i class="fa-solid fa-envelope" style="color:var(--primary);"></i> Email: cbmeerut1@gmail.com</p>
             <p style="margin:0; font-weight:600; color:var(--navy-dark);"><i class="fa-solid fa-phone" style="color:var(--primary);"></i> Help Desk: 0121-2652292</p>
         </div>
     </div>
@@ -24,7 +24,7 @@
                 <input id="admin_uid" name="username" required placeholder="Librarian Username">
                 
                 <label for="admin_pwd"><i class="fa-solid fa-key"></i> Password</label>
-                <input id="admin_pwd" type="password" name="password" required placeholder="Enter password">
+                <input id="admin_pwd" type="password" name="password" required placeholder="Enter password" maxlength="15">
                 
                 <button style="width:100%; padding:14px; margin-top:10px;"><i class="fa-solid fa-shield-halved"></i> Verify & Authorize</button>
             </form>
@@ -36,7 +36,7 @@
                 <input id="member_mob" name="mobile" required placeholder="Registered Mobile No">
                 
                 <label for="member_pwd"><i class="fa-solid fa-key"></i> Password</label>
-                <input id="member_pwd" type="password" name="password" required placeholder="Enter password">
+                <input id="member_pwd" type="password" name="password" required placeholder="Enter password" maxlength="15">
                 
                 <button style="width:100%; padding:14px; margin-top:10px;"><i class="fa-solid fa-right-to-bracket"></i> Login Account</button>
             </form>

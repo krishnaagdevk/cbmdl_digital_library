@@ -58,6 +58,20 @@ $pendingCount = $pendingCountRes ? $pendingCountRes->fetch_assoc()['c'] : 0;
                             ?>
                         </select>
 
+                        <label for="upd_shift">Library Work Shift *</label>
+                        <select id="upd_shift" name="shift" required>
+                            <?php 
+                            $shiftsRes = $db->query("SELECT * FROM work_shifts ORDER BY id ASC");
+                            while ($s = $shiftsRes->fetch_assoc()) {
+                                $sName = $s['name'];
+                                $sel = (($selected['shift'] ?? 'Both') === $sName) ? 'selected' : '';
+                                $sStart = date('h:i A', strtotime($s['start_time']));
+                                $sEnd = date('h:i A', strtotime($s['end_time']));
+                                echo '<option value="' . e($sName) . '" ' . $sel . '>' . e($sName) . ' Shift (' . $sStart . ' - ' . $sEnd . ')</option>';
+                            }
+                            ?>
+                        </select>
+
                         <label for="m_duration">Membership Term Duration (Auto-set)</label>
                         <input id="m_duration" name="duration" readonly style="background:var(--bg-slate); font-weight:600;" placeholder="Term will auto-fill" required>
                         
@@ -66,8 +80,9 @@ $pendingCount = $pendingCountRes ? $pendingCountRes->fetch_assoc()['c'] : 0;
 
                         <script>
                         function updatePlanFee(selectEl) {
+                            if (!selectEl) return;
                             const selectedOption = selectEl.options[selectEl.selectedIndex];
-                            const container = selectEl.closest('div');
+                            const container = selectEl.closest('form') || selectEl.closest('div');
                             const feeInput = container ? container.querySelector('#m_fee') : null;
                             const durationInput = container ? container.querySelector('#m_duration') : null;
                             
@@ -219,99 +234,149 @@ $pendingCount = $pendingCountRes ? $pendingCountRes->fetch_assoc()['c'] : 0;
     <div class="grid">
         <div class="card">
             <h3><i class="fa-solid fa-address-card"></i> Register New Member Account</h3>
+            <?php 
+            $draft = $_SESSION['reg_member_draft'] ?? [];
+            ?>
             <form method="post" action="?action=add_member">
                 <?= csrf_input() ?>
                 <label for="m_name">Full Name *</label>
-                <input id="m_name" name="name" placeholder="Member Name" required>
+                <input id="m_name" name="name" value="<?= e($draft['name'] ?? '') ?>" placeholder="Member Name" required>
+                
+                <label for="m_gender">Gender *</label>
+                <select id="m_gender" name="gender" required>
+                    <option value="Male" <?= ($draft['gender'] ?? 'Male') === 'Male' ? 'selected' : '' ?>>Male</option>
+                    <option value="Female" <?= ($draft['gender'] ?? '') === 'Female' ? 'selected' : '' ?>>Female</option>
+                    <option value="Other" <?= ($draft['gender'] ?? '') === 'Other' ? 'selected' : '' ?>>Others</option>
+                </select>
                 
                 <label for="m_guardian">Father / Husband Name *</label>
-                <input id="m_guardian" name="guardian_name" placeholder="Guardian Name" required>
+                <input id="m_guardian" name="guardian_name" value="<?= e($draft['guardian_name'] ?? '') ?>" placeholder="Guardian Name" required>
                 
                 <label for="m_mobile">Mobile Number *</label>
-                <input id="m_mobile" name="mobile" placeholder="Contact Mobile No" required>
+                <input id="m_mobile" name="mobile" value="<?= e($draft['mobile'] ?? '') ?>" placeholder="Contact Mobile No" required>
                 
                 <label for="m_password">Secure Login Password *</label>
-                <input id="m_password" type="password" name="password" placeholder="Create password" required>
+                <input id="m_password" type="password" name="password" value="<?= e($draft['password'] ?? '') ?>" placeholder="Create password" required maxlength="15">
                 
                 <label for="m_email">Email ID</label>
-                <input id="m_email" name="email" type="email" placeholder="e.g. member@meerut.com">
+                <input id="m_email" name="email" type="email" value="<?= e($draft['email'] ?? '') ?>" placeholder="e.g. member@meerut.com">
                 
                 <label for="m_address">Residential Address *</label>
-                <textarea id="m_address" name="address" placeholder="Address information" required style="width:100%; min-height:80px;"></textarea>
+                <textarea id="m_address" name="address" placeholder="Address information" required style="width:100%; min-height:80px;"><?= e($draft['address'] ?? '') ?></textarea>
                 
                 <label for="m_aadhar">Aadhar ID No. *</label>
-                <input id="m_aadhar" name="aadhar_no" placeholder="12 Digit ID" required maxlength="12" pattern="\d{12}" inputmode="numeric" title="Aadhar ID must be exactly 12 digits (numbers only)">
+                <input id="m_aadhar" name="aadhar_no" value="<?= e($draft['aadhar_no'] ?? '') ?>" placeholder="12 Digit ID" required maxlength="12" pattern="\d{12}" inputmode="numeric" title="Aadhar ID must be exactly 12 digits (numbers only)">
+                
+                <label for="m_shift">Library Work Shift *</label>
+                <select id="m_shift" name="shift" required>
+                    <?php 
+                    $shiftsRes = $db->query("SELECT * FROM work_shifts ORDER BY id ASC");
+                    while ($s = $shiftsRes->fetch_assoc()) {
+                        $sName = $s['name'];
+                        $sel = (($draft['shift'] ?? 'Both') === $sName) ? 'selected' : '';
+                        $sStart = date('h:i A', strtotime($s['start_time']));
+                        $sEnd = date('h:i A', strtotime($s['end_time']));
+                        echo '<option value="' . e($sName) . '" ' . $sel . '>' . e($sName) . ' Shift (' . $sStart . ' - ' . $sEnd . ')</option>';
+                    }
+                    ?>
+                </select>
                 
                 <label for="m_plan">Membership Plan *</label>
-                 <select id="m_plan" name="plan_id" required onchange="updatePlanFeeMain()">
+                 <select id="m_plan" name="plan_id" required onchange="updatePlanFeeMain(this)">
                      <option value="">Choose Membership Plan Class</option>
                      <?php 
                      $plans = $db->query('SELECT * FROM membership_plans ORDER BY amount ASC');
+                     $draftPlanId = (int)($draft['plan_id'] ?? 0);
                      while($p = $plans->fetch_assoc()) {
-                         echo '<option value="' . $p['id'] . '" data-amount="' . e($p['amount']) . '" data-duration="' . e($p['duration']) . '">' . e($p['name']) . ' (' . e($p['duration']) . ' - ₹' . e($p['amount']) . ')</option>';
+                         $pSel = ($draftPlanId === (int)$p['id']) ? 'selected' : '';
+                         echo '<option value="' . $p['id'] . '" ' . $pSel . ' data-amount="' . e($p['amount']) . '" data-duration="' . e($p['duration']) . '">' . e($p['name']) . ' (' . e($p['duration']) . ' - ₹' . e($p['amount']) . ')</option>';
                      }
                      ?>
                  </select>
 
                  <label for="m_duration_main">Membership Term Duration (Auto-set)</label>
-                 <input id="m_duration_main" name="duration" readonly style="background:var(--bg-slate); font-weight:600;" placeholder="Term will auto-fill" required>
+                 <div id="m_duration_display" style="background:var(--bg-slate); font-weight:600; padding:10px 14px; border-radius:8px; border:1px solid var(--border-color); color:var(--text-dark); min-height:42px;"><?= e($draft['duration'] ?? '') ?></div>
+                 <input type="hidden" id="m_duration_main" name="duration" value="<?= e($draft['duration'] ?? '') ?>">
                  
                  <label for="m_fee_main">Collected Membership Fee (INR) (Auto-set)</label>
-                 <input id="m_fee_main" name="membership_fee" readonly style="background:var(--bg-slate); font-weight:600;" placeholder="Collected fee will auto-fill" required>
+                 <div id="m_fee_display" style="background:var(--bg-slate); font-weight:600; padding:10px 14px; border-radius:8px; border:1px solid var(--border-color); color:var(--text-dark); min-height:42px;"><?= e($draft['membership_fee'] ?? '') ?></div>
+                 <input type="hidden" id="m_fee_main" name="membership_fee" value="<?= e($draft['membership_fee'] ?? '') ?>">
 
                  <script>
                  function updatePlanFeeMain(selectEl) {
+                     if (!selectEl) return;
                      const selectedOption = selectEl.options[selectEl.selectedIndex];
-                     const container = selectEl.closest('form');
-                     const feeInput = container ? container.querySelector('#m_fee_main') : null;
-                     const durationInput = container ? container.querySelector('#m_duration_main') : null;
+                     
+                     const feeInput = document.getElementById('m_fee_main');
+                     const feeDisplay = document.getElementById('m_fee_display');
+                     const durationInput = document.getElementById('m_duration_main');
+                     const durationDisplay = document.getElementById('m_duration_display');
                      
                      if (selectedOption && selectedOption.value !== '') {
                          const amount = selectedOption.getAttribute('data-amount');
                          const duration = selectedOption.getAttribute('data-duration');
                          if (feeInput) feeInput.value = amount;
+                         if (feeDisplay) feeDisplay.textContent = '₹' + amount;
                          if (durationInput) durationInput.value = duration;
+                         if (durationDisplay) durationDisplay.textContent = duration;
                      } else {
                          if (feeInput) feeInput.value = '';
+                         if (feeDisplay) feeDisplay.textContent = '';
                          if (durationInput) durationInput.value = '';
+                         if (durationDisplay) durationDisplay.textContent = '';
                      }
                  }
+                 document.addEventListener('DOMContentLoaded', function() {
+                     const planSelect = document.getElementById('m_plan');
+                     if (planSelect) updatePlanFeeMain(planSelect);
+                 });
                  </script>
                 
                 <label for="m_pay">Reference Transaction / Payment ID *</label>
-                <input id="m_pay" name="payment_id" placeholder="Challan / UPI / Cache Ref" required>
+                <input id="m_pay" name="payment_id" value="<?= e($draft['payment_id'] ?? '') ?>" placeholder="Challan / UPI / Cache Ref" required>
                 
                 <button><i class="fa-solid fa-user-plus"></i> Save Member Profile</button>
             </form>
-        </div>
+        </div><?php unset($_SESSION['reg_member_draft']); ?>
 
         <div>
 
 
             <div class="card">
-                <h3><i class="fa-solid fa-users-viewfinder"></i> Active Registered Members</h3>
-                <input type="text" id="memberFilterInput" placeholder="Type to filter active members..." style="margin-bottom:12px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <h3 style="margin:0;"><i class="fa-solid fa-users-viewfinder"></i> New Membership</h3>
+                </div>
                 <div class="table-responsive">
                     <table id="membersTable">
                         <thead>
                             <tr>
-                                <th>Code ID</th>
+                                <th>Membership ID</th>
                                 <th>Full Name</th>
                                 <th>Mobile</th>
-                                <th>Term Validity</th>
+                                <th>Validity</th>
+                                <th>Status</th>
                                 <th>Profile</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php 
-                            $x = $db->query('SELECT * FROM members WHERE approved = 1 ORDER BY id DESC');
+                            $x = $db->query('SELECT * FROM members WHERE approved = 1 ORDER BY id DESC LIMIT 5');
                             while($r = $x->fetch_assoc()) {
+                                $isExpired = strtotime($r['end_date']) < time();
+                                if ($r['is_active'] == 0) {
+                                    $statusBadge = '<span class="badge badge-red" style="font-size:11px;"><i class="fa-solid fa-circle-xmark"></i> Suspended</span>';
+                                } elseif ($isExpired) {
+                                    $statusBadge = '<span class="badge badge-red" style="font-size:11px;"><i class="fa-solid fa-circle-exclamation"></i> Expired</span>';
+                                } else {
+                                    $statusBadge = '<span class="badge badge-green" style="font-size:11px;"><i class="fa-solid fa-circle-check"></i> Active</span>';
+                                }
                                 echo '
                                 <tr>
                                     <td><strong>' . $r['membership_id'] . '</strong></td>
                                     <td>' . e($r['name']) . '</td>
                                     <td>' . e($r['mobile']) . '</td>
                                     <td><span style="font-size:12px; font-weight:500;">' . date('d-m-Y', strtotime($r['start_date'])) . ' to ' . date('d-m-Y', strtotime($r['end_date'])) . '</span></td>
+                                    <td>' . $statusBadge . '</td>
                                     <td><a class="btn" href="?action=admin&tab=members&view=' . $r['id'] . '" style="padding:6px 12px;"><i class="fa-solid fa-user-pen"></i> Edit</a></td>
                                 </tr>';
                             }

@@ -51,8 +51,37 @@ if (!defined('BASE_URL')) exit;
         </div>
 
         <div style="background:var(--bg-slate); padding:16px; border-radius:12px; border:1px solid var(--border-color);">
+            <p style="margin: 0 0 6px 0; font-size:12px; color:var(--text-muted); text-transform:uppercase; font-weight:600;"><i class="fa-solid fa-clock"></i> Assigned Library Shift</p>
+            <p style="margin:0; font-size:15px; font-weight:700; color:var(--primary);">
+                <?= e($me['shift'] ?? 'Both') ?>
+                <?php 
+                $shift_time_win = get_shift_time_window($me['shift'] ?? 'Both', $db);
+                if ($shift_time_win) {
+                    echo '<span style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-top:4px;"><i class="fa-regular fa-clock" style="font-size:11px; margin-right:4px;"></i>' . date('h:i A', strtotime($shift_time_win['start_time'])) . ' - ' . date('h:i A', strtotime($shift_time_win['end_time'])) . '</span>';
+                }
+                ?>
+            </p>
+        </div>
+
+        <div style="background:var(--bg-slate); padding:16px; border-radius:12px; border:1px solid var(--border-color);">
             <p style="margin: 0 0 6px 0; font-size:12px; color:var(--text-muted); text-transform:uppercase; font-weight:600;"><i class="fa-solid fa-calendar-check"></i> Membership End Date</p>
             <p style="margin:0; font-size:15px; font-weight:700; color:var(--accent-green);"><?= date('d-m-Y', strtotime($me['end_date'])) ?></p>
+        </div>
+
+        <div style="background:var(--bg-slate); padding:16px; border-radius:12px; border:1px solid var(--border-color);">
+            <p style="margin: 0 0 6px 0; font-size:12px; color:var(--text-muted); text-transform:uppercase; font-weight:600;"><i class="fa-solid fa-circle-info"></i> Account Status</p>
+            <p style="margin:0; font-size:15px; font-weight:700;">
+                <?php 
+                $isExpired = strtotime($me['end_date']) < time();
+                if ($me['is_active'] == 0) {
+                    echo '<span class="badge badge-red" style="font-size:12px; padding:4px 8px;"><i class="fa-solid fa-circle-xmark"></i> Suspended / Inactive</span>';
+                } elseif ($isExpired) {
+                    echo '<span class="badge badge-red" style="font-size:12px; padding:4px 8px;"><i class="fa-solid fa-circle-exclamation"></i> Expired</span>';
+                } else {
+                    echo '<span class="badge badge-green" style="font-size:12px; padding:4px 8px;"><i class="fa-solid fa-circle-check"></i> Active</span>';
+                }
+                ?>
+            </p>
         </div>
 
         <div style="background:var(--bg-slate); padding:16px; border-radius:12px; border:1px solid var(--border-color); grid-column: 1 / -1;">
@@ -70,7 +99,7 @@ if (!defined('BASE_URL')) exit;
         <input id="m_prof_email" type="email" name="email" value="<?= e($me['email']) ?>" required>
         
         <label for="m_prof_pwd">New Password (leave blank to keep current)</label>
-        <input id="m_prof_pwd" type="password" name="password" placeholder="Input complex secure password">
+        <input id="m_prof_pwd" type="password" name="password" placeholder="Input complex secure password" maxlength="15">
         
         <button style="width:100%;"><i class="fa-solid fa-square-check"></i> Commit Account Password Update</button>
     </form>

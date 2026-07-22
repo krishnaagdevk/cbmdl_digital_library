@@ -112,7 +112,7 @@ if ($q !== '') {
             <h4 style="margin-top:0; color:var(--navy-dark); font-weight:700;"><i class="fa-solid fa-building-columns" style="color:var(--primary);"></i> MCB Help Desk</h4>
             <p style="font-size:12px; color:var(--text-muted); margin-bottom:15px; line-height:1.5;">For registration approvals, membership card print passes, or book issues, visit the librarian desk.</p>
             <div style="display:flex; flex-direction:column; gap:10px; font-size:12px; color:var(--navy-dark);">
-                <div><i class="fa-solid fa-envelope" style="color:var(--primary); width:16px;"></i> <code>cbmeerut@gmail.com</code></div>
+                <div><i class="fa-solid fa-envelope" style="color:var(--primary); width:16px;"></i> <code>cbmeerut1@gmail.com</code></div>
                 <div><i class="fa-solid fa-phone" style="color:var(--primary); width:16px;"></i> <code>0121-2652292</code></div>
             </div>
             <div style="margin-top:15px; display:flex; flex-direction:column; gap:5px;">

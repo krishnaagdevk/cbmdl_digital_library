@@ -19,7 +19,7 @@
 
     <!-- Footer Area -->
     <footer>
-        &copy; <?= date('Y') ?> <strong>MCB e-Library</strong> · Cantonment Cantonment Board. All Rights Reserved. Fully Audited, Encrypted, and Redesigned.
+        &copy; <?= date('Y') ?> <strong>MCB e-Library</strong> · All Rights Reserved. Designed & Developed by <strong>KD Technologies</strong>
     </footer>
 
     <!-- Client-Side JavaScript Logic -->
@@ -74,7 +74,9 @@
                 'fa-shield-halved': '🛡️',
                 'fa-file-arrow-down': '📥',
                 'fa-chart-line': '📈',
-                'fa-gauge-high': '📊'
+                'fa-gauge-high': '📊',
+                'fa-user-gear' : '🧑‍🦱',
+                'fa-user-master': '👮‍♂️'
             };
             
             document.querySelectorAll('i[class*="fa-"]').forEach(el => {
@@ -111,8 +113,15 @@
                 });
             });
 
-            // 3. Password Toggle and AI Icon Magic Injection
+            // 3. Password Toggle and AI Icon Magic Injection + 15-char Limit
             document.querySelectorAll('input[type="password"]').forEach(input => {
+                input.setAttribute('maxlength', '15');
+                input.addEventListener('input', function() {
+                    if (this.value.length > 15) {
+                        this.value = this.value.substring(0, 15);
+                    }
+                });
+                
                 if (input.dataset.toggleInitialized) return;
                 input.dataset.toggleInitialized = 'true';
                 
@@ -238,56 +247,15 @@
             window.location.reload();
         }
 
-        // 1. e-Reading Modal Viewport & Timer Control
+        // 1. e-Reading PDF Reader New-Tab Launcher
         function openPdfModal(requestId, expiresAtUnix, title, isAdmin = false) {
-            var modal = document.getElementById('pdfModal');
-            var frame = document.getElementById('pdfFrame');
-            var titleEl = document.getElementById('pdfModalTitle');
-            var timerBadge = document.getElementById('pdfTimerBadge');
-            
-            if (titleEl && title) {
-                titleEl.innerHTML = '📖 ' + title;
-            } else if (titleEl) {
-                titleEl.innerHTML = '📖 e-Library Interactive Secure Reader';
-            }
-            
+            let targetUrl = '';
             if (isAdmin) {
-                frame.src = '?action=secure_pdf_viewer&id=' + requestId + '&source=admin';
-                if (timerBadge) timerBadge.style.display = 'none';
+                targetUrl = '?action=secure_pdf_viewer&source=admin&id=' + requestId;
             } else {
-                frame.src = '?action=secure_pdf_viewer&id=' + requestId + '&source=member';
-                
-                // Setup Countdown Timer
-                if (window.pdfTimerInterval) clearInterval(window.pdfTimerInterval);
-                
-                if (expiresAtUnix && timerBadge) {
-                    timerBadge.style.display = 'inline-flex';
-                    
-                    function updateCountdown() {
-                        const now = Math.floor(Date.now() / 1000);
-                        const remaining = expiresAtUnix - now;
-                        
-                        if (remaining <= 0) {
-                            clearInterval(window.pdfTimerInterval);
-                            window.pdfTimerInterval = null;
-                            closePdfModal();
-                            alert("⏱️ Your e-reading permission time limit for '" + (title || 'this book') + "' has expired.\n\nThe PDF reader has been closed.");
-                            if (typeof checkRequestUpdates === 'function') {
-                                checkRequestUpdates();
-                            }
-                        } else {
-                            const mins = Math.floor(remaining / 60);
-                            const secs = remaining % 60;
-                            timerBadge.innerHTML = `⏱️ ${mins}m ${secs < 10 ? '0' : ''}${secs}s remaining`;
-                        }
-                    }
-                    
-                    updateCountdown();
-                    window.pdfTimerInterval = setInterval(updateCountdown, 1000);
-                }
+                targetUrl = '?action=read_member_pdf&id=' + requestId;
             }
-            modal.classList.add('show');
-            document.body.style.overflow = 'hidden';
+            window.open(targetUrl, '_blank');
         }
 
         function closePdfModal() {

@@ -16,7 +16,17 @@ if (!$me || $me['is_active'] == 0 || $me['end_date'] < date('Y-m-d')) {
     go('member-login');
 }
 
-$tab = $_GET['tab'] ?? 'books';
+$shift = $me['shift'] ?? 'Both';
+if (!is_member_within_shift_time($shift, $db)) {
+    unset($_SESSION['member']);
+    $time_win = get_shift_time_window($shift, $db);
+    $fmt_start = date('h:i A', strtotime($time_win['start_time']));
+    $fmt_end = date('h:i A', strtotime($time_win['end_time']));
+    flash("🔒 Shift Access Terminated: Your assigned shift ('" . $shift . "' : " . $fmt_start . " - " . $fmt_end . ") has ended. You have been logged out.");
+    go('member-login');
+}
+
+$tab = $_GET['tab'] ?? 'dashboard';
 $search = trim($_GET['search'] ?? '');
 $cat = (int)($_GET['cat'] ?? 0);
 $sort = $_GET['sort'] ?? 'title_asc';
@@ -71,12 +81,13 @@ $actStmt->close();
     
     <!-- Member Navigation Sidebar -->
     <div class="sidebar">
+        <a href="?action=user&tab=dashboard" class="<?= $tab === 'dashboard' ? 'active' : '' ?>"><i class="fa-solid fa-house-chimney"></i> Home</a>
         <a href="?action=user&tab=books" class="<?= $tab === 'books' ? 'active' : '' ?>"><i class="fa-solid fa-book-open"></i> Explore e-Library</a>
-        <a href="?action=user&tab=physical_books" class="<?= $tab === 'physical_books' ? 'active' : '' ?>"><i class="fa-solid fa-book"></i> Explore Physical Books</a>
-        <a href="?action=user&tab=lending" class="<?= $tab === 'lending' ? 'active' : '' ?>"><i class="fa-solid fa-clipboard-list"></i> Physical Book Lending History</a>
         <a href="?action=user&tab=reading_history" class="<?= $tab === 'reading_history' ? 'active' : '' ?>"><i class="fa-solid fa-clock-rotate-left"></i> e-book Reading History</a>
         <a href="?action=user&tab=print_requests" class="<?= $tab === 'print_requests' ? 'active' : '' ?>"><i class="fa-solid fa-print"></i> e-book Print History</a>
-        <a href="?action=user&tab=profile" class="<?= $tab === 'profile' ? 'active' : '' ?>"><i class="fa-solid fa-user-gear"></i>My Profile</a>
+        <a href="?action=user&tab=physical_books" class="<?= $tab === 'physical_books' ? 'active' : '' ?>"><i class="fa-solid fa-book"></i> Explore Physical Books</a>
+        <a href="?action=user&tab=lending" class="<?= $tab === 'lending' ? 'active' : '' ?>"><i class="fa-solid fa-clipboard-list"></i> Physical Book Lending History</a>
+        <a href="?action=user&tab=profile" class="<?= $tab === 'profile' ? 'active' : '' ?>"><i class="fa-solid fa-user-gear"></i> My Profile</a>
 
         <?php if (!empty($active_reading_requests)): ?>
             <div style="margin-top:15px; padding-top:15px; border-top:1px solid var(--border-color);">
@@ -149,11 +160,11 @@ $actStmt->close();
         <?php endif; ?>
 
         <?php
-        $allowed_tabs = ['books', 'physical_books', 'lending', 'reading_history', 'print_requests', 'profile'];
+        $allowed_tabs = ['dashboard', 'books', 'physical_books', 'lending', 'reading_history', 'print_requests', 'profile'];
         if (in_array($tab, $allowed_tabs)) {
             require __DIR__ . "/user/{$tab}.php";
         } else {
-            require __DIR__ . "/user/books.php";
+            require __DIR__ . "/user/dashboard.php";
         }
         ?>
     </div>
@@ -367,12 +378,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     const handleStatusNotification = () => {
                         mustReloadTab = true;
-                        const onDismissReload = () => {
-                            const activeTab = new URLSearchParams(window.location.search).get('tab');
-                            if (activeTab === 'books' || activeTab === 'reading_history' || !activeTab) {
-                                window.location.reload();
-                            }
-                        };
+                        const onDismissReload = () => { window.location.reload(); };
 
                         if (req.status === 'Approved') {
                             showToastNotification(`Your reading request for <strong>"${req.title}"</strong> has been approved! You can now read the E-Book.`, 'success');
@@ -381,6 +387,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 `Your reading request for <strong>"${req.title}"</strong> has been approved! You can now access and read this E-Book.`,
                                 'success',
                                 `?action=read&id=${req.id}`,
+                                'Read Now',
                                 onDismissReload
                             );
                         } else if (req.status === 'Rejected') {
@@ -412,12 +419,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     const handlePrintNotification = () => {
                         mustReloadTab = true;
-                        const onDismissReload = () => {
-                            const activeTab = new URLSearchParams(window.location.search).get('tab');
-                            if (activeTab === 'books' || activeTab === 'reading_history' || activeTab === 'lending' || !activeTab) {
-                                window.location.reload();
-                            }
-                        };
+                        const onDismissReload = () => { window.location.reload(); };
 
                         showToastNotification(`Your print job request for <strong>"${req.title}"</strong> (Pages: ${req.pages}) has been completed! Please collect it from the front desk.`, 'success');
                         showNotificationModal(

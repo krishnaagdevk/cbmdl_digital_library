@@ -61,8 +61,12 @@ if (!defined('BASE_URL')) exit;
                     </div>
                 </div>
                 
-                <!-- Footer Info -->
-                <div style="background: #f8fafc; padding: 6px 15px; border-top: 1px dashed var(--border-color); font-size: 10px; color: var(--text-dark); display: flex; justify-content: space-between; align-items:center;">
+                <!-- Footer Section -->
+                <div style="background: #f8fafc; padding: 6px 15px; border-top: 1px dashed var(--border-color); font-size: 9px; color: var(--text-color); display: flex; justify-content: space-between;">
+                    <div>
+                        <span style="color: var(--text-muted); font-size: 8px; text-transform: uppercase; display:block;">Shift</span>
+                        <strong style="color:var(--primary);"><?= e($me['shift'] ?? 'Both') ?></strong>
+                    </div>
                     <div>
                         <span style="color: var(--text-muted); font-size: 8px; text-transform: uppercase; display:block;">Issued</span>
                         <strong><?= date('d-m-Y', strtotime($me['start_date'])) ?></strong>
@@ -116,7 +120,7 @@ if (!defined('BASE_URL')) exit;
                     <!-- Stamp / Seal Info -->
                     <div style="text-align:right; border-top:1px solid #777; width:90px; padding-top:2px;">
                         <span style="font-size:7px; color:var(--navy-light); font-weight:700; text-transform:uppercase; display:block;">Issued By Authority</span>
-                        <span style="font-size:7px; color:var(--text-muted); display:block;">CBMDL Librarian</span>
+                        <span style="font-size:7px; color:var(--text-muted); display:block;">CBMDL</span>
                     </div>
                 </div>
             </div>
@@ -131,7 +135,7 @@ if (!defined('BASE_URL')) exit;
         <div id="membership-receipt-print" style="max-width: 500px; margin: 0 auto; background: white; border: 1px solid var(--border-color); border-radius: 12px; padding: 30px; font-family:\'Inter\', sans-serif;">
             <div style="text-align: center; border-bottom: 2px double var(--border-color); padding-bottom: 15px; margin-bottom: 20px;">
                 <h3 style="margin: 0; font-size: 18px; color: var(--navy-dark);">OFFICIAL PAYMENT RECEIPT</h3>
-                <p style="margin: 4px 0 0 0; font-size: 12px; color: var(--text-muted);">P.L.C.L. Cantonment Board Library, Meerut</p>
+                <p style="margin: 4px 0 0 0; font-size: 25px; color: var(--text-muted);">P.L.C.L. Cantonment Board Library, Meerut</p>
             </div>
             <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 15px;">
                 <div>

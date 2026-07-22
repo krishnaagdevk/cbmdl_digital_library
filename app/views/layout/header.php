@@ -106,25 +106,38 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 20px 5%;
-            background: white;
-            border-bottom: 1px solid var(--border-color);
-            box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+            padding: 16px 5%;
+            background: #ffffff;
+            border-bottom: 2px solid #e2e8f0;
+            box-shadow: 0 4px 15px rgba(15, 23, 42, 0.03);
         }
 
         .header-logo img {
-            max-height: 80px;
+            max-height: 85px;
             object-fit: contain;
+            mix-blend-mode: multiply;
+            filter: contrast(115%) brightness(102%);
         }
 
         .header-logo h1 {
             margin: 0;
-            font-size: 24px;
+            font-size: 26px;
             text-align: center;
             flex: 1;
-            line-height: 1.4;
-            font-weight: 700;
-            color: var(--navy-dark);
+            line-height: 1.35;
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: 0.5px;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.03);
+        }
+
+        .header-logo h1 .header-sub-text {
+            display: inline-block;
+            margin-top: 4px;
+            font-size: 18px;
+            font-weight: 600;
+            color: #15803d;
+            letter-spacing: 0.8px;
         }
 
         .header-title-sub {
@@ -140,7 +153,7 @@
         /* Main Workspace Layout */
         main {
             flex: 1;
-            padding: 30px 5%;
+            padding: 15px 3%;
             max-width: 1600px;
             margin: 0 auto;
             width: 100%;
@@ -149,9 +162,9 @@
         /* Dashboard Sidebar Layout */
         .admin-wrapper {
             display: grid;
-            grid-template-columns: 280px 1fr;
-            gap: 30px;
-            margin-top: 20px;
+            grid-template-columns: 240px 1fr;
+            gap: 18px;
+            margin-top: 10px;
         }
 
         @media (max-width: 1024px) {
@@ -173,26 +186,26 @@
         /* Elegant Sidebar */
         .sidebar {
             background: white;
-            border-radius: 16px;
+            border-radius: 12px;
             border: 1px solid var(--border-color);
-            padding: 20px 15px;
+            padding: 12px 10px;
             height: fit-content;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.03);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.03);
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 4px;
         }
 
         .sidebar a {
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding: 12px 18px;
+            gap: 10px;
+            padding: 9px 14px;
             text-decoration: none;
             color: var(--text-dark);
             font-weight: 500;
-            border-radius: 10px;
-            font-size: 14px;
+            border-radius: 8px;
+            font-size: 13.5px;
         }
 
         .sidebar a:hover {
@@ -210,11 +223,11 @@
         /* Cards & Surfaces */
         .card {
             background: var(--bg-card);
-            padding: 26px;
-            border-radius: 16px;
+            padding: 18px 20px;
+            border-radius: 12px;
             border: 1px solid var(--border-color);
-            box-shadow: 0 10px 30px rgba(22, 52, 91, 0.04);
-            margin-bottom: 25px;
+            box-shadow: 0 6px 20px rgba(22, 52, 91, 0.03);
+            margin-bottom: 16px;
             position: relative;
             overflow: hidden;
         }
@@ -236,36 +249,36 @@
 
         .card h3 {
             margin-top: 0;
-            font-size: 20px;
+            font-size: 17px;
             font-weight: 600;
             border-bottom: 1px solid #f1f5f9;
-            padding-bottom: 12px;
-            margin-bottom: 20px;
+            padding-bottom: 8px;
+            margin-bottom: 14px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
         }
 
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 24px;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
         }
 
         /* Quick Stat Widgets */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 14px;
+            margin-bottom: 18px;
         }
 
         .stat-card {
             background: white;
-            border-radius: 16px;
-            padding: 22px;
+            border-radius: 12px;
+            padding: 14px 18px;
             border: 1px solid var(--border-color);
-            box-shadow: 0 8px 24px rgba(0,0,0,0.02);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.02);
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -273,27 +286,27 @@
 
         .stat-card .stat-info h4 {
             margin: 0;
-            font-size: 13px;
+            font-size: 12px;
             text-transform: uppercase;
             color: var(--text-muted);
             letter-spacing: 0.5px;
         }
 
         .stat-card .stat-info p {
-            margin: 5px 0 0 0;
-            font-size: 28px;
+            margin: 3px 0 0 0;
+            font-size: 22px;
             font-weight: 700;
             color: var(--navy-dark);
         }
 
         .stat-card .stat-icon {
-            width: 54px;
-            height: 54px;
-            border-radius: 12px;
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 22px;
+            font-size: 18px;
         }
 
         .stat-blue { background: #eff6ff; color: var(--primary); }
@@ -305,40 +318,40 @@
         .login-container {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 40px;
+            gap: 25px;
             align-items: center;
-            margin: 40px auto;
+            margin: 20px auto;
             max-width: 1100px;
-            padding: 0 20px;
+            padding: 0 15px;
         }
 
         @media (max-width: 768px) {
             .login-container {
                 grid-template-columns: 1fr;
-                gap: 20px;
+                gap: 16px;
             }
         }
 
         .login-section {
             background: #fff;
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 15px 40px rgba(15,23,42,0.06);
+            padding: 26px 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(15,23,42,0.05);
             border: 1px solid var(--border-color);
         }
 
         .external-menu {
             display: flex;
             flex-direction: column;
-            gap: 16px;
+            gap: 12px;
         }
 
         .external-menu a {
             background: #fff;
             border: 1px solid var(--border-color);
             color: var(--navy-dark);
-            padding: 16px 24px;
-            border-radius: 12px;
+            padding: 12px 18px;
+            border-radius: 10px;
             text-decoration: none;
             font-weight: 600;
             box-shadow: 0 4px 10px rgba(0,0,0,0.02);
@@ -350,56 +363,56 @@
         .external-menu a:hover {
             border-color: var(--primary);
             color: var(--primary);
-            transform: translateX(6px);
+            transform: translateX(4px);
         }
 
         /* Forms, Inputs, Buttons */
         label {
             display: block;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
             font-weight: 600;
-            font-size: 14px;
+            font-size: 13px;
             color: var(--navy-dark);
         }
 
         input, select, textarea {
             width: 100%;
-            padding: 12px 16px;
-            margin: 6px 0 18px 0;
+            padding: 8px 12px;
+            margin: 4px 0 12px 0;
             border: 1px solid var(--border-color);
-            border-radius: 10px;
+            border-radius: 8px;
             background-color: #f8fafc;
             font-family: 'Inter', sans-serif;
-            font-size: 14px;
+            font-size: 13.5px;
         }
 
         input:focus, select:focus, textarea:focus {
             outline: none;
             border-color: var(--primary);
             background-color: #ffffff;
-            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
 
         button, .btn {
             background: linear-gradient(135deg, var(--primary), var(--primary-hover));
             color: white;
             border: 0;
-            padding: 12px 24px;
-            border-radius: 10px;
+            padding: 8px 18px;
+            border-radius: 8px;
             font-weight: 600;
             cursor: pointer;
             text-decoration: none;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
-            font-size: 14px;
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+            gap: 6px;
+            font-size: 13px;
+            box-shadow: 0 3px 10px rgba(37, 99, 235, 0.15);
         }
 
         button:hover, .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 15px rgba(37, 99, 235, 0.25);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
         }
 
         button:active, .btn:active {
@@ -408,25 +421,25 @@
 
         .btn-danger, .btn.danger {
             background: linear-gradient(135deg, #ef4444, #dc2626);
-            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
+            box-shadow: 0 3px 10px rgba(239, 68, 68, 0.15);
         }
 
         .btn-danger:hover, .btn.danger:hover {
-            box-shadow: 0 6px 15px rgba(239, 68, 68, 0.25);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
         }
 
         /* Table Styling */
         .table-responsive {
             overflow-x: auto;
-            border-radius: 12px;
+            border-radius: 10px;
             border: 1px solid var(--border-color);
-            margin-top: 15px;
+            margin-top: 10px;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 14px;
+            font-size: 13px;
             background: #ffffff;
         }
 
@@ -434,13 +447,13 @@
             background: #f1f5f9;
             color: var(--navy-dark);
             font-weight: 600;
-            padding: 14px 18px;
+            padding: 9px 12px;
             text-align: left;
             border-bottom: 2px solid var(--border-color);
         }
 
         td {
-            padding: 14px 18px;
+            padding: 8px 12px;
             border-bottom: 1px solid var(--border-color);
             color: var(--text-dark);
         }
@@ -489,6 +502,12 @@
             color: var(--accent-red, #ef4444) !important;
             border-left: 5px solid var(--accent-red, #ef4444) !important;
             box-shadow: 0 4px 12px rgba(239, 68, 68, 0.08) !important;
+        }
+        .notice-orange {
+            background: #fffbeb !important;
+            color: #b45309 !important;
+            border-left: 5px solid #f59e0b !important;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.12) !important;
         }
 
         /* Modals */
@@ -657,105 +676,124 @@
     <!-- Dynamic Session Flash Messages -->
     <?php if ($f = flash()): ?>
         <?php
-        $is_error_flash = (
-            stristr($f, 'invalid') !== false ||
-            stristr($f, 'error') !== false ||
+        $is_inactive_flash = (
+            stristr($f, 'inactive') !== false ||
+            stristr($f, 'expired') !== false
+        );
+        $is_error_flash = !$is_inactive_flash && (
+            str_contains($f, 'Duplicate') || 
+            str_contains($f, '⚠️') || 
+            str_contains($f, 'Error') || 
+            str_contains($f, 'Invalid') ||
             stristr($f, 'warning') !== false ||
-            stristr($f, 'expired') !== false ||
             stristr($f, 'suspended') !== false ||
             stristr($f, 'failed') !== false ||
             stristr($f, 'rejected') !== false ||
             stristr($f, 'cannot') !== false ||
-            stristr($f, 'required') !== false ||
-            stristr($f, '⚠️') !== false
+            stristr($f, 'required') !== false
         );
+        $notice_class = $is_inactive_flash ? 'notice-orange' : ($is_error_flash ? 'notice-red' : '');
         ?>
-        <div class="notice <?= $is_error_flash ? 'notice-red' : '' ?>">
-            <i class="fa-solid <?= $is_error_flash ? 'fa-circle-xmark' : 'fa-circle-check' ?>" style="<?= $is_error_flash ? 'color:var(--accent-red);' : '' ?>"></i>
+        <div class="notice <?= $notice_class ?>">
+            <i class="fa-solid <?= $is_inactive_flash ? 'fa-triangle-exclamation' : ($is_error_flash ? 'fa-circle-xmark' : 'fa-circle-check') ?>" style="<?= $is_inactive_flash ? 'color:#f59e0b;' : ($is_error_flash ? 'color:var(--accent-red);' : '') ?>"></i>
             <span><?= e($f) ?></span>
         </div>
-        <?php if ($is_error_flash): ?>
-            <script>
-                document.addEventListener('DOMContentLoaded', function() {
-                    const msg = <?= json_encode($f) ?>;
-                    // Custom Modal Dialog Popup
-                    let modal = document.getElementById('errorNoticeModalDialog');
-                    if (!modal) {
-                        modal = document.createElement('div');
-                        modal.id = 'errorNoticeModalDialog';
-                        modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.6); backdrop-filter:blur(4px); z-index:99999; display:flex; align-items:center; justify-content:center; padding:20px;';
-                        modal.innerHTML = `
-                            <div style="background:var(--bg-card, #ffffff); border-radius:16px; border:1px solid var(--border-color, #e2e8f0); width:100%; max-width:440px; padding:28px 24px 24px 24px; box-shadow:0 20px 40px rgba(0,0,0,0.2); text-align:center; animation:modalScale 0.25s ease-out;">
-                                <div style="width:60px; height:60px; border-radius:50%; background:#fef2f2; color:#ef4444; display:flex; align-items:center; justify-content:center; margin:0 auto 16px auto; font-size:28px; border:2px solid #fca5a5;">
-                                    <i class="fa-solid fa-triangle-exclamation"></i>
-                                </div>
-                                <h3 style="margin:0 0 10px 0; font-size:18px; font-weight:700; color:var(--navy-dark, #0f172a);">Duplicate / Invalid Entry Alert</h3>
-                                <p style="font-size:14px; color:var(--text-dark, #1e293b); line-height:1.5; margin:0 0 24px 0; background:#f8fafc; padding:12px; border-radius:8px; border:1px solid #e2e8f0; text-align:left;">${typeof escapeHtml === 'function' ? escapeHtml(msg) : msg}</p>
-                                <button onclick="document.getElementById('errorNoticeModalDialog').remove()" style="width:100%; background:linear-gradient(135deg, #ef4444, #dc2626); color:white; border:none; padding:12px 20px; border-radius:10px; font-weight:700; font-size:14px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:8px;">
-                                    <i class="fa-solid fa-circle-xmark"></i> Close & Acknowledge
-                                </button>
-                            </div>
-                        `;
-                        document.body.appendChild(modal);
-                    }
-                });
-            </script>
-        <?php else: ?>
-            <script>
-                document.addEventListener('DOMContentLoaded', function() {
-                    const msg = <?= json_encode($f) ?>;
-                    // Toast Notification Popup Component
-                    let container = document.getElementById('toastNotificationContainer');
+
+        <script>
+            (function() {
+                var msg = <?= json_encode($f) ?>;
+                var isError = <?= json_encode($is_error_flash) ?>;
+                var isWarning = <?= json_encode($is_inactive_flash) ?>;
+
+                function showGlobalToast() {
+                    var container = document.getElementById('toastNotificationContainer');
                     if (!container) {
                         container = document.createElement('div');
                         container.id = 'toastNotificationContainer';
-                        container.style.cssText = 'position:fixed; top:24px; right:24px; display:flex; flex-direction:column; gap:12px; z-index:99999; pointer-events:none; max-width:380px; width:calc(100% - 48px);';
+                        container.style.position = 'fixed';
+                        container.style.top = '24px';
+                        container.style.right = '24px';
+                        container.style.display = 'flex';
+                        container.style.flexDirection = 'column';
+                        container.style.gap = '12px';
+                        container.style.zIndex = '999999';
+                        container.style.pointerEvents = 'none';
+                        container.style.maxWidth = '420px';
+                        container.style.width = 'calc(100% - 48px)';
                         document.body.appendChild(container);
                     }
-                    
-                    const toast = document.createElement('div');
-                    toast.style.cssText = `
-                        background: #ffffff;
-                        color: #0f172a;
-                        border-radius: 12px;
-                        padding: 16px;
-                        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
-                        border: 1px solid #e2e8f0;
-                        border-left: 5px solid #10b981;
-                        display: flex;
-                        align-items: center;
-                        gap: 12px;
-                        pointer-events: auto;
-                        transform: translateX(120%);
-                        transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s;
-                        opacity: 0;
-                    `;
-                    
-                    toast.innerHTML = `
-                        <div style="width:32px; height:32px; border-radius:50%; background:#ecfdf5; color:#10b981; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:16px;">
-                            <i class="fa-solid fa-circle-check"></i>
-                        </div>
-                        <div style="flex:1; font-size:13px; font-weight:600; color:#0f172a; line-height:1.4;">
-                            ${typeof escapeHtml === 'function' ? escapeHtml(msg) : msg}
-                        </div>
-                        <button onclick="this.parentElement.remove()" style="background:none; border:none; padding:0; cursor:pointer; color:#94a3b8; font-size:14px;"><i class="fa-solid fa-xmark"></i></button>
-                    `;
-                    
+
+                    var borderColor = isWarning ? '#f59e0b' : (isError ? '#ef4444' : '#10b981');
+                    var iconBg     = isWarning ? '#fffbeb'  : (isError ? '#fef2f2' : '#ecfdf5');
+                    var iconColor  = isWarning ? '#f59e0b'  : (isError ? '#ef4444' : '#10b981');
+                    var iconClass  = isWarning ? 'fa-triangle-exclamation' : (isError ? 'fa-triangle-exclamation' : 'fa-circle-check');
+
+                    // Build toast wrapper
+                    var toast = document.createElement('div');
+                    toast.style.cssText = [
+                        'background:#ffffff',
+                        'color:#0f172a',
+                        'border-radius:12px',
+                        'padding:16px',
+                        'box-shadow:0 12px 30px -5px rgba(0,0,0,.2),0 8px 10px -6px rgba(0,0,0,.1)',
+                        'border:1px solid #e2e8f0',
+                        'border-left:6px solid ' + borderColor,
+                        'display:flex',
+                        'align-items:flex-start',
+                        'gap:12px',
+                        'pointer-events:auto',
+                        'transform:translateX(120%)',
+                        'transition:transform .4s cubic-bezier(.16,1,.3,1),opacity .4s',
+                        'opacity:0'
+                    ].join(';');
+
+                    // Icon bubble
+                    var iconWrap = document.createElement('div');
+                    iconWrap.style.cssText = 'width:32px;height:32px;border-radius:50%;background:' + iconBg + ';color:' + iconColor + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;';
+                    var icon = document.createElement('i');
+                    icon.className = 'fa-solid ' + iconClass;
+                    iconWrap.appendChild(icon);
+
+                    // Message text
+                    var msgDiv = document.createElement('div');
+                    msgDiv.style.cssText = 'flex:1;font-size:13px;font-weight:600;color:#0f172a;line-height:1.5;white-space:pre-line;word-break:break-word;';
+                    msgDiv.textContent = msg;
+
+                    // Close button
+                    var closeBtn = document.createElement('button');
+                    closeBtn.type = 'button';
+                    closeBtn.style.cssText = 'background:none;border:none;padding:0;cursor:pointer;color:#94a3b8;font-size:14px;flex-shrink:0;';
+                    var closeIcon = document.createElement('i');
+                    closeIcon.className = 'fa-solid fa-xmark';
+                    closeBtn.appendChild(closeIcon);
+                    closeBtn.addEventListener('click', function() { toast.remove(); });
+
+                    toast.appendChild(iconWrap);
+                    toast.appendChild(msgDiv);
+                    toast.appendChild(closeBtn);
                     container.appendChild(toast);
-                    
-                    requestAnimationFrame(() => {
+
+                    // Animate in
+                    setTimeout(function() {
                         toast.style.transform = 'translateX(0)';
                         toast.style.opacity = '1';
-                    });
-                    
-                    setTimeout(() => {
+                    }, 30);
+
+                    // Auto dismiss after 7s
+                    setTimeout(function() {
                         toast.style.transform = 'translateX(120%)';
                         toast.style.opacity = '0';
-                        setTimeout(() => toast.remove(), 400);
-                    }, 5000);
-                });
-            </script>
-        <?php endif; ?>
+                        setTimeout(function() { if (toast.parentNode) toast.remove(); }, 420);
+                    }, 7000);
+                }
+
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', showGlobalToast);
+                } else {
+                    showGlobalToast();
+                }
+            })();
+        </script>
         <?php if ($f === 'Reading request sent to librarian.'): ?>
             <script>
                 alert("🎉 Your e-reading permission request has been submitted successfully to the librarian!\n\nPlease wait for the librarian to review and approve your request.");
@@ -790,7 +828,7 @@
     <!-- Header Branding -->
     <div class="header-logo">
         <img src="<?= BASE_URL ?>images/header_banner.png" alt="Branding Left" />
-        <h1>श्री प्यारे लाल चिरन्जी लाल<br><span style="font-size:18px; font-weight:500; color:var(--text-muted);">कैन्टोनमेन्ट पुस्तकालय मेरठ</span></h1>
+        <h1>श्री प्यारे लाल चिरन्जी लाल<br><span class="header-sub-text">कैन्टोनमेन्ट पुस्तकालय मेरठ</span></h1>
         <img src="<?= BASE_URL ?>images/2022111817.png" alt="Branding Right" />
     </div>
 

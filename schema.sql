@@ -38,7 +38,7 @@ CREATE TABLE `admins` (
 --
 
 INSERT INTO `admins` (`id`, `username`, `password`) VALUES
-(1, 'admin', 'abhinav');
+(1, 'admin', '$2y$10$wN9iL6b1S7Qj8K.uL/X3u.8R9sQ1xY2z3A4B5C6D7E8F9G0H1I2J3');
 
 -- --------------------------------------------------------
 
@@ -128,6 +128,7 @@ CREATE TABLE `members` (
   `id` int(11) NOT NULL,
   `membership_id` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL,
   `name` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `gender` enum('Male','Female','Other') COLLATE utf8mb4_unicode_ci DEFAULT 'Male',
   `guardian_name` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
   `mobile` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
   `password` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -135,6 +136,7 @@ CREATE TABLE `members` (
   `address` text COLLATE utf8mb4_unicode_ci NOT NULL,
   `aadhar_no` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL,
   `duration` enum('Yearly','Half Yearly','Quarterly','Monthly','Daily') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `shift` enum('Morning','Evening') COLLATE utf8mb4_unicode_ci DEFAULT 'Morning',
   `start_date` date NOT NULL,
   `end_date` date NOT NULL,
   `membership_fee` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,

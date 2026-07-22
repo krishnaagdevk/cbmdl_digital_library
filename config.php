@@ -109,10 +109,81 @@ if ($resAadharIdx && $resAadharIdx->num_rows == 0) {
     @$db->query("ALTER TABLE members ADD UNIQUE INDEX idx_aadhar_no (aadhar_no)");
 }
 
+
+// Auto-migration check: Unique index on Payment Transaction ID in members table
+$resPayIdx = $db->query("SHOW INDEX FROM members WHERE Key_name = 'idx_payment_id'");
+if ($resPayIdx && $resPayIdx->num_rows == 0) {
+    @$db->query("ALTER TABLE members ADD UNIQUE INDEX idx_payment_id (payment_id)");
+}
+
+// Auto-migration: Ensure unique index on mobile in members table
+$resMobileIdx = $db->query("SHOW INDEX FROM members WHERE Key_name = 'idx_mobile'");
+if ($resMobileIdx && $resMobileIdx->num_rows == 0) {
+    @$db->query("ALTER TABLE members ADD UNIQUE INDEX idx_mobile (mobile)");
+}
+
 // Auto-migration check: Unique index on category_id + title in ebooks table
 $resEbookIdx = $db->query("SHOW INDEX FROM ebooks WHERE Key_name = 'idx_category_title'");
 if ($resEbookIdx && $resEbookIdx->num_rows == 0) {
     @$db->query("ALTER TABLE ebooks ADD UNIQUE INDEX idx_category_title (category_id, title)");
+}
+
+// Add shift column to members table (Both, Morning, Evening)
+$resShift = $db->query("SHOW COLUMNS FROM members LIKE 'shift'");
+if ($resShift && $resShift->num_rows == 0) {
+    $db->query("ALTER TABLE members ADD COLUMN shift ENUM('Both', 'Morning', 'Evening') DEFAULT 'Both' AFTER duration");
+}
+
+// Add gender column to members table (Male, Female, Other)
+$resGender = $db->query("SHOW COLUMNS FROM members LIKE 'gender'");
+if ($resGender && $resGender->num_rows == 0) {
+    $db->query("ALTER TABLE members ADD COLUMN gender ENUM('Male', 'Female', 'Other') DEFAULT 'Male' AFTER name");
+}
+
+// Auto-migration check: work_shifts table for dynamic shift time definitions
+$db->query("CREATE TABLE IF NOT EXISTS work_shifts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) UNIQUE NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL
+)");
+
+// Insert default market standard shifts if empty
+$shiftCountRes = $db->query("SELECT COUNT(*) c FROM work_shifts");
+if ($shiftCountRes && (int)($shiftCountRes->fetch_assoc()['c'] ?? 0) === 0) {
+    $db->query("INSERT INTO work_shifts (name, start_time, end_time) VALUES 
+        ('Morning', '08:00:00', '14:00:00'),
+        ('Evening', '14:00:00', '20:00:00'),
+        ('Both', '08:00:00', '20:00:00')");
+}
+
+function get_shift_time_window($shift_name, $db_conn) {
+    $stmt = $db_conn->prepare("SELECT start_time, end_time FROM work_shifts WHERE name = ? LIMIT 1");
+    if ($stmt) {
+        $stmt->bind_param("s", $shift_name);
+        $stmt->execute();
+        $res = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        if ($res) return $res;
+    }
+    // Default Fallbacks if custom record not defined
+    if ($shift_name === 'Morning') return ['start_time' => '08:00:00', 'end_time' => '14:00:00'];
+    if ($shift_name === 'Evening') return ['start_time' => '14:00:00', 'end_time' => '20:00:00'];
+    return ['start_time' => '08:00:00', 'end_time' => '20:00:00']; // Both
+}
+
+function is_member_within_shift_time($shift_name, $db_conn) {
+    $shift_info = get_shift_time_window($shift_name, $db_conn);
+    $now_time = date('H:i:s');
+    $start = $shift_info['start_time'];
+    $end = $shift_info['end_time'];
+
+    // Handle overnight shifts if start > end
+    if ($start <= $end) {
+        return ($now_time >= $start && $now_time <= $end);
+    } else {
+        return ($now_time >= $start || $now_time <= $end);
+    }
 }
 
 // Auto-migration check: hold requests table for physical book reservations
@@ -178,25 +249,62 @@ function render_fine_column($r, $fine_data, $tab) {
     return '<span class="badge badge-green"><i class="fa-solid fa-circle-check"></i> Clean</span>';
 }
 
-// Brute-force protection helpers
+// Brute-force protection helpers with IP-level persistence
 function check_login_lockout() {
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+    $key = md5($ip);
+    
     if (isset($_SESSION['lockout_until']) && $_SESSION['lockout_until'] > time()) {
         $remaining = $_SESSION['lockout_until'] - time();
         $_SESSION['flash'] = "Too many failed login attempts. Please wait " . ceil($remaining / 60) . " minute(s).";
         return true;
     }
+    
+    $lockFile = sys_get_temp_dir() . '/cbmdl_lockout_' . $key . '.json';
+    if (is_file($lockFile)) {
+        $data = json_decode(@file_get_contents($lockFile), true);
+        if ($data && isset($data['until']) && $data['until'] > time()) {
+            $remaining = $data['until'] - time();
+            $_SESSION['flash'] = "Too many failed login attempts from your IP. Please wait " . ceil($remaining / 60) . " minute(s).";
+            return true;
+        }
+    }
     return false;
 }
+
 function register_failed_attempt() {
     $_SESSION['failed_attempts'] = ($_SESSION['failed_attempts'] ?? 0) + 1;
-    if ($_SESSION['failed_attempts'] >= 5) {
-        $_SESSION['lockout_until'] = time() + 600; // 10 minutes lockout
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+    $key = md5($ip);
+    $lockFile = sys_get_temp_dir() . '/cbmdl_lockout_' . $key . '.json';
+    
+    $attempts = $_SESSION['failed_attempts'];
+    if (is_file($lockFile)) {
+        $data = json_decode(@file_get_contents($lockFile), true);
+        if ($data && isset($data['attempts'])) {
+            $attempts = max($attempts, $data['attempts'] + 1);
+        }
+    }
+    
+    if ($attempts >= 5) {
+        $until = time() + 600; // 10 minutes lockout
+        $_SESSION['lockout_until'] = $until;
         $_SESSION['failed_attempts'] = 0;
+        @file_put_contents($lockFile, json_encode(['attempts' => 0, 'until' => $until]));
+    } else {
+        @file_put_contents($lockFile, json_encode(['attempts' => $attempts, 'until' => 0]));
     }
 }
+
 function clear_failed_attempts() {
     unset($_SESSION['failed_attempts']);
     unset($_SESSION['lockout_until']);
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+    $key = md5($ip);
+    $lockFile = sys_get_temp_dir() . '/cbmdl_lockout_' . $key . '.json';
+    if (is_file($lockFile)) {
+        @unlink($lockFile);
+    }
 }
 
 // CSRF Protection Helpers
@@ -231,6 +339,19 @@ function stream_file_ranged($file, $contentType = 'application/pdf', $isPrivate 
         http_response_code(404);
         exit('File not found.');
     }
+    
+    // Release PHP session lock immediately so concurrent Range requests run in parallel with zero latency
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_write_close();
+    }
+    
+    // Clear all active output buffers to allow immediate chunk streaming
+    while (ob_get_level()) {
+        ob_end_clean();
+    }
+    
+    // Prevent script execution timeout on large file streams
+    @set_time_limit(0);
     
     $size = filesize($file);
     

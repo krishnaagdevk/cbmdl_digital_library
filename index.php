@@ -1,4 +1,5 @@
 <?php 
+ob_start();
 require 'config.php';
 date_default_timezone_set('Asia/Kolkata');
 
@@ -158,15 +159,15 @@ if ($action === 'secure_pdf_viewer') {
     } elseif ($source === 'member') {
         if (!member()) exit('Unauthorized');
         $mid = (int)$_SESSION['member'];
-        $stmt = $db->prepare("SELECT r.id, e.title FROM reading_requests r JOIN ebooks e ON e.id = r.ebook_id WHERE r.id = ? AND r.member_id = ? AND r.status = 'Approved' AND r.expires_at > NOW() LIMIT 1");
-        $stmt->bind_param("ii", $id, $mid);
+        $stmt = $db->prepare("SELECT r.id, e.title FROM reading_requests r JOIN ebooks e ON e.id = r.ebook_id WHERE (r.id = ? OR r.ebook_id = ?) AND r.member_id = ? AND r.status = 'Approved' AND r.expires_at > NOW() ORDER BY r.id DESC LIMIT 1");
+        $stmt->bind_param("iii", $id, $id, $mid);
         $stmt->execute();
         $r = $stmt->get_result()->fetch_assoc();
         $stmt->close();
         
         if (!$r) exit('No active permission for this book.');
         $pdfTitle = $r['title'];
-        $streamUrl = BASE_URL . '?action=read_member_pdf_content&id=' . $id;
+        $streamUrl = BASE_URL . '?action=read_member_pdf_content&id=' . (int)$r['id'];
     } else {
         exit('Invalid source specifier.');
     }
@@ -448,11 +449,13 @@ if ($action === 'secure_pdf_viewer') {
                 height: 100%;
                 overflow: auto;
                 display: flex;
+                flex-direction: column;
                 align-items: center;
-                justify-content: center;
-                padding: 40px;
+                justify-content: flex-start;
+                padding: 40px 20px;
                 background-color: var(--bg-primary);
                 position: relative;
+                box-sizing: border-box;
             }
 
             .canvas-shadow-box {
@@ -664,7 +667,7 @@ if ($action === 'secure_pdf_viewer') {
                         ctx.textBaseline = 'middle';
                         ctx.translate(viewport.width / 2, viewport.height / 2);
                         ctx.rotate(-Math.PI / 6);
-                        ctx.fillText('CBMDL SECURE DIGITAL READER - AUTHORIZED COPY', 0, 0);
+                        ctx.fillText('CBMDLM SECURE DIGITAL READER - AUTHORIZED COPY', 0, 0);
                         ctx.restore();
 
                         pageRendering = false;
@@ -1078,26 +1081,17 @@ if (admin()) {
         $b = $stmt->get_result()->fetch_assoc();
         $stmt->close();
         
-        if (!$b) exit('Book not found.');
-        ?>
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <link rel="icon" type="image/x-icon" href="images/favicon.ico">
-            <meta charset="utf-8">
-            <title><?= e($b['title']) ?> - Reader</title>
-            <style>
-                body { margin:0; padding:0; background-color:#1e293b; }
-                iframe { width:100%; height:100vh; border:none; }
-                * { user-select:none; -webkit-user-select:none; -moz-user-select:none; -ms-user-select:none; }
-                @media print { body { display:none !important; } }
-            </style>
-        </head>
-        <body>
-            <iframe src="<?= BASE_URL ?>?action=secure_pdf_viewer&source=admin&id=<?= urlencode($b['id']) ?>" style="pointer-events:auto;"></iframe>
-        </body>
-        </html>
-        <?php 
+        if (!$b || !$b['pdf_file']) exit('Book not found.');
+        
+        $file = 'uploads/' . basename($b['pdf_file']);
+        if (!is_file($file)) exit('PDF file does not exist on server.');
+        
+        // Stream directly using inline Content-Disposition for standard browser built-in PDF viewer
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: inline; filename="' . basename($b['pdf_file']) . '"');
+        header('Content-Length: ' . filesize($file));
+        header('Accept-Ranges: bytes');
+        readfile($file);
         exit;
     }
 
@@ -1163,7 +1157,7 @@ if (admin()) {
         
         $chunk_dir = 'uploads/chunks/' . $upload_id;
         if (!is_dir($chunk_dir)) {
-            mkdir($chunk_dir, 0777, true);
+            mkdir($chunk_dir, 0755, true);
         }
         
         $padded_index = str_pad($chunk_index, 5, '0', STR_PAD_LEFT);
@@ -1217,7 +1211,7 @@ if (admin()) {
         
         sort($chunks);
         if (!is_dir('uploads')) {
-            mkdir('uploads', 0777, true);
+            mkdir('uploads', 0755, true);
         }
         
         $out_name = uniqid('book_') . '.pdf';
@@ -1535,7 +1529,7 @@ if (admin()) {
     }
 
     if ($action === 'add_ebook' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-        if (!is_dir('uploads')) mkdir('uploads', 0777, true);
+        if (!is_dir('uploads')) mkdir('uploads', 0755, true);
         $f = $_FILES['pdf']['name'] ?? '';
         $ext = strtolower(pathinfo($f, PATHINFO_EXTENSION));
         
@@ -1646,43 +1640,138 @@ if (admin()) {
     }
 
     if ($action === 'add_member' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-        $d = $_POST['duration'] ?? 'Yearly';
+        $d = trim($_POST['duration'] ?? '');
+        $shift = in_array($_POST['shift'] ?? '', ['Both', 'Morning', 'Evening']) ? $_POST['shift'] : 'Both';
         $plan_id = isset($_POST['plan_id']) && $_POST['plan_id'] !== '' ? (int)$_POST['plan_id'] : null;
         $start = date('Y-m-d');
-        $end = membership_end($d);
         
-        $temp_id = 'TEMP_M_' . uniqid('', true);
-        
-        $v = ['name', 'guardian_name', 'mobile', 'password', 'email', 'address', 'aadhar_no', 'membership_fee', 'payment_id'];
+        $v = ['name', 'gender', 'guardian_name', 'mobile', 'password', 'email', 'address', 'aadhar_no', 'membership_fee', 'payment_id'];
         $data = [];
         foreach ($v as $k) {
             $data[$k] = trim($_POST[$k] ?? '');
         }
+        // Ensure payment_id is never empty string (required NOT NULL column)
+        if ($data['payment_id'] === '') {
+            flash('Error: Payment / Transaction ID is required.');
+            go('?action=admin&tab=members');
+        }
+        
+        $gender = in_array($data['gender'], ['Male', 'Female', 'Other']) ? $data['gender'] : 'Male';
         
         if ($data['name'] === '' || $data['mobile'] === '' || $data['aadhar_no'] === '') {
             flash('Error: Name, Mobile, and Aadhar Number are required.');
             go('?action=admin&tab=members');
         }
         
+        $fee = (float)$data['membership_fee'];
+        $feeStr = '';
+        
+        // Auto-lookup amount & duration from selected membership_plan_id if empty
+        if ($plan_id) {
+            $pStmt = $db->prepare("SELECT duration, amount FROM membership_plans WHERE id = ?");
+            $pStmt->bind_param("i", $plan_id);
+            $pStmt->execute();
+            $pRes = $pStmt->get_result()->fetch_assoc();
+            if ($pRes) {
+                if ($fee <= 0.00) { $fee = (float)$pRes['amount']; }
+                if ($d === '') $d = $pRes['duration'];
+            }
+            $pStmt->close();
+        }
+        // Validate duration against enum values
+        $validDurations = ['Yearly', 'Half Yearly', 'Quarterly', 'Monthly', 'Daily'];
+        if (!in_array($d, $validDurations)) $d = 'Yearly';
+        $feeStr = (string)$fee;
+        $end = membership_end($d);
+        
+        $temp_id = 'TEMP_M_' . uniqid('', true);
+        
         // Hash password securely
         $hashed = password_hash($data['password'], PASSWORD_BCRYPT);
-        $fee = (float)$data['membership_fee'];
         
-        $stmt = $db->prepare("INSERT INTO members (membership_id, name, guardian_name, mobile, password, email, address, aadhar_no, duration, start_date, end_date, payment_id, membership_plan_id, membership_fee) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("ssssssssssssid", $temp_id, $data['name'], $data['guardian_name'], $data['mobile'], $hashed, $data['email'], $data['address'], $data['aadhar_no'], $d, $start, $end, $data['payment_id'], $plan_id, $fee);
-        $ok = $stmt->execute();
-        $stmt->close();
+        // Check individual field uniqueness in database before attempting insert (Aadhar No & Transaction ID must be unique; Mobile can be duplicate)
+        $dup_errors = [];
+        $dup_fields = [];
         
-        if ($ok) {
-            $new_id = $db->insert_id;
-            $mid_code = 'CBMDL' . $new_id;
-            $upStmt = $db->prepare("UPDATE members SET membership_id = ? WHERE id = ?");
-            $upStmt->bind_param("si", $mid_code, $new_id);
-            $upStmt->execute();
-            $upStmt->close();
-            flash('Member created. Membership ID: ' . $mid_code);
-        } else {
-            flash('Error creating member. Mobile/Aadhar already registered.');
+        $chkAadhar = $db->prepare("SELECT id FROM members WHERE aadhar_no = ? LIMIT 1");
+        $chkAadhar->bind_param("s", $data['aadhar_no']);
+        $chkAadhar->execute();
+        if ($chkAadhar->get_result()->num_rows > 0) {
+            $dup_errors[] = "Aadhar Number ('" . e($data['aadhar_no']) . "') is already registered with an existing member.";
+            $dup_fields[] = 'aadhar_no';
+        }
+        $chkAadhar->close();
+        
+        if ($data['payment_id'] !== '') {
+            $chkPay = $db->prepare("SELECT id FROM members WHERE payment_id = ? LIMIT 1");
+            $chkPay->bind_param("s", $data['payment_id']);
+            $chkPay->execute();
+            if ($chkPay->get_result()->num_rows > 0) {
+                $dup_errors[] = "Transaction / Payment ID ('" . e($data['payment_id']) . "') has already been used for another membership.";
+                $dup_fields[] = 'payment_id';
+            }
+            $chkPay->close();
+        }
+
+        $chkMobile = $db->prepare("SELECT id FROM members WHERE mobile = ? LIMIT 1");
+        $chkMobile->bind_param("s", $data['mobile']);
+        $chkMobile->execute();
+        if ($chkMobile->get_result()->num_rows > 0) {
+            $dup_errors[] = "Mobile Number ('" . e($data['mobile']) . "') is already registered with another member account.";
+            $dup_fields[] = 'mobile';
+        }
+        $chkMobile->close();
+
+        if (count($dup_errors) > 0) {
+            // Save form input draft to session, clearing only rejected duplicate fields
+            $draft = $data;
+            $draft['shift'] = $shift;
+            $draft['plan_id'] = $plan_id;
+            $draft['gender'] = $gender;
+            
+            foreach ($dup_fields as $fKey) {
+                $draft[$fKey] = ''; // Clear rejected duplicate field
+            }
+            $_SESSION['reg_member_draft'] = $draft;
+            
+            $alertMsg = "⚠️ Membership Registration Blocked (Duplicate Records Found):\n\n" . implode("\n", $dup_errors) . "\n\nNote: Rejected duplicate fields have been emptied. Non-duplicate details have been preserved.";
+            flash($alertMsg);
+            go('?action=admin&tab=members');
+        }
+        
+        try {
+            $stmt = $db->prepare("INSERT INTO members (membership_id, name, gender, guardian_name, mobile, password, email, address, aadhar_no, duration, shift, start_date, end_date, payment_id, membership_plan_id, membership_fee) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            if (!$stmt) {
+                flash('⚠️ Error: ' . $db->error);
+                go('?action=admin&tab=members');
+            }
+            // membership_fee is varchar(50) so use 's'; plan_id nullable int uses 'i'
+            $stmt->bind_param("ssssssssssssssis",
+                $temp_id, $data['name'], $gender, $data['guardian_name'],
+                $data['mobile'], $hashed, $data['email'], $data['address'],
+                $data['aadhar_no'], $d, $shift, $start, $end,
+                $data['payment_id'], $plan_id, $feeStr
+            );
+            $ok = $stmt->execute();
+            if (!$ok) {
+                flash('⚠️ Error saving member: ' . $stmt->error);
+                $stmt->close();
+                go('?action=admin&tab=members');
+            }
+            $stmt->close();
+            
+            if ($ok) {
+                unset($_SESSION['reg_member_draft']);
+                $new_id = $db->insert_id;
+                $mid_code = 'CBMDLM' . $new_id;
+                $upStmt = $db->prepare("UPDATE members SET membership_id = ? WHERE id = ?");
+                $upStmt->bind_param("si", $mid_code, $new_id);
+                $upStmt->execute();
+                $upStmt->close();
+                flash('Member created. Membership ID: ' . $mid_code);
+            }
+        } catch (\mysqli_sql_exception $e) {
+            flash('⚠️ Duplicate Entry Error: A member with these details already exists. ' . $e->getMessage());
         }
         go('?action=admin&tab=members');
     }
@@ -1694,16 +1783,31 @@ if (admin()) {
         }
         $id = (int)$_POST['id'];
         $plan_id = isset($_POST['plan_id']) && $_POST['plan_id'] !== '' ? (int)$_POST['plan_id'] : null;
-        $d = $_POST['duration'] ?? 'Yearly';
+        $d = trim($_POST['duration'] ?? '');
+        $shift = in_array($_POST['shift'] ?? '', ['Both', 'Morning', 'Evening']) ? $_POST['shift'] : 'Both';
         $fee = (float)($_POST['membership_fee'] ?? 0.00);
         $payment_id = trim($_POST['payment_id'] ?? '');
         
+        // Auto-lookup amount & duration from selected membership_plan_id if empty
+        if ($plan_id) {
+            $pStmt = $db->prepare("SELECT duration, amount FROM membership_plans WHERE id = ?");
+            $pStmt->bind_param("i", $plan_id);
+            $pStmt->execute();
+            $pRes = $pStmt->get_result()->fetch_assoc();
+            if ($pRes) {
+                if ($fee <= 0.00) $fee = (float)$pRes['amount'];
+                if ($d === '') $d = $pRes['duration'];
+            }
+            $pStmt->close();
+        }
+        if ($d === '') $d = 'Yearly';
+        
         $start = date('Y-m-d');
         $end = membership_end($d);
-        $mid_code = 'CBMDL' . $id;
+        $mid_code = 'CBMDLM' . $id;
         
-        $stmt = $db->prepare("UPDATE members SET membership_id = ?, membership_plan_id = ?, membership_fee = ?, payment_id = ?, duration = ?, start_date = ?, end_date = ?, is_active = 1, approved = 1 WHERE id = ?");
-        $stmt->bind_param("sisssssi", $mid_code, $plan_id, $fee, $payment_id, $d, $start, $end, $id);
+        $stmt = $db->prepare("UPDATE members SET membership_id = ?, membership_plan_id = ?, membership_fee = ?, payment_id = ?, duration = ?, shift = ?, start_date = ?, end_date = ?, is_active = 1, approved = 1 WHERE id = ?");
+        $stmt->bind_param("sissssssi", $mid_code, $plan_id, $fee, $payment_id, $d, $shift, $start, $end, $id);
         $ok = $stmt->execute();
         $stmt->close();
         
@@ -1718,22 +1822,24 @@ if (admin()) {
     if ($action === 'update_member' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = (int)$_POST['id'];
         $name = trim($_POST['name'] ?? '');
+        $gender = in_array($_POST['gender'] ?? '', ['Male', 'Female', 'Other']) ? $_POST['gender'] : 'Male';
         $g_name = trim($_POST['guardian_name'] ?? '');
         $mobile = trim($_POST['mobile'] ?? '');
         $email = trim($_POST['email'] ?? '');
         $address = trim($_POST['address'] ?? '');
         $aadhar = trim($_POST['aadhar_no'] ?? '');
+        $shift = in_array($_POST['shift'] ?? '', ['Both', 'Morning', 'Evening']) ? $_POST['shift'] : 'Both';
         $is_active = isset($_POST['is_active']) ? (int)$_POST['is_active'] : 1;
         $pass = trim($_POST['password'] ?? '');
         
         try {
             if ($pass !== '') {
                 $hashed = password_hash($pass, PASSWORD_BCRYPT);
-                $stmt = $db->prepare("UPDATE members SET name = ?, guardian_name = ?, mobile = ?, email = ?, address = ?, aadhar_no = ?, is_active = ?, password = ? WHERE id = ?");
-                $stmt->bind_param("ssssssisi", $name, $g_name, $mobile, $email, $address, $aadhar, $is_active, $hashed, $id);
+                $stmt = $db->prepare("UPDATE members SET name = ?, gender = ?, guardian_name = ?, mobile = ?, email = ?, address = ?, aadhar_no = ?, shift = ?, is_active = ?, password = ? WHERE id = ?");
+                $stmt->bind_param("ssssssssisi", $name, $gender, $g_name, $mobile, $email, $address, $aadhar, $shift, $is_active, $hashed, $id);
             } else {
-                $stmt = $db->prepare("UPDATE members SET name = ?, guardian_name = ?, mobile = ?, email = ?, address = ?, aadhar_no = ?, is_active = ? WHERE id = ?");
-                $stmt->bind_param("ssssssii", $name, $g_name, $mobile, $email, $address, $aadhar, $is_active, $id);
+                $stmt = $db->prepare("UPDATE members SET name = ?, gender = ?, guardian_name = ?, mobile = ?, email = ?, address = ?, aadhar_no = ?, shift = ?, is_active = ? WHERE id = ?");
+                $stmt->bind_param("ssssssssii", $name, $gender, $g_name, $mobile, $email, $address, $aadhar, $shift, $is_active, $id);
             }
             $stmt->execute();
             $stmt->close();
@@ -1751,6 +1857,16 @@ if (admin()) {
         $plan_id = isset($_POST['plan_id']) && $_POST['plan_id'] !== '' ? (int)$_POST['plan_id'] : null;
         $payment_id = trim($_POST['payment_id'] ?? '');
         $fee = (float)($_POST['membership_fee'] ?? 0.00);
+        
+        // If fee was not passed in POST, auto-fetch amount from selected membership_plan_id
+        if ($fee <= 0.00 && $plan_id) {
+            $pStmt = $db->prepare("SELECT amount FROM membership_plans WHERE id = ?");
+            $pStmt->bind_param("i", $plan_id);
+            $pStmt->execute();
+            $pRes = $pStmt->get_result()->fetch_assoc();
+            if ($pRes) $fee = (float)$pRes['amount'];
+            $pStmt->close();
+        }
         
         $start = date('Y-m-d');
         $end = membership_end($d);
@@ -1824,6 +1940,48 @@ if (admin()) {
         go('?action=admin&tab=plans');
     }
 
+    if ($action === 'save_shift_times' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $shift_names = $_POST['shift_name'] ?? [];
+        $start_times = $_POST['start_time'] ?? [];
+        $end_times = $_POST['end_time'] ?? [];
+        
+        for ($i = 0; $i < count($shift_names); $i++) {
+            $sname = trim($shift_names[$i]);
+            $stime = trim($start_times[$i]);
+            $etime = trim($end_times[$i]);
+            
+            if ($sname !== '' && $stime !== '' && $etime !== '') {
+                // Ensure HH:MM:SS format
+                if (strlen($stime) == 5) $stime .= ':00';
+                if (strlen($etime) == 5) $etime .= ':00';
+                
+                $stmt = $db->prepare("INSERT INTO work_shifts (name, start_time, end_time) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE start_time = VALUES(start_time), end_time = VALUES(end_time)");
+                $stmt->bind_param("sss", $sname, $stime, $etime);
+                $stmt->execute();
+                $stmt->close();
+            }
+        }
+        
+        // Handle optional dynamic custom shift addition
+        $custom_name = trim($_POST['custom_shift_name'] ?? '');
+        $custom_start = trim($_POST['custom_start_time'] ?? '');
+        $custom_end = trim($_POST['custom_end_time'] ?? '');
+        
+        if ($custom_name !== '' && $custom_start !== '' && $custom_end !== '') {
+            if (strlen($custom_start) == 5) $custom_start .= ':00';
+            if (strlen($custom_end) == 5) $custom_end .= ':00';
+            
+            $stmt = $db->prepare("INSERT INTO work_shifts (name, start_time, end_time) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE start_time = VALUES(start_time), end_time = VALUES(end_time)");
+            $stmt->bind_param("sss", $custom_name, $custom_start, $custom_end);
+            $stmt->execute();
+            $stmt->close();
+            flash("Work Shift configuration and custom shift '" . $custom_name . "' saved.");
+        } else {
+            flash('Work Shift timing windows updated successfully.');
+        }
+        go('?action=admin&tab=plans');
+    }
+
     if ($action === 'settle_fine' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = (int)$_POST['id'];
         $status = $_POST['fine_status'] ?? 'Paid';
@@ -1831,7 +1989,7 @@ if (admin()) {
             $status = 'Paid';
         }
         $pay_id = trim($_POST['fine_payment_id'] ?? '');
-        $amount = (float)($_POST['fine_amount'] ?? 0.00);
+        $amount = max(0.00, (float)($_POST['fine_amount'] ?? 0.00));
         
         $stmt = $db->prepare("UPDATE lendings SET fine_amount = ?, fine_status = ?, fine_payment_id = ? WHERE id = ?");
         $stmt->bind_param("dssi", $amount, $status, $pay_id, $id);
@@ -1980,11 +2138,22 @@ if (admin()) {
         }
         
         // Find Member
-        $mStmt = $db->prepare("SELECT id FROM members WHERE membership_id = ? OR mobile = ? LIMIT 1");
+        $mStmt = $db->prepare("SELECT id, is_active, end_date FROM members WHERE membership_id = ? OR mobile = ? LIMIT 1");
         $mStmt->bind_param("ss", $find, $find);
         $mStmt->execute();
         $m = $mStmt->get_result()->fetch_assoc();
         $mStmt->close();
+        
+        if ($m) {
+            if ($m['is_active'] == 0) {
+                flash('⚠️ Issue Blocked: This member account is currently suspended/inactive.');
+                go('?action=admin&tab=lending');
+            }
+            if (strtotime($m['end_date']) < time()) {
+                flash('⚠️ Issue Blocked: This member account has expired.');
+                go('?action=admin&tab=lending');
+            }
+        }
         
         // Find Available Physical Book
         $bStmt = $db->prepare("SELECT p.id FROM physical_books p WHERE p.book_code = ? AND NOT EXISTS (SELECT 1 FROM lendings l WHERE l.physical_book_id = p.id AND l.returned_at IS NULL) LIMIT 1");
@@ -2067,45 +2236,28 @@ if (member()) {
     if ($action === 'read_member_pdf') {
         $rid = (int)($_GET['id'] ?? 0);
         
-        $stmt = $db->prepare("SELECT r.*, e.pdf_file, e.title FROM reading_requests r JOIN ebooks e ON e.id = r.ebook_id WHERE r.id = ? AND r.member_id = ? AND r.status = 'Approved' AND r.expires_at > NOW() LIMIT 1");
-        $stmt->bind_param("ii", $rid, $mid);
+        $stmt = $db->prepare("SELECT r.*, e.pdf_file, e.title FROM reading_requests r JOIN ebooks e ON e.id = r.ebook_id WHERE (r.id = ? OR r.ebook_id = ?) AND r.member_id = ? AND r.status = 'Approved' AND r.expires_at > NOW() ORDER BY r.id DESC LIMIT 1");
+        $stmt->bind_param("iii", $rid, $rid, $mid);
         $stmt->execute();
         $r = $stmt->get_result()->fetch_assoc();
         $stmt->close();
         
         if (!$r || !$r['pdf_file']) exit('No active permission for this book.');
-        ?>
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <link rel="icon" type="image/x-icon" href="images/favicon.ico">
-            <meta charset="utf-8">
-            <title>Reader - <?= e($r['title']) ?></title>
-            <style>
-                body { margin:0; padding:0; background-color:#1e293b; }
-                iframe { width:100%; height:100vh; border:none; }
-                * { user-select:none; -webkit-user-select:none; -moz-user-select:none; -ms-user-select:none; }
-                @media print { body { display:none !important; } }
-            </style>
-        </head>
-        <body>
-            <iframe src="<?= BASE_URL ?>?action=secure_pdf_viewer&source=member&id=<?= urlencode($r['id']) ?>" style="pointer-events:auto;"></iframe>
-        </body>
-        </html>
-        <?php 
-        exit;
+        
+        // Redirect directly to the secure viewer (same engine admin uses) — no iframe wrapper
+        go(BASE_URL . '?action=secure_pdf_viewer&source=member&id=' . urlencode($r['id']));
     }
 
     if ($action === 'read_member_pdf_content') {
         $rid = (int)($_GET['id'] ?? 0);
         
-        $stmt = $db->prepare("SELECT r.id, r.expires_at, e.pdf_file FROM reading_requests r JOIN ebooks e ON e.id = r.ebook_id WHERE r.id = ? AND r.member_id = ? AND r.status = 'Approved' AND r.expires_at > NOW() LIMIT 1");
-        $stmt->bind_param("ii", $rid, $mid);
+        $stmt = $db->prepare("SELECT r.id, r.expires_at, e.pdf_file FROM reading_requests r JOIN ebooks e ON e.id = r.ebook_id WHERE (r.id = ? OR r.ebook_id = ?) AND r.member_id = ? AND r.status = 'Approved' AND r.expires_at > NOW() ORDER BY r.id DESC LIMIT 1");
+        $stmt->bind_param("iii", $rid, $rid, $mid);
         $stmt->execute();
         $r = $stmt->get_result()->fetch_assoc();
         $stmt->close();
         
-        if ($r) {
+        if ($r && !empty($r['pdf_file'])) {
             $file = 'uploads/' . basename($r['pdf_file']);
             stream_file_ranged($file, 'application/pdf', true, 300);
         }

@@ -16,7 +16,7 @@ if ($status_filter === 'Pending') {
 
 if ($search !== '') {
     $search_escaped = $db->real_escape_string($search);
-    $where_clauses[] = "(m.name LIKE '%$search_escaped%' OR e.title LIKE '%$search_escaped%')";
+    $where_clauses[] = "(m.name LIKE '%$search_escaped%' OR m.membership_id LIKE '%$search_escaped%' OR e.title LIKE '%$search_escaped%')";
 }
 
 $where_sql = '';
@@ -32,18 +32,18 @@ $total_items = (int)($db->query($cnt_query_str)->fetch_assoc()['c'] ?? 0);
 $total_pages = ceil($total_items / $p_limit);
 $p_offset = ($p_page - 1) * $p_limit;
 
-$query_str = "SELECT r.*, m.name, e.title FROM reading_requests r JOIN members m ON m.id = r.member_id JOIN ebooks e ON e.id = r.ebook_id $where_sql ORDER BY r.requested_at DESC LIMIT $p_limit OFFSET $p_offset";
+$query_str = "SELECT r.*, m.name, m.membership_id, e.title FROM reading_requests r JOIN members m ON m.id = r.member_id JOIN ebooks e ON e.id = r.ebook_id $where_sql ORDER BY r.requested_at DESC LIMIT $p_limit OFFSET $p_offset";
 ?>
 
 <div class="card" style="margin-bottom: 25px;">
-    <h3><i class="fa-solid fa-filter"></i> Filter Inbox</h3>
+    <h3><i class="fa-solid fa-filter"></i>Filter</h3>
     <form method="get" class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
         <input type="hidden" name="action" value="admin">
         <input type="hidden" name="tab" value="requests">
         
         <div>
-            <label for="req_search">Search Member / E-Book</label>
-            <input id="req_search" name="search" value="<?= e($search) ?>" placeholder="Enter member name or book title...">
+            <label for="req_search">Search Member ID / Name / E-Book</label>
+            <input id="req_search" name="search" value="<?= e($search) ?>" placeholder="Enter member ID, name, or book title...">
         </div>
         
         <div>
@@ -72,6 +72,7 @@ $query_str = "SELECT r.*, m.name, e.title FROM reading_requests r JOIN members m
         <table id="requestsTable">
             <thead>
                 <tr>
+                    <th>Member ID</th>
                     <th>Member Name</th>
                     <th>E-Book Title</th>
                     <th>Request Timestamp</th>
@@ -83,7 +84,7 @@ $query_str = "SELECT r.*, m.name, e.title FROM reading_requests r JOIN members m
                 <?php 
                 $x = $db->query($query_str);
                 if ($x->num_rows === 0) {
-                    echo '<tr><td colspan="5" style="text-align:center; padding: 30px; color:var(--text-muted);"><i class="fa-solid fa-circle-info" style="font-size:20px; margin-bottom:10px; display:block; color:var(--primary);"></i> No requests match the selected filters.</td></tr>';
+                    echo '<tr><td colspan="6" style="text-align:center; padding: 30px; color:var(--text-muted);"><i class="fa-solid fa-circle-info" style="font-size:20px; margin-bottom:10px; display:block; color:var(--primary);"></i> No requests match the selected filters.</td></tr>';
                 } else {
                     while($r = $x->fetch_assoc()) {
                         $statusText = $r['status'];
@@ -92,7 +93,8 @@ $query_str = "SELECT r.*, m.name, e.title FROM reading_requests r JOIN members m
                         if ($r['status'] === 'Rejected') $badgeClass = 'badge-red';
                         
                         echo '<tr>';
-                        echo '<td>' . e($r['name']) . '</td>';
+                        echo '<td><code>' . e($r['membership_id']) . '</code></td>';
+                        echo '<td><strong style="color:var(--navy-dark);">' . e($r['name']) . '</strong></td>';
                         echo '<td>' . e($r['title']) . '</td>';
                         echo '<td>' . date('d-m-Y h:i A', strtotime($r['requested_at'])) . '</td>';
                         echo '<td><span class="badge ' . $badgeClass . '">' . $statusText . '</span></td>';

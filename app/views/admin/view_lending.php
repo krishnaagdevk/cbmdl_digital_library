@@ -52,7 +52,7 @@ if ($sort === 'lent_asc') {
                     <th>Member Name</th>
                     <th>Date of Lending</th>
                     <th>Due Date</th>
-                    <th>Return Operations</th>
+                    <th>Return Date</th>
                 </tr>
             </thead>
             <tbody>
@@ -71,7 +71,7 @@ if ($sort === 'lent_asc') {
                     $lCount++;
                     
                     $returnCol = $r['returned_at'] 
-                        ? '<span style="font-size:12px; color:var(--text-muted); font-weight:600;"><i class="fa-solid fa-box-archive"></i> Settled ' . date('d-m-Y', strtotime($r['returned_at'])) . '</span>' 
+                        ? '<span style="font-size:12px; color:var(--text-muted); font-weight:600;"><i class="fa-solid fa-box-archive"></i>' . date('d-m-Y', strtotime($r['returned_at'])) . '</span>' 
                         : '<form method="post" action="?action=return_book" style="display:inline; margin:0;"><input type="hidden" name="id" value="' . $r['id'] . '"><input type="hidden" name="tab" value="view_lending">' . csrf_input() . '<button class="btn" type="submit" style="padding:6px 12px;"><i class="fa-solid fa-rotate-left"></i> Tag Return</button></form>';
                     
                     $due_time = strtotime($r['due_date']);

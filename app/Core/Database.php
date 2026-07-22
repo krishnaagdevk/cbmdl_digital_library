@@ -30,8 +30,7 @@ final class Database {
             $fallbacks = [
                 ['localhost', 'root', '', 'mrt_library'],
                 ['localhost', 'root', '', 'cbmdl'],
-                ['localhost', 'root', '', 'svpsm27m_cbmdl'],
-                ['localhost', 'u451812872_library', 'O?nBn27d7', 'u451812872_library']
+                ['localhost', 'root', '', 'svpsm27m_cbmdl']
             ];
 
             foreach ($fallbacks as $fb) {

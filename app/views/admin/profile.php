@@ -18,7 +18,7 @@ $stmt->close();
         <input id="prof_username" name="username" value="<?= e($adminData['username']) ?>" required>
         
         <label for="prof_password">New Password</label>
-        <input id="prof_password" type="password" name="password" placeholder="Input new password (blank = keep unchanged)">
+        <input id="prof_password" type="password" name="password" placeholder="Input new password (blank = keep unchanged)" maxlength="15">
         
         <button><i class="fa-solid fa-check-double"></i> Save Profile Details</button>
     </form>
