@@ -21,8 +21,6 @@ if (is_file($envFile)) {
 
 define('BASE_URL', $_ENV['BASE_URL'] ?? '/cbmdl/');
 
-require 'default.php';
-
 // Secure Session configurations
 if (session_status() === PHP_SESSION_NONE) {
     ini_set('session.use_only_cookies', 1);

@@ -2,7 +2,18 @@
 require 'config.php';
 date_default_timezone_set('Asia/Kolkata');
 
-$action = $_GET['action'] ?? 'home';
+$requestUri = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
+$pathRoute = trim(str_replace('/cbmdl', '', $requestUri), '/');
+
+if (isset($_GET['action'])) {
+    $action = $_GET['action'];
+} elseif ($pathRoute === 'member-login') {
+    $action = 'member_login';
+} elseif ($pathRoute === 'admin-login') {
+    $action = 'admin_login';
+} else {
+    $action = 'home';
+}
 
 // Redirect default root/home to member-login or active dashboard
 if ($action === 'home' && $_SERVER['REQUEST_METHOD'] === 'GET') {
@@ -645,6 +656,17 @@ if ($action === 'secure_pdf_viewer') {
                     const renderTask = page.render(renderContext);
                     
                     return renderTask.promise.then(function() {
+                        // Apply security watermark overlay on canvas
+                        ctx.save();
+                        ctx.font = 'bold ' + Math.max(16, Math.round(viewport.width / 25)) + 'px sans-serif';
+                        ctx.fillStyle = 'rgba(150, 150, 150, 0.18)';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.translate(viewport.width / 2, viewport.height / 2);
+                        ctx.rotate(-Math.PI / 6);
+                        ctx.fillText('CBMDL SECURE DIGITAL READER - AUTHORIZED COPY', 0, 0);
+                        ctx.restore();
+
                         pageRendering = false;
                         updateActiveThumbnail(num);
                         

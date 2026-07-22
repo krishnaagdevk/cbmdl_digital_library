@@ -18,7 +18,7 @@
     <div class="login-section">
         <?php if ($action === 'admin_login'): ?>
             <h3 style="text-align:center; border:none; margin-bottom:20px;"><i class="fa-solid fa-user-shield" style="color:var(--primary);"></i> Librarian Authorization</h3>
-            <form method="post" action="admin-login">
+            <form method="post" action="?action=admin_login">
                 <?= csrf_input() ?>
                 <label for="admin_uid"><i class="fa-solid fa-user"></i> User ID</label>
                 <input id="admin_uid" name="username" required placeholder="Librarian Username">
@@ -30,7 +30,7 @@
             </form>
         <?php else: ?>
             <h3 style="text-align:center; border:none; margin-bottom:20px;"><i class="fa-solid fa-user-graduate" style="color:var(--primary);"></i> Member Login</h3>
-            <form method="post" action="member-login">
+            <form method="post" action="?action=member_login">
                 <?= csrf_input() ?>
                 <label for="member_mob"><i class="fa-solid fa-phone"></i> Mobile Number</label>
                 <input id="member_mob" name="mobile" required placeholder="Registered Mobile No">

@@ -3,14 +3,11 @@ Options -MultiViews
 RewriteEngine On
 RewriteBase /cbmdl/
 
-# Redirect .php URLs to extensionless URLs
+# Redirect index.php to root URL
 RewriteCond %{THE_REQUEST} \s/+cbmdl/index\.php(?:[?\s]|$) [NC]
 RewriteRule ^index\.php$ /cbmdl/ [R=301,L]
 
-RewriteCond %{THE_REQUEST} \s/+cbmdl/(.+?)\.php(?:[?\s]|$) [NC]
-RewriteRule ^(.+)\.php$ /cbmdl/$1 [R=301,L]
-
-# Internally map extensionless URLs to PHP files
+# Route all requests to index.php if physical file/directory doesn't exist
+RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteCond %{REQUEST_FILENAME}.php -f
-RewriteRule ^(.+?)/?$ $1.php [L]
+RewriteRule ^(.+)$ index.php [QSA,L]

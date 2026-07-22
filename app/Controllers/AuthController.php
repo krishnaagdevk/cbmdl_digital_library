@@ -14,6 +14,7 @@ final class AuthController {
         $admin = (new Admin($this->db))->authenticate($_POST['username']??'', $_POST['password']??'');
         if ($admin) {
             clear_failed_attempts();
+            session_regenerate_id(true);
             $_SESSION['admin'] = $admin['id'];
             header('Location: index.php?action=admin');
             exit;
@@ -31,6 +32,7 @@ final class AuthController {
         $member = (new Member($this->db))->authenticate($_POST['mobile']??'', $_POST['password']??'');
         if ($member) {
             clear_failed_attempts();
+            session_regenerate_id(true);
             $_SESSION['member'] = $member['id'];
             header('Location: index.php?action=user');
             exit;
