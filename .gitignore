@@ -1,0 +1,89 @@
+# ==========================================
+# Environment & Sensitive Credentials
+# ==========================================
+.env
+.env.local
+.env.*.local
+*.env
+*.pem
+*.key
+*.crt
+
+# ==========================================
+# User Uploads & Media Assets
+# ==========================================
+/uploads/*
+!/uploads/.htaccess
+!/uploads/.gitkeep
+!/uploads/index.html
+
+# ==========================================
+# Logs & Debugging Output
+# ==========================================
+error_log
+/error_log
+*.log
+/logs/
+/tmp/
+/temp/
+
+# ==========================================
+# Database Dumps & Temporary Backups
+# ==========================================
+*.sql.gz
+*.bak
+*.backup
+*.sqlite
+*.sqlite3
+
+# ==========================================
+# Dependency & Package Managers
+# ==========================================
+/vendor/
+/node_modules/
+/composer.phar
+
+# ==========================================
+# IDE & Code Editor Files
+# ==========================================
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# PhpStorm / JetBrains
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# Sublime / Eclipse / NetBeans
+*.sublime-workspace
+*.sublime-project
+.project
+.buildpath
+.settings/
+nbproject/
+
+# ==========================================
+# Operating System Junk Files
+# ==========================================
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+Desktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes

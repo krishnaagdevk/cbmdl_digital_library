@@ -1,0 +1,8 @@
+Category,Book Code,Title,Author,Publisher,Price,Rack Location
+Computer Science,CBMDLB101,Introduction to Algorithms,Thomas H. Cormen,MIT Press,1899.00,Shelf A1
+Physics,CBMDLB102,Concepts of Physics Vol 1,H.C. Verma,Bharati Bhawan,450.00,Shelf B2
+Literature,CBMDLB103,To Kill a Mockingbird,Harper Lee,J. B. Lippincott & Co.,399.00,Shelf C3
+Business,CBMDLB104,The Intelligent Investor,Benjamin Graham,HarperBusiness,799.00,Shelf D4
+Fiction,CBMDLB105,The Great Gatsby,F. Scott Fitzgerald,Charles Scribner's Sons,299.00,Shelf E1
+Technology,CBMDLB106,Clean Code: A Handbook of Agile Software Craftsmanship,Robert C. Martin,Prentice Hall,1250.00,Shelf A2
+Mathematics,CBMDLB107,Thomas' Calculus,George B. Thomas,Pearson,1499.00,Shelf B3

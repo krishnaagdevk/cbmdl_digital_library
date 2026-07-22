@@ -1,0 +1,12 @@
+# Block direct access to script execution within uploads
+<FilesMatch "\.(php|php3|php4|php5|phtml|pl|py|asp|cgi)$">
+    Order deny,allow
+    Deny from all
+</FilesMatch>
+
+# Only allow PDF extension accesses
+Order Deny,Allow
+Deny from all
+<FilesMatch "\.(pdf)$">
+    Allow from all
+</FilesMatch>
