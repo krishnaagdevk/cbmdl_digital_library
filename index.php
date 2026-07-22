@@ -75,7 +75,7 @@ function calculate_fine($due_date, $returned_at = null) {
     if ($end_day > $due_day) {
         $diff = $end_day - $due_day;
         $days = (int)ceil($diff / (60 * 60 * 24));
-        $rate = 5.00; // ₹5 per day
+        $rate = 0.00; // ₹5 per day
         return [
             'days' => $days,
             'fine' => $days * $rate
@@ -1936,7 +1936,7 @@ if (admin()) {
     }
 
     if ($action === 'reject' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-        $id = (int)($_POST['id'] ?? 0);
+        $id = (int)($_POST['request_id'] ?? $_POST['id'] ?? 0);
         $stmt = $db->prepare("UPDATE reading_requests SET status = 'Rejected' WHERE id = ?");
         $stmt->bind_param("i", $id);
         $stmt->execute();
@@ -2111,6 +2111,18 @@ if (member()) {
     if ($action === 'request_read') {
         $id = (int)$_GET['id'];
         
+        // Check current active/pending request count (limit 5)
+        $cntStmt = $db->prepare("SELECT COUNT(*) c FROM reading_requests WHERE member_id = ? AND (status = 'Pending' OR (status = 'Approved' AND expires_at > NOW()))");
+        $cntStmt->bind_param("i", $mid);
+        $cntStmt->execute();
+        $active_count = (int)($cntStmt->get_result()->fetch_assoc()['c'] ?? 0);
+        $cntStmt->close();
+
+        if ($active_count >= 5) {
+            flash('⚠️ Request Limit Reached: You can have a maximum of 5 active or pending e-book reading requests at a time.');
+            go('?action=user&tab=books');
+        }
+        
         $oldStmt = $db->prepare("SELECT id FROM reading_requests WHERE member_id = ? AND ebook_id = ? AND status = 'Pending'");
         $oldStmt->bind_param("ii", $mid, $id);
         $oldStmt->execute();
@@ -2122,39 +2134,14 @@ if (member()) {
             $stmt->bind_param("ii", $mid, $id);
             $stmt->execute();
             $stmt->close();
+            flash('Reading request sent to librarian.');
+        } else {
+            flash('Reading request already submitted and pending approval.');
         }
-        flash('Reading request sent to librarian.');
         go('?action=user&tab=books');
     }
 
     if ($action === 'request_hold') {
-        $id = (int)$_GET['id'];
-        
-        $chk = $db->prepare("SELECT id FROM physical_books WHERE id = ? LIMIT 1");
-        $chk->bind_param("i", $id);
-        $chk->execute();
-        $book_exists = $chk->get_result()->fetch_assoc();
-        $chk->close();
-        
-        if ($book_exists) {
-            $chkHold = $db->prepare("SELECT id FROM hold_requests WHERE member_id = ? AND physical_book_id = ? AND status = 'Active' LIMIT 1");
-            $chkHold->bind_param("ii", $mid, $id);
-            $chkHold->execute();
-            $hold_exists = $chkHold->get_result()->fetch_assoc();
-            $chkHold->close();
-            
-            if (!$hold_exists) {
-                $insHold = $db->prepare("INSERT INTO hold_requests (member_id, physical_book_id) VALUES (?, ?)");
-                $insHold->bind_param("ii", $mid, $id);
-                $insHold->execute();
-                $insHold->close();
-                flash('🎉 Book hold registered successfully! You have been added to the reservation queue for this volume.');
-            } else {
-                flash('⚠️ Notice: You already have an active hold reservation queued for this physical book.');
-            }
-        } else {
-            flash('Error: Physical book volume not found.');
-        }
         go('?action=user&tab=physical_books');
     }
 

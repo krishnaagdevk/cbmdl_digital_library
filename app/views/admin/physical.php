@@ -174,7 +174,7 @@ $stmt->close();
                     <?php while($r = $physical_books_result->fetch_assoc()): ?>
                         <?php 
                         $statusBadge = $r['busy'] 
-                            ? '<span class="badge badge-red" style="font-size:11px; padding:3px 8px;"><i class="fa-solid fa-circle-minus"></i> Checked Out</span>' 
+                            ? '<span class="badge badge-red" style="font-size:11px; padding:3px 8px;"><i class="fa-solid fa-circle-minus"></i> Not Available</span>' 
                             : '<span class="badge badge-green" style="font-size:11px; padding:3px 8px;"><i class="fa-solid fa-circle-check"></i> Available</span>';
                         ?>
                         <tr>
@@ -186,7 +186,6 @@ $stmt->close();
                             <td><?= $statusBadge ?></td>
                             <td>
                                 <div style="display:flex; gap:5px;">
-                                    <button class="btn" style="background:#10b981; padding:6px 12px; font-size:12px; display:inline-flex; align-items:center; gap:4px;" onclick="printBarcodeLabel('<?= e(addslashes($r['title'])) ?>', '<?= e(addslashes($r['author'])) ?>', '<?= e($r['book_code']) ?>')"><i class="fa-solid fa-barcode"></i> Label</button>
                                     <a class="btn" style="background:var(--primary); padding:6px 12px; font-size:12px; display:inline-flex; align-items:center; gap:4px;" href="?action=admin&tab=physical&edit=<?= $r['id'] ?>"><i class="fa-solid fa-pen-to-square"></i> Edit</a>
                                     <form method="post" action="?action=delete_physical" class="delete-form" style="display:inline; margin:0;">
                                         <?= csrf_input() ?>

@@ -67,18 +67,8 @@ document.addEventListener('DOMContentLoaded', function() {
             $lendStmt->close();
 
             $status_badge = $on_loan 
-                ? '<span class="badge badge-red" style="font-size:11px; padding:4px 10px;"><i class="fa-solid fa-circle-minus"></i> On Loan</span>'
+                ? '<span class="badge badge-red" style="font-size:11px; padding:4px 10px;"><i class="fa-solid fa-circle-minus"></i> Not Available</span>'
                 : '<span class="badge badge-green" style="font-size:11px; padding:4px 10px;"><i class="fa-solid fa-circle-check"></i> Available</span>';
-
-            $btn_style = $on_loan 
-                ? 'background: #d97706;' 
-                : 'background: var(--primary);';
-            $btn_text = $on_loan
-                ? '<i class="fa-solid fa-hourglass-half"></i> Request Hold Queue'
-                : '<i class="fa-solid fa-hand-holding-hand"></i> Request / Hold Book';
-            $onclick = $on_loan 
-                ? "if(confirm('This volume is currently checked out by another member. Would you like to register an active Hold Reservation on it?')){ location.href='?action=request_hold&id=" . $b['id'] . "'; }" 
-                : "alert('Reservation request generated successfully! Please show your Membership ID to the librarian to get this book issued.')";
             ?>
             <div class="card physical-book-card" style="display:flex; flex-direction:column; justify-content:space-between; height:100%; padding:20px; transition:all 0.3s ease; border-radius:12px; border:1px solid var(--border-color); background:var(--card-bg);" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
                 <div>
@@ -89,10 +79,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     <h4 style="font-size:16px; margin:0 0 8px 0; font-weight:700; color:var(--navy-dark); line-height:1.4;"><?= e($b['title']) ?></h4>
                     <p style="font-size:13px; margin:0 0 6px 0; color:var(--text-muted);"><i class="fa-solid fa-user-tie"></i> <strong>Author:</strong> <?= e($b['author']) ?></p>
                     <p style="font-size:13px; margin:0 0 6px 0; color:var(--text-muted);"><i class="fa-solid fa-warehouse"></i> <strong>Publisher:</strong> <?= e($b['publisher']) ?></p>
-                    <p style="font-size:13px; margin:0 0 15px 0; color:var(--text-muted);"><i class="fa-solid fa-receipt"></i> <strong>Cost:</strong> ₹<?= number_style_format($b['price']) ?></p>
+                    <p style="font-size:13px; margin:0 0 6px 0; color:var(--text-muted);"><i class="fa-solid fa-receipt"></i> <strong>Cost:</strong> ₹<?= number_style_format($b['price']) ?></p>
                 </div>
-                <div>
-                    <button class="btn" style="width:100%; <?= $btn_style ?> margin-top:5px;" onclick="<?= $onclick ?>"><?= $btn_text ?></button>
+                <div style="margin-top:12px; padding-top:10px; border-top:1px solid var(--border-color); font-size:12px; text-align:center;">
+                    <?php if ($on_loan): ?>
+                        <span style="color:var(--accent-red); font-weight:600;"><i class="fa-solid fa-circle-minus"></i> Currently Issued to Member</span>
+                    <?php else: ?>
+                        <span style="color:var(--accent-green); font-weight:600;"><i class="fa-solid fa-circle-check"></i> Available at Library Desk</span>
+                    <?php endif; ?>
                 </div>
             </div>
             <?php

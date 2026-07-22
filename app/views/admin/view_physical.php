@@ -55,7 +55,7 @@ $available_books = $total_books - $lent_books;
     <p style="font-size:16px;">
         Total Volumes: <strong><?= $total_books ?></strong> &nbsp;|&nbsp; 
         Available: <strong style="color:var(--accent-green);"><?= $available_books ?></strong> &nbsp;|&nbsp; 
-        Currently Checked Out: <strong style="color:var(--accent-red);"><?= $lent_books ?></strong>
+        Currently Not Available: <strong style="color:var(--accent-red);"><?= $lent_books ?></strong>
     </p>
     <div class="table-responsive">
         <table>

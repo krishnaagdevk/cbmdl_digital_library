@@ -10,6 +10,7 @@ $tot_members = (int)$db->query('SELECT COUNT(*) c FROM members')->fetch_assoc()[
 $tot_requests = (int)$db->query("SELECT COUNT(*) c FROM reading_requests WHERE status='Pending'")->fetch_assoc()['c'];
 $tot_prints = (int)$db->query("SELECT COUNT(*) c FROM print_requests WHERE status='Pending'")->fetch_assoc()['c'];
 $tot_lent = (int)$db->query("SELECT COUNT(*) c FROM lendings WHERE returned_at IS NULL")->fetch_assoc()['c'];
+$avail_physical = max(0, $tot_physical - $tot_lent);
 
 // Calculate overdue lendings count & total fine accumulated
 $overdue_query = $db->query("SELECT due_date, returned_at FROM lendings WHERE returned_at IS NULL");
@@ -48,21 +49,36 @@ while ($r_row = $rl_query->fetch_assoc()) {
     <span><i class="fa-solid fa-gauge-high"></i> Dashboard Live Analytics & Statistics</span>
 </h3>
 
+<style>
+@media (min-width: 992px) {
+    .stats-grid-3cols {
+        grid-template-columns: repeat(3, 1fr) !important;
+    }
+}
+@media (max-width: 991px) and (min-width: 600px) {
+    .stats-grid-3cols {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}
+@media (max-width: 599px) {
+    .stats-grid-3cols {
+        grid-template-columns: 1fr !important;
+    }
+}
+</style>
+
 <!-- KPI Highlight Cards Grid -->
-<div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 25px;">
+<div class="stats-grid stats-grid-3cols" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 25px;">
     <div class="stat-card">
-        <div class="stat-info">
+        <div class="stat-info" style="flex:1;">
             <h4>Physical Books</h4>
-            <p><?= $tot_physical ?></p>
+            <div style="display:flex; align-items:baseline; gap:12px; margin-top:4px;">
+                <span style="font-size:22px; font-weight:700; color:var(--navy-dark);"><?= $avail_physical ?> <span style="font-size:12px; color:var(--accent-green); font-weight:600;">Avail</span></span>
+                <span style="font-size:16px; font-weight:600; color:var(--accent-red);"><?= $tot_lent ?> <span style="font-size:11px; color:var(--text-muted); font-weight:500;">Lent</span></span>
+            </div>
+            <span style="font-size:11px; color:var(--text-muted); display:block; margin-top:2px;">Total: <?= $tot_physical ?> books</span>
         </div>
         <div class="stat-icon stat-blue"><i class="fa-solid fa-book"></i></div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-info">
-            <h4>On Loan (Lent)</h4>
-            <p><?= $tot_lent ?></p>
-        </div>
-        <div class="stat-icon stat-red"><i class="fa-solid fa-hand-holding"></i></div>
     </div>
     <div class="stat-card">
         <div class="stat-info">
@@ -78,14 +94,14 @@ while ($r_row = $rl_query->fetch_assoc()) {
         </div>
         <div class="stat-icon stat-orange"><i class="fa-solid fa-users"></i></div>
     </div>
-    <div class="stat-card">
+    <!-- <div class="stat-card">
         <div class="stat-info">
             <h4>Overdue Fines</h4>
             <p style="font-size:20px; color:var(--accent-red);">₹<?= number_style_format($tot_overdue_fines) ?></p>
             <span style="font-size:11px; color:var(--text-muted);"><?= $tot_overdue_count ?> book(s) overdue</span>
         </div>
         <div class="stat-icon stat-red"><i class="fa-solid fa-clock"></i></div>
-    </div>
+    </div> -->
     <div class="stat-card">
         <div class="stat-info">
             <h4>Pending Inbox</h4>
@@ -342,7 +358,7 @@ while ($r_row = $rl_query->fetch_assoc()) {
     <!-- Feature 4: Expiring Members Alert Panel -->
     <?php if ($expiring_7_days_count > 0): ?>
         <div class="card" style="margin-bottom: 25px; border-left: 5px solid var(--accent-orange);">
-            <h3 style="color: var(--accent-orange);"><i class="fa-solid fa-triangle-exclamation"></i> Members Expiring within 7 Days</h3>
+            <h3 style="color: var(--accent-orange);"><i class="fa-solid fa-triangle-exclamation"></i> Memberships Expiring within 7 Days</h3>
             <div class="table-responsive">
                 <table>
                     <thead>
@@ -448,17 +464,32 @@ while ($r_row = $rl_query->fetch_assoc()) {
                     } else {
                         foreach ($recent_lendings as $rl) {
                             $f_info = calculate_fine($rl['due_date'], $rl['returned_at']);
+                            $due_time = strtotime($rl['due_date']);
+                            $today_time = strtotime(date('Y-m-d'));
+                            $days_diff = (int)floor(($due_time - $today_time) / 86400);
+
+                            $due_col_html = date('d-m-Y', $due_time);
+                            if (!$rl['returned_at']) {
+                                if ($days_diff < 0) {
+                                    $due_col_html = '<span style="color:var(--accent-red); font-weight:700;">' . date('d-m-Y', $due_time) . '</span>';
+                                } elseif ($days_diff <= 3) {
+                                    $due_col_html = '<span style="color:var(--accent-orange); font-weight:700;">' . date('d-m-Y', $due_time) . '</span>';
+                                }
+                            }
+
                             $l_badge = $rl['returned_at'] 
                                 ? '<span class="badge badge-green"><i class="fa-solid fa-circle-check"></i> Returned</span>'
-                                : ($f_info['days'] > 0 
-                                    ? '<span class="badge badge-red"><i class="fa-solid fa-clock"></i> Overdue (' . $f_info['days'] . 'd)</span>' 
-                                    : '<span class="badge badge-blue"><i class="fa-solid fa-book"></i> Active Loan</span>');
+                                : ($days_diff < 0 
+                                    ? '<span class="badge badge-red"><i class="fa-solid fa-clock"></i> Overdue (' . abs($days_diff) . 'd)</span>' 
+                                    : ($days_diff <= 3
+                                        ? '<span class="badge" style="background:#fffbeb; color:var(--accent-orange); border:1px solid var(--accent-orange); font-weight:600;"><i class="fa-solid fa-hourglass-half"></i> Due Soon (' . ($days_diff == 0 ? 'Today' : $days_diff . 'd') . ')</span>'
+                                        : '<span class="badge badge-blue"><i class="fa-solid fa-book"></i> Active Loan</span>'));
                             echo '
                             <tr>
                                 <td>' . e($rl['title']) . '</td>
                                 <td>' . e($rl['name']) . '</td>
                                 <td>' . date('d-m-Y', strtotime($rl['lent_at'])) . '</td>
-                                <td>' . date('d-m-Y', strtotime($rl['due_date'])) . '</td>
+                                <td>' . $due_col_html . '</td>
                                 <td>' . $l_badge . '</td>
                             </tr>';
                         }

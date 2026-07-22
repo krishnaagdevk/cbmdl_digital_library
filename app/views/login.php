@@ -1,4 +1,4 @@
-<h2 class="header-title-sub">Digital Portal Gateway</h2>
+<h2 class="header-title-sub">Welcome To Cantonment Digital Library</h2>
 <div class="login-container">
     <div class="external-menu">
         <a href="https://meerut.cantt.gov.in/" target="_blank">
@@ -17,7 +17,7 @@
 
     <div class="login-section">
         <?php if ($action === 'admin_login'): ?>
-            <h3 style="text-align:center; border:none; margin-bottom:20px;"><i class="fa-solid fa-user-shield" style="color:var(--primary);"></i> Librarian Authorization</h3>
+            <h3 style="text-align:center; border:none; margin-bottom:20px;"><i class="fa-solid fa-user-shield" style="color:var(--primary);"></i> Librarian Login</h3>
             <form method="post" action="?action=admin_login">
                 <?= csrf_input() ?>
                 <label for="admin_uid"><i class="fa-solid fa-user"></i> User ID</label>

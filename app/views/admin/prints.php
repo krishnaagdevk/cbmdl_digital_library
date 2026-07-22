@@ -11,7 +11,6 @@ if (!defined('BASE_URL')) exit;
                     <th>Member</th>
                     <th>E-Book Target Volume</th>
                     <th>Pages Target</th>
-                    <th>Request Category</th>
                     <th>Request Timestamp</th>
                     <th>Job Status</th>
                 </tr>
@@ -29,7 +28,6 @@ if (!defined('BASE_URL')) exit;
                         <td>' . e($r['name']) . '</td>
                         <td>' . e($r['title']) . '</td>
                         <td><span style="font-weight:600;">' . e($r['pages']) . '</span></td>
-                        <td><span class="badge badge-orange"><i class="fa-solid fa-print"></i> Print Request</span></td>
                         <td>' . date('d-m-Y h:i A', strtotime($r['requested_at'])) . '</td>
                         <td>
                             <span class="badge ' . $badgeClass . '">' . e($r['status']) . '</span>

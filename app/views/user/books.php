@@ -3,7 +3,7 @@
 if (!defined('BASE_URL')) exit;
 ?>
 <div class="card">
-    <h3><i class="fa-solid fa-magnifying-glass"></i> Dynamic Repository Finder</h3>
+    <h3><i class="fa-solid fa-magnifying-glass"></i> Search e-book</h3>
     <form method="get" class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
         <input type="hidden" name="action" value="user">
         <input type="hidden" name="tab" value="books">
@@ -66,17 +66,38 @@ if (!defined('BASE_URL')) exit;
     }
     $prtQuery->close();
 
-    if (empty($params)) {
-        $x = $db->query("SELECT e.*, c.name category FROM ebooks e JOIN categories c ON c.id = e.category_id ORDER BY $orderBy");
-    } else {
-        $stmt = $db->prepare("SELECT e.*, c.name category FROM ebooks e JOIN categories c ON c.id = e.category_id $whereStr ORDER BY $orderBy");
-        $stmt->bind_param($types, ...$params);
-        $stmt->execute();
-        $x = $stmt->get_result();
-        $stmt->close();
-    }
+    // Pagination settings for e-library catalog
+    $e_limit = 10;
+    $e_page = max(1, (int)($_GET['e_page'] ?? 1));
 
+    if (empty($params)) {
+        $cntRes = $db->query("SELECT COUNT(*) c FROM ebooks e JOIN categories c ON c.id = e.category_id");
+    } else {
+        $stmtCnt = $db->prepare("SELECT COUNT(*) c FROM ebooks e JOIN categories c ON c.id = e.category_id $whereStr");
+        $stmtCnt->bind_param($types, ...$params);
+        $stmtCnt->execute();
+        $cntRes = $stmtCnt->get_result();
+        $stmtCnt->close();
+    }
+    $total_ebooks = (int)($cntRes ? $cntRes->fetch_assoc()['c'] : 0);
+    $total_pages = ceil($total_ebooks / $e_limit);
+    $e_offset = ($e_page - 1) * $e_limit;
+
+    if (empty($params)) {
+        $stmt = $db->prepare("SELECT e.*, c.name category FROM ebooks e JOIN categories c ON c.id = e.category_id ORDER BY $orderBy LIMIT ? OFFSET ?");
+        $stmt->bind_param("ii", $e_limit, $e_offset);
+    } else {
+        $stmt = $db->prepare("SELECT e.*, c.name category FROM ebooks e JOIN categories c ON c.id = e.category_id $whereStr ORDER BY $orderBy LIMIT ? OFFSET ?");
+        $types_limit = $types . "ii";
+        $bind_params = array_merge($params, [$e_limit, $e_offset]);
+        $stmt->bind_param($types_limit, ...$bind_params);
+    }
+    $stmt->execute();
+    $x = $stmt->get_result();
+
+    $ebookCount = 0;
     while($r = $x->fetch_assoc()) {
+        $ebookCount++;
         $req = $all_reading_reqs[$r['id']] ?? null;
         $has_pending_print = $all_print_reqs[$r['id']] ?? null;
         
@@ -129,5 +150,54 @@ if (!defined('BASE_URL')) exit;
             </div>
         </div>';
     }
+    $stmt->close();
+
+    if ($ebookCount === 0) {
+        echo '<div class="card" style="grid-column: 1 / -1; text-align:center; padding:40px; color:var(--text-muted);"><i class="fa-solid fa-book-open" style="font-size:32px; margin-bottom:10px;"></i><p>No e-books match your search criteria.</p></div>';
+    }
     ?>
 </div>
+
+<!-- Premium Pagination Component -->
+<?php if ($total_pages > 1): ?>
+    <?php
+    $p_search = $_GET['search'] ?? '';
+    $p_cat = (int)($_GET['cat'] ?? 0);
+    $p_sort = $_GET['sort'] ?? '';
+    $link_base = "?action=user&tab=books&search=" . urlencode($p_search) . "&cat=" . $p_cat . "&sort=" . urlencode($p_sort) . "&e_page=";
+    ?>
+    <div class="pagination-container" style="display:flex; justify-content:space-between; align-items:center; margin-top:25px; flex-wrap:wrap; gap:15px; border-top:1px solid var(--border-color); padding-top:15px;">
+        <div style="font-size:13px; color:var(--text-muted);">
+            Showing <strong><?= $e_offset + 1 ?></strong> to <strong><?= min($e_offset + $e_limit, $total_ebooks) ?></strong> of <strong><?= $total_ebooks ?></strong> e-books
+        </div>
+        <div class="pagination" style="display:flex; align-items:center; gap:6px;">
+            <?php if ($e_page > 1): ?>
+                <a href="<?= $link_base ?>1" class="btn" style="padding:6px 10px; background:var(--bg-slate); color:var(--text-color); font-size:12px; display:inline-flex; align-items:center;" title="First Page"><i class="fa-solid fa-angles-left"></i></a>
+                <a href="<?= $link_base ?><?= $e_page - 1 ?>" class="btn" style="padding:6px 10px; background:var(--bg-slate); color:var(--text-color); font-size:12px; display:inline-flex; align-items:center; gap:4px;" title="Previous Page"><i class="fa-solid fa-angle-left"></i> Prev</a>
+            <?php else: ?>
+                <span class="btn disabled" style="padding:6px 10px; background:var(--bg-slate); color:var(--text-muted); font-size:12px; display:inline-flex; align-items:center; cursor:not-allowed; opacity:0.6;"><i class="fa-solid fa-angles-left"></i></span>
+                <span class="btn disabled" style="padding:6px 10px; background:var(--bg-slate); color:var(--text-muted); font-size:12px; display:inline-flex; align-items:center; gap:4px; cursor:not-allowed; opacity:0.6;"><i class="fa-solid fa-angle-left"></i> Prev</span>
+            <?php endif; ?>
+
+            <?php 
+            $start_p = max(1, $e_page - 2);
+            $end_p = min($total_pages, $e_page + 2);
+            for($i = $start_p; $i <= $end_p; $i++): 
+            ?>
+                <?php if ($i == $e_page): ?>
+                    <span class="btn" style="padding:6px 12px; background:var(--primary); color:white; font-size:12px; font-weight:700; border-radius:6px;"><?= $i ?></span>
+                <?php else: ?>
+                    <a href="<?= $link_base ?><?= $i ?>" class="btn" style="padding:6px 12px; background:var(--bg-slate); color:var(--text-color); font-size:12px; border-radius:6px;"><?= $i ?></a>
+                <?php endif; ?>
+            <?php endfor; ?>
+
+            <?php if ($e_page < $total_pages): ?>
+                <a href="<?= $link_base ?><?= $e_page + 1 ?>" class="btn" style="padding:6px 10px; background:var(--bg-slate); color:var(--text-color); font-size:12px; display:inline-flex; align-items:center; gap:4px;" title="Next Page">Next <i class="fa-solid fa-angle-right"></i></a>
+                <a href="<?= $link_base ?><?= $total_pages ?>" class="btn" style="padding:6px 10px; background:var(--bg-slate); color:var(--text-color); font-size:12px; display:inline-flex; align-items:center;" title="Last Page"><i class="fa-solid fa-angles-right"></i></a>
+            <?php else: ?>
+                <span class="btn disabled" style="padding:6px 10px; background:var(--bg-slate); color:var(--text-muted); font-size:12px; display:inline-flex; align-items:center; gap:4px; cursor:not-allowed; opacity:0.6;">Next <i class="fa-solid fa-angle-right"></i></span>
+                <span class="btn disabled" style="padding:6px 10px; background:var(--bg-slate); color:var(--text-muted); font-size:12px; display:inline-flex; align-items:center; cursor:not-allowed; opacity:0.6;"><i class="fa-solid fa-angles-right"></i></span>
+            <?php endif; ?>
+        </div>
+    </div>
+<?php endif; ?>

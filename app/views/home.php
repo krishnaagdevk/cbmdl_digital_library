@@ -58,7 +58,7 @@ if ($q !== '') {
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
                 <?php foreach ($books as $b): 
                     $on_loan = !empty($b['due_date']);
-                    $status_text = $on_loan ? 'On Loan' : 'Available';
+                    $status_text = $on_loan ? 'Not Available' : 'Available';
                     $status_class = $on_loan ? 'badge-red' : 'badge-green';
                     $status_icon = $on_loan ? 'fa-circle-minus' : 'fa-circle-check';
                     $rack = 'Shelf A1';
@@ -76,7 +76,14 @@ if ($q !== '') {
                         <div style="margin-top:12px; padding-top:8px; border-top:1px solid var(--border-color); font-size:11px; color:var(--text-muted); display:flex; justify-content:space-between; align-items:center;">
                             <span><i class="fa-solid fa-map-pin"></i> <strong>Rack:</strong> <?= $rack ?></span>
                             <?php if ($on_loan): ?>
-                                <span style="color:var(--accent-red); font-weight:600;">Due <?= date('d-m-Y', strtotime($b['due_date'])) ?></span>
+                                <?php
+                                $due_time = strtotime($b['due_date']);
+                                $today_time = strtotime(date('Y-m-d'));
+                                $days_diff = (int)floor(($due_time - $today_time) / 86400);
+                                $due_color = ($days_diff < 0) ? 'var(--accent-red)' : (($days_diff <= 3) ? 'var(--accent-orange)' : 'var(--primary)');
+                                $due_label = ($days_diff < 0) ? ' (Overdue)' : (($days_diff <= 3) ? ($days_diff == 0 ? ' (Due Today)' : ' (' . $days_diff . 'd left)') : '');
+                                ?>
+                                <span style="color:<?= $due_color ?>; font-weight:600;"><i class="fa-solid fa-clock"></i> Due <?= date('d-m-Y', strtotime($b['due_date'])) ?><?= $due_label ?></span>
                             <?php endif; ?>
                         </div>
                     </div>

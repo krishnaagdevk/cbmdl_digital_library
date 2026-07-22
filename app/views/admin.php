@@ -12,6 +12,7 @@ $side_prt_count = (int)$db->query("SELECT COUNT(*) c FROM print_requests WHERE s
         <a href="?action=admin&tab=dashboard" class="<?= $tab === 'dashboard' ? 'active' : '' ?>"><i class="fa-solid fa-chart-pie"></i> Live Analytics</a>
         <a href="?action=admin&tab=categories" class="<?= $tab === 'categories' ? 'active' : '' ?>"><i class="fa-solid fa-folder-open"></i> E-Book Categories</a>
         <a href="?action=admin&tab=ebooks" class="<?= $tab === 'ebooks' ? 'active' : '' ?>"><i class="fa-solid fa-file-pdf"></i> Manage E-Books</a>
+        <a href="?action=admin&tab=view_ebooks" class="<?= $tab === 'view_ebooks' ? 'active' : '' ?>"><i class="fa-solid fa-book-open"></i> View E-Books</a>
         <a href="?action=admin&tab=physical" class="<?= $tab === 'physical' ? 'active' : '' ?>"><i class="fa-solid fa-book"></i> Manage Physical Books</a>
         <a href="?action=admin&tab=requests" class="<?= $tab === 'requests' ? 'active' : '' ?>">
             <i class="fa-solid fa-receipt"></i> Reading Requests
@@ -27,6 +28,7 @@ $side_prt_count = (int)$db->query("SELECT COUNT(*) c FROM print_requests WHERE s
         <a href="?action=admin&tab=lending" class="<?= $tab === 'lending' ? 'active' : '' ?>"><i class="fa-solid fa-hand-holding-hand"></i> Lend Book / Lookup</a>
         <a href="?action=admin&tab=view_lending" class="<?= $tab === 'view_lending' ? 'active' : '' ?>"><i class="fa-solid fa-clock-rotate-left"></i> View Lending List</a>
         <a href="?action=admin&tab=profile" class="<?= $tab === 'profile' ? 'active' : '' ?>"><i class="fa-solid fa-user-shield"></i> Librarian Profile</a>
+        <a href="?action=logout" style="margin-top:15px; color:#ef4444; border-top:1px solid var(--border-color); padding-top:12px; font-weight:600;"><i class="fa-solid fa-right-from-bracket"></i> Logout Panel</a>
     </div>
 
     <!-- Admin Dynamic Sub-view Content -->
@@ -101,10 +103,13 @@ $side_prt_count = (int)$db->query("SELECT COUNT(*) c FROM print_requests WHERE s
                     </div>
                 </div>
                 
-                <!-- Profile Label -->
-                <div style="display:flex; align-items:center; gap:8px; border-left:1px solid var(--border-color); padding-left:15px;">
-                    <div style="width:32px; height:32px; border-radius:50%; background:var(--primary); color:white; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px;"><i class="fa-solid fa-user-tie"></i></div>
-                    <span style="font-size:13px; font-weight:600; color:var(--navy-dark);"><?= e($_SESSION['admin_user'] ?? 'Librarian') ?></span>
+                <!-- Profile Label & Logout -->
+                <div style="display:flex; align-items:center; gap:12px; border-left:1px solid var(--border-color); padding-left:15px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <div style="width:32px; height:32px; border-radius:50%; background:var(--primary); color:white; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px;"><i class="fa-solid fa-user-tie"></i></div>
+                        <span style="font-size:13px; font-weight:600; color:var(--navy-dark);"><?= e($_SESSION['admin_user'] ?? 'Librarian') ?></span>
+                    </div>
+                    <a href="?action=logout" class="btn btn-danger" style="padding:6px 12px; font-size:12px; border-radius:6px; text-decoration:none; display:inline-flex; align-items:center; gap:5px; font-weight:600;"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
                 </div>
             </div>
         </div>

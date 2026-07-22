@@ -3,29 +3,67 @@
 if (!defined('BASE_URL')) exit;
 ?>
 <div class="card">
-    <h3><i class="fa-solid fa-user-tag"></i> Profile Credentials Summary</h3>
-    <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));">
+    <h3><i class="fa-solid fa-user-tag"></i> Profile & Membership Credentials Summary</h3>
+    <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 15px;">
         <div style="background:var(--bg-slate); padding:16px; border-radius:12px; border:1px solid var(--border-color);">
-            <p style="margin: 0 0 8px 0; font-size:13px; color:var(--text-muted);">Legal Name</p>
-            <p style="margin:0; font-size:16px; font-weight:700; color:var(--navy-dark);"><?= e($me['name']) ?></p>
+            <p style="margin: 0 0 6px 0; font-size:12px; color:var(--text-muted); text-transform:uppercase; font-weight:600;"><i class="fa-solid fa-user"></i> Full Name</p>
+            <p style="margin:0; font-size:15px; font-weight:700; color:var(--navy-dark);"><?= e($me['name']) ?></p>
         </div>
+        
         <div style="background:var(--bg-slate); padding:16px; border-radius:12px; border:1px solid var(--border-color);">
-            <p style="margin: 0 0 8px 0; font-size:13px; color:var(--text-muted);">Membership ID</p>
-            <p style="margin:0; font-size:16px; font-weight:700; color:var(--primary);"><?= e($me['membership_id']) ?></p>
+            <p style="margin: 0 0 6px 0; font-size:12px; color:var(--text-muted); text-transform:uppercase; font-weight:600;"><i class="fa-solid fa-user-tie"></i> Father / Husband Name</p>
+            <p style="margin:0; font-size:15px; font-weight:700; color:var(--navy-dark);"><?= e($me['guardian_name'] ?? 'N/A') ?></p>
         </div>
+
         <div style="background:var(--bg-slate); padding:16px; border-radius:12px; border:1px solid var(--border-color);">
-            <p style="margin: 0 0 8px 0; font-size:13px; color:var(--text-muted);">Registered Contact</p>
-            <p style="margin:0; font-size:16px; font-weight:700; color:var(--navy-dark);"><?= e($me['mobile']) ?></p>
+            <p style="margin: 0 0 6px 0; font-size:12px; color:var(--text-muted); text-transform:uppercase; font-weight:600;"><i class="fa-solid fa-id-badge"></i> Membership Id</p>
+            <p style="margin:0; font-size:15px; font-weight:700; color:var(--primary);"><?= e($me['membership_id']) ?></p>
         </div>
+
         <div style="background:var(--bg-slate); padding:16px; border-radius:12px; border:1px solid var(--border-color);">
-            <p style="margin: 0 0 8px 0; font-size:13px; color:var(--text-muted);">Term Expiry Date</p>
-            <p style="margin:0; font-size:16px; font-weight:700; color:var(--accent-green);"><?= date('d-m-Y', strtotime($me['end_date'])) ?></p>
+            <p style="margin: 0 0 6px 0; font-size:12px; color:var(--text-muted); text-transform:uppercase; font-weight:600;"><i class="fa-solid fa-phone"></i> Registered Mobile</p>
+            <p style="margin:0; font-size:15px; font-weight:700; color:var(--navy-dark);"><?= e($me['mobile']) ?></p>
+        </div>
+
+        <div style="background:var(--bg-slate); padding:16px; border-radius:12px; border:1px solid var(--border-color);">
+            <p style="margin: 0 0 6px 0; font-size:12px; color:var(--text-muted); text-transform:uppercase; font-weight:600;"><i class="fa-solid fa-envelope"></i> Primary Email</p>
+            <p style="margin:0; font-size:15px; font-weight:700; color:var(--navy-dark);"><?= e($me['email'] ?: 'Not specified') ?></p>
+        </div>
+
+        <div style="background:var(--bg-slate); padding:16px; border-radius:12px; border:1px solid var(--border-color);">
+            <p style="margin: 0 0 6px 0; font-size:12px; color:var(--text-muted); text-transform:uppercase; font-weight:600;"><i class="fa-solid fa-fingerprint"></i> Aadhar Card Number</p>
+            <p style="margin:0; font-size:15px; font-weight:700; color:var(--navy-dark);"><?= e($me['aadhar_no']) ?></p>
+        </div>
+
+        <div style="background:var(--bg-slate); padding:16px; border-radius:12px; border:1px solid var(--border-color);">
+            <p style="margin: 0 0 6px 0; font-size:12px; color:var(--text-muted); text-transform:uppercase; font-weight:600;"><i class="fa-solid fa-indian-rupee-sign"></i> Membership Fees Paid</p>
+            <p style="margin:0; font-size:15px; font-weight:700; color:var(--accent-green);">₹<?= number_format((float)($me['membership_fee'] ?? 0), 2) ?></p>
+        </div>
+
+        <div style="background:var(--bg-slate); padding:16px; border-radius:12px; border:1px solid var(--border-color);">
+            <p style="margin: 0 0 6px 0; font-size:12px; color:var(--text-muted); text-transform:uppercase; font-weight:600;"><i class="fa-solid fa-receipt"></i> Payment Transaction ID</p>
+            <p style="margin:0; font-size:15px; font-weight:700; color:var(--primary);"><?= e($me['payment_id'] ?: 'N/A') ?></p>
+        </div>
+
+        <div style="background:var(--bg-slate); padding:16px; border-radius:12px; border:1px solid var(--border-color);">
+            <p style="margin: 0 0 6px 0; font-size:12px; color:var(--text-muted); text-transform:uppercase; font-weight:600;"><i class="fa-solid fa-calendar-plus"></i> Membership Start Date</p>
+            <p style="margin:0; font-size:15px; font-weight:700; color:var(--navy-dark);"><?= date('d-m-Y', strtotime($me['start_date'])) ?></p>
+        </div>
+
+        <div style="background:var(--bg-slate); padding:16px; border-radius:12px; border:1px solid var(--border-color);">
+            <p style="margin: 0 0 6px 0; font-size:12px; color:var(--text-muted); text-transform:uppercase; font-weight:600;"><i class="fa-solid fa-calendar-check"></i> Membership End Date</p>
+            <p style="margin:0; font-size:15px; font-weight:700; color:var(--accent-green);"><?= date('d-m-Y', strtotime($me['end_date'])) ?></p>
+        </div>
+
+        <div style="background:var(--bg-slate); padding:16px; border-radius:12px; border:1px solid var(--border-color); grid-column: 1 / -1;">
+            <p style="margin: 0 0 6px 0; font-size:12px; color:var(--text-muted); text-transform:uppercase; font-weight:600;"><i class="fa-solid fa-location-dot"></i> Residential Address</p>
+            <p style="margin:0; font-size:15px; font-weight:600; color:var(--navy-dark); line-height:1.4;"><?= nl2br(e($me['address'])) ?></p>
         </div>
     </div>
 </div>
 
-<div class="card" style="max-width:550px; margin: 0 auto;">
-    <h3><i class="fa-solid fa-user-shield"></i> Update Portal Access Password</h3>
+<div class="card" style="max-width:550px; margin: 20px auto 0 auto;">
+    <h3><i class="fa-solid fa-user-shield"></i> Update Portal Access Credentials</h3>
     <form method="post" action="?action=update_profile">
         <?= csrf_input() ?>
         <label for="m_prof_email">Primary Email Address</label>

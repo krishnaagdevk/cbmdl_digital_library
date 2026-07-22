@@ -129,7 +129,7 @@
 
         .header-title-sub {
             text-align: center;
-            margin: 25px 0 5px 0;
+            margin: 10px 0 5px 0;
             font-size: 28px;
             font-weight: 700;
             color: var(--navy-dark);
@@ -484,6 +484,12 @@
             gap: 10px;
             box-shadow: 0 4px 12px rgba(16, 185, 129, 0.08);
         }
+        .notice-red {
+            background: #fef2f2 !important;
+            color: var(--accent-red, #ef4444) !important;
+            border-left: 5px solid var(--accent-red, #ef4444) !important;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.08) !important;
+        }
 
         /* Modals */
         .pdf-modal {
@@ -650,8 +656,22 @@
 
     <!-- Dynamic Session Flash Messages -->
     <?php if ($f = flash()): ?>
-        <div class="notice">
-            <i class="fa-solid fa-circle-check"></i>
+        <?php
+        $is_error_flash = (
+            stristr($f, 'invalid') !== false ||
+            stristr($f, 'error') !== false ||
+            stristr($f, 'warning') !== false ||
+            stristr($f, 'expired') !== false ||
+            stristr($f, 'suspended') !== false ||
+            stristr($f, 'failed') !== false ||
+            stristr($f, 'rejected') !== false ||
+            stristr($f, 'cannot') !== false ||
+            stristr($f, 'required') !== false ||
+            stristr($f, '⚠️') !== false
+        );
+        ?>
+        <div class="notice <?= $is_error_flash ? 'notice-red' : '' ?>">
+            <i class="fa-solid <?= $is_error_flash ? 'fa-circle-xmark' : 'fa-circle-check' ?>" style="<?= $is_error_flash ? 'color:var(--accent-red);' : '' ?>"></i>
             <span><?= e($f) ?></span>
         </div>
         <?php if ($f === 'Reading request sent to librarian.'): ?>

@@ -57,8 +57,18 @@ if ($sort === 'lent_asc') {
             </thead>
             <tbody>
                 <?php 
-                $x = $db->query("SELECT l.*, p.title, m.name FROM lendings l JOIN physical_books p ON p.id = l.physical_book_id JOIN members m ON m.id = l.member_id ORDER BY $orderBy");
+                $p_limit = 10;
+                $p_page = max(1, (int)($_GET['p_page'] ?? 1));
+
+                $cnt_res = $db->query("SELECT COUNT(*) c FROM lendings l JOIN physical_books p ON p.id = l.physical_book_id JOIN members m ON m.id = l.member_id");
+                $total_items = (int)($cnt_res ? $cnt_res->fetch_assoc()['c'] : 0);
+                $total_pages = ceil($total_items / $p_limit);
+                $p_offset = ($p_page - 1) * $p_limit;
+
+                $x = $db->query("SELECT l.*, p.title, m.name FROM lendings l JOIN physical_books p ON p.id = l.physical_book_id JOIN members m ON m.id = l.member_id ORDER BY $orderBy LIMIT $p_limit OFFSET $p_offset");
+                $lCount = 0;
                 while($r = $x->fetch_assoc()) {
+                    $lCount++;
                     $fine_data = calculate_fine($r['due_date'], $r['returned_at']);
                     $fine_html = render_fine_column($r, $fine_data, 'view_lending');
                     
@@ -66,12 +76,20 @@ if ($sort === 'lent_asc') {
                         ? '<span style="font-size:12px; color:var(--text-muted); font-weight:600;"><i class="fa-solid fa-box-archive"></i> Settled ' . date('d-m-Y', strtotime($r['returned_at'])) . '</span>' 
                         : '<form method="post" action="?action=return_book" style="display:inline; margin:0;"><input type="hidden" name="id" value="' . $r['id'] . '"><input type="hidden" name="tab" value="view_lending">' . csrf_input() . '<button class="btn" type="submit" style="padding:6px 12px;"><i class="fa-solid fa-rotate-left"></i> Tag Return</button></form>';
                     
+                    $due_time = strtotime($r['due_date']);
+                    $today_time = strtotime(date('Y-m-d'));
+                    $days_diff = (int)floor(($due_time - $today_time) / 86400);
+
+                    $due_col_html = date('d-m-Y', $due_time);
                     $row_style = '';
                     if (!$r['returned_at']) {
-                        if ($fine_data['days'] > 0) {
+                        if ($days_diff < 0) {
                             $row_style = ' style="background-color: #fef2f2;"';
-                        } elseif ($r['due_date'] === date('Y-m-d')) {
+                            $due_col_html = '<span style="color:var(--accent-red, #ef4444); font-weight:700;"><i class="fa-solid fa-circle-exclamation"></i> ' . date('d-m-Y', $due_time) . ' <small>(Overdue)</small></span>';
+                        } elseif ($days_diff <= 3) {
                             $row_style = ' style="background-color: #fffbeb;"';
+                            $due_label = ($days_diff === 0) ? 'Due Today' : 'Due in ' . $days_diff . 'd';
+                            $due_col_html = '<span style="color:var(--accent-orange, #f59e0b); font-weight:700;"><i class="fa-solid fa-clock"></i> ' . date('d-m-Y', $due_time) . ' <small>(' . $due_label . ')</small></span>';
                         }
                     }
                     
@@ -80,13 +98,60 @@ if ($sort === 'lent_asc') {
                         <td>' . e($r['title']) . '</td>
                         <td>' . e($r['name']) . '</td>
                         <td>' . date('d-m-Y h:i A', strtotime($r['lent_at'])) . '</td>
-                        <td>' . date('d-m-Y', strtotime($r['due_date'])) . '</td>
+                        <td>' . $due_col_html . '</td>
                         <td>' . $fine_html . '</td>
                         <td>' . $returnCol . '</td>
                     </tr>';
+                }
+                if ($lCount === 0) {
+                    echo '<tr><td colspan="6" style="text-align:center; padding:30px; color:var(--text-muted);">No lending records found in database.</td></tr>';
                 }
                 ?>
             </tbody>
         </table>
     </div>
+
+    <!-- Premium Pagination Component -->
+    <?php if ($total_pages > 1): ?>
+        <?php
+        $qs = $_GET;
+        unset($qs['p_page']);
+        $qs_str = http_build_query($qs);
+        $qs_str = $qs_str ? '&' . $qs_str : '';
+        ?>
+        <div class="pagination-container" style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; flex-wrap:wrap; gap:15px; border-top:1px solid var(--border-color); padding-top:15px;">
+            <div style="font-size:13px; color:var(--text-muted);">
+                Showing <strong><?= $p_offset + 1 ?></strong> to <strong><?= min($p_offset + $p_limit, $total_items) ?></strong> of <strong><?= $total_items ?></strong> lending records
+            </div>
+            <div class="pagination" style="display:flex; align-items:center; gap:6px;">
+                <?php if ($p_page > 1): ?>
+                    <a href="?p_page=1<?= $qs_str ?>" class="btn" style="padding:6px 10px; background:var(--bg-slate); color:var(--text-color); font-size:12px; display:inline-flex; align-items:center;" title="First Page"><i class="fa-solid fa-angles-left"></i></a>
+                    <a href="?p_page=<?= $p_page - 1 ?><?= $qs_str ?>" class="btn" style="padding:6px 10px; background:var(--bg-slate); color:var(--text-color); font-size:12px; display:inline-flex; align-items:center; gap:4px;" title="Previous Page"><i class="fa-solid fa-angle-left"></i> Prev</a>
+                <?php else: ?>
+                    <span class="btn disabled" style="padding:6px 10px; background:var(--bg-slate); color:var(--text-muted); font-size:12px; display:inline-flex; align-items:center; cursor:not-allowed; opacity:0.6;"><i class="fa-solid fa-angles-left"></i></span>
+                    <span class="btn disabled" style="padding:6px 10px; background:var(--bg-slate); color:var(--text-muted); font-size:12px; display:inline-flex; align-items:center; gap:4px; cursor:not-allowed; opacity:0.6;"><i class="fa-solid fa-angle-left"></i> Prev</span>
+                <?php endif; ?>
+
+                <?php 
+                $start_p = max(1, $p_page - 2);
+                $end_p = min($total_pages, $p_page + 2);
+                for($i = $start_p; $i <= $end_p; $i++): 
+                ?>
+                    <?php if ($i == $p_page): ?>
+                        <span class="btn" style="padding:6px 12px; background:var(--primary); color:white; font-size:12px; font-weight:700; border-radius:6px;"><?= $i ?></span>
+                    <?php else: ?>
+                        <a href="?p_page=<?= $i ?><?= $qs_str ?>" class="btn" style="padding:6px 12px; background:var(--bg-slate); color:var(--text-color); font-size:12px; border-radius:6px;"><?= $i ?></a>
+                    <?php endif; ?>
+                <?php endfor; ?>
+
+                <?php if ($p_page < $total_pages): ?>
+                    <a href="?p_page=<?= $p_page + 1 ?><?= $qs_str ?>" class="btn" style="padding:6px 10px; background:var(--bg-slate); color:var(--text-color); font-size:12px; display:inline-flex; align-items:center; gap:4px;" title="Next Page">Next <i class="fa-solid fa-angle-right"></i></a>
+                    <a href="?p_page=<?= $total_pages ?><?= $qs_str ?>" class="btn" style="padding:6px 10px; background:var(--bg-slate); color:var(--text-color); font-size:12px; display:inline-flex; align-items:center;" title="Last Page"><i class="fa-solid fa-angles-right"></i></a>
+                <?php else: ?>
+                    <span class="btn disabled" style="padding:6px 10px; background:var(--bg-slate); color:var(--text-muted); font-size:12px; display:inline-flex; align-items:center; gap:4px; cursor:not-allowed; opacity:0.6;">Next <i class="fa-solid fa-angle-right"></i></span>
+                    <span class="btn disabled" style="padding:6px 10px; background:var(--bg-slate); color:var(--text-muted); font-size:12px; display:inline-flex; align-items:center; cursor:not-allowed; opacity:0.6;"><i class="fa-solid fa-angles-right"></i></span>
+                <?php endif; ?>
+            </div>
+        </div>
+    <?php endif; ?>
 </div>

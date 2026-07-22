@@ -28,7 +28,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_set_cookie_params([
         'lifetime' => 0,
         'path' => BASE_URL,
-        'domain' => $_SERVER['HTTP_HOST'] ?? '',
+        'domain' => '',
         'secure' => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
         'httponly' => true,
         'samesite' => 'Lax'
@@ -134,25 +134,25 @@ if (!function_exists('number_style_format')) {
 
 function render_fine_column($r, $fine_data, $tab) {
     if ($r['fine_status'] === 'Paid') {
-        return '<span class="badge badge-green"><i class="fa-solid fa-circle-check"></i> Paid ₹' . e($r['fine_amount']) . ' (Ref: ' . e($r['fine_payment_id']) . ')</span>';
+        return '<span class="badge badge-green"><i class="fa-solid fa-circle-check"></i> Settled (Ref: ' . e($r['fine_payment_id']) . ')</span>';
     }
     if ($r['fine_status'] === 'Waived') {
         return '<span class="badge badge-blue"><i class="fa-solid fa-circle-xmark"></i> Waived (Ref: ' . e($r['fine_payment_id']) . ')</span>';
     }
     if ($fine_data['days'] > 0) {
         $out = '<div style="display:flex; flex-direction:column; gap:5px;">';
-        $out .= '<span class="badge badge-red"><i class="fa-solid fa-triangle-exclamation"></i> Overdue: ₹' . number_style_format($fine_data['fine']) . ' (' . $fine_data['days'] . 'd)</span>';
+        $out .= '<span class="badge badge-red"><i class="fa-solid fa-triangle-exclamation"></i> Overdue (' . $fine_data['days'] . 'd)</span>';
         $out .= '<form method="post" action="?action=settle_fine" style="display:inline-flex; gap:4px; align-items:center; margin:0;">';
         $out .= csrf_input();
         $out .= '<input type="hidden" name="id" value="' . $r['id'] . '">';
         $out .= '<input type="hidden" name="tab" value="' . e($tab) . '">';
-        $out .= '<input type="hidden" name="fine_amount" value="' . $fine_data['fine'] . '">';
+        $out .= '<input type="hidden" name="fine_amount" value="0">';
         $out .= '<select name="fine_status" style="width:80px; margin:0; padding:4px; font-size:11px;" required>';
-        $out .= '<option value="Paid">Paid</option>';
+        $out .= '<option value="Paid">Cleared</option>';
         $out .= '<option value="Waived">Waived</option>';
         $out .= '</select>';
         $out .= '<input name="fine_payment_id" placeholder="Ref ID" required style="width:70px; margin:0; padding:4px; font-size:11px;">';
-        $out .= '<button style="padding:4px 8px; font-size:11px;"><i class="fa-solid fa-circle-check"></i> Settle</button>';
+        $out .= '<button style="padding:4px 8px; font-size:11px;"><i class="fa-solid fa-circle-check"></i> Clear</button>';
         $out .= '</form>';
         $out .= '</div>';
         return $out;

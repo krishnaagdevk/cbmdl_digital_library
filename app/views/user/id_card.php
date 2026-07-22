@@ -83,7 +83,7 @@ if (!defined('BASE_URL')) exit;
                     <ul style="margin: 0; padding-left: 14px; text-align: left; font-size: 8px; color: var(--text-dark); line-height: 1.4; display:flex; flex-direction:column; gap:3px;">
                         <li>This card is non-transferable and remains property of MCB.</li>
                         <li>Show this card at the check-out desk for physical book lending.</li>
-                        <li>Overdue physical volumes attract an outstanding fine of ₹5/day.</li>
+                        <li>Overdue physical volumes must be returned promptly to the library desk.</li>
                         <li>Loss of membership card must be reported to librarian instantly.</li>
                         <li>Digital portal access is active till subscription expiry.</li>
                     </ul>
