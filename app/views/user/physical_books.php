@@ -77,6 +77,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <?= $status_badge ?>
                     </div>
                     <h4 style="font-size:16px; margin:0 0 8px 0; font-weight:700; color:var(--navy-dark); line-height:1.4;"><?= e($b['title']) ?></h4>
+                    <p style="font-size:13px; margin:0 0 6px 0; color:var(--text-muted);"><i class="fa-solid fa-layer-group"></i> <strong>Shelf Number:</strong> <?= e($b['shelf_number'] ?: '—') ?></p>
                     <p style="font-size:13px; margin:0 0 6px 0; color:var(--text-muted);"><i class="fa-solid fa-user-tie"></i> <strong>Author:</strong> <?= e($b['author']) ?></p>
                     <p style="font-size:13px; margin:0 0 6px 0; color:var(--text-muted);"><i class="fa-solid fa-warehouse"></i> <strong>Publisher:</strong> <?= e($b['publisher']) ?></p>
                     <p style="font-size:13px; margin:0 0 6px 0; color:var(--text-muted);"><i class="fa-solid fa-receipt"></i> <strong>Cost:</strong> ₹<?= number_style_format($b['price']) ?></p>

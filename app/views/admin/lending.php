@@ -48,20 +48,20 @@ if ($lookup !== '') {
         <form method="post" action="?action=lend" class="grid" style="grid-template-columns: 1fr 1fr;">
             <?= csrf_input() ?>
             <div style="grid-column: span 2;">
-                <label for="ld_member">Member Phone or ID Code *</label>
-                <input id="ld_member" name="member" value="<?= $looked ? e($looked['membership_id']) : '' ?>" placeholder="Member Mobile / Card ID" required>
+                <label for="ld_member">Member ID *</label>
+                <input id="ld_member" name="member" value="<?= $looked ? e($looked['membership_id']) : '' ?>" placeholder="Enter Member ID" required>
             </div>
             <div>
-                <label for="ld_book">Book Code / Catalog ID *</label>
-                <input id="ld_book" name="book_code" placeholder="Target book code/barcode" required>
+                <label for="ld_book">Book ID *</label>
+                <input id="ld_book" name="book_code" placeholder="Enter Book ID" required>
             </div>
             <div>
                 <label for="ld_due">Issue Return Due Date *</label>
                 <input id="ld_due" type="date" name="due_date" value="<?= date('Y-m-d', strtotime('+14 days')) ?>" required>
             </div>
             <div style="grid-column: span 2;">
-                <label for="ld_tx">Mandatory Collateral Receipt / Payment Transaction ID *</label>
-                <input id="ld_tx" name="transaction_id" placeholder="Transaction/Challan Reference (or Cash / Security collateral info)" required>
+                <label for="ld_tx">Payment Transaction ID *</label>
+                <input id="ld_tx" name="transaction_id" placeholder="Enter Transaction ID" required>
             </div>
             <div style="grid-column: span 2; display:flex; align-items:flex-end; margin-top: 10px;">
                 <button style="width:100%;"><i class="fa-solid fa-square-check"></i> Register Lending Issue</button>
@@ -77,21 +77,18 @@ if ($lookup !== '') {
             <thead>
                 <tr>
                     <th>Book Title</th>
+                    <th>Book ID</th>
                     <th>Borrower Member</th>
-                    <th>Lent Timestamp</th>
+                    <th>Lending Date</th>
                     <th>Due Date Target</th>
-                    <th>Fine Status & Calculation</th>
                     <th>Operation</th>
                 </tr>
             </thead>
             <tbody>
                 <?php 
                 $filterClause = $looked ? ' WHERE l.member_id = ' . (int)$looked['id'] : '';
-                $x = $db->query('SELECT l.*, p.title, m.name FROM lendings l JOIN physical_books p ON p.id = l.physical_book_id JOIN members m ON m.id = l.member_id' . $filterClause . ' ORDER BY l.lent_at DESC');
+                $x = $db->query('SELECT l.*, p.title, p.book_code, m.name FROM lendings l JOIN physical_books p ON p.id = l.physical_book_id JOIN members m ON m.id = l.member_id' . $filterClause . ' ORDER BY l.lent_at DESC');
                 while($r = $x->fetch_assoc()) {
-                    $fine_data = calculate_fine($r['due_date'], $r['returned_at']);
-                    $fine_html = render_fine_column($r, $fine_data, 'lending');
-                    
                     $returnCol = $r['returned_at'] 
                         ? '<span style="font-size:12px; color:var(--text-muted); font-weight:600;"><i class="fa-solid fa-circle-check"></i> Returned ' . date('d-m-Y', strtotime($r['returned_at'])) . '</span>' 
                         : '<form method="post" action="?action=return_book" style="display:inline; margin:0;"><input type="hidden" name="id" value="' . $r['id'] . '"><input type="hidden" name="tab" value="lending">' . csrf_input() . '<button class="btn" type="submit" style="padding:6px 12px;"><i class="fa-solid fa-right-left"></i> Register Return</button></form>';
@@ -115,11 +112,11 @@ if ($lookup !== '') {
                     
                     echo '
                     <tr' . $row_style . '>
-                        <td>' . e($r['title']) . '</td>
+                        <td style="font-weight:600; color:var(--navy-dark);">' . e($r['title']) . '</td>
+                        <td><code style="background:var(--bg-slate); padding:2px 6px; border-radius:4px; font-weight:700; font-size:12px; color:var(--navy-dark); border:1px solid var(--border-color);">' . e($r['book_code']) . '</code></td>
                         <td>' . e($r['name']) . '</td>
                         <td>' . date('d-m-Y h:i A', strtotime($r['lent_at'])) . '</td>
                         <td>' . $due_col_html . '</td>
-                        <td>' . $fine_html . '</td>
                         <td>' . $returnCol . '</td>
                     </tr>';
                 }

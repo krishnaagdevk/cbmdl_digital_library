@@ -14,6 +14,7 @@ $side_prt_count = (int)$db->query("SELECT COUNT(*) c FROM print_requests WHERE s
         <a href="?action=admin&tab=ebooks" class="<?= $tab === 'ebooks' ? 'active' : '' ?>"><i class="fa-solid fa-file-pdf"></i> Manage E-Books</a>
         <a href="?action=admin&tab=view_ebooks" class="<?= $tab === 'view_ebooks' ? 'active' : '' ?>"><i class="fa-solid fa-book-open"></i> View E-Books</a>
         <a href="?action=admin&tab=physical" class="<?= $tab === 'physical' ? 'active' : '' ?>"><i class="fa-solid fa-book"></i> Manage Physical Books</a>
+        <a href="?action=admin&tab=view_physical" class="<?= $tab === 'view_physical' ? 'active' : '' ?>"><i class="fa-solid fa-boxes-stacked"></i> View Physical Books</a>
         <a href="?action=admin&tab=requests" class="<?= $tab === 'requests' ? 'active' : '' ?>">
             <i class="fa-solid fa-receipt"></i> Reading Requests
             <span id="sidebarReadingBadge" class="badge badge-orange" style="margin-left:auto; font-size:10px; padding:2px 6px; font-weight:700; <?= $side_req_count > 0 ? '' : 'display:none;' ?>"><?= $side_req_count ?></span>

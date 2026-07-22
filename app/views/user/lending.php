@@ -58,7 +58,7 @@ $x = $stmt->get_result();
                         } elseif ($days_diff <= 3) {
                             $badge = '<span class="badge" style="background:#fffbeb; color:var(--accent-orange); border:1px solid var(--accent-orange); font-weight:600;"><i class="fa-solid fa-hourglass-half"></i> Due Soon</span>';
                         } else {
-                            $badge = '<span class="badge badge-blue"><i class="fa-solid fa-book"></i> Active Loan</span>';
+                            $badge = '<span class="badge badge-red"><i class="fa-solid fa-book"></i> Not Returned</span>';
                         }
                     }
                     

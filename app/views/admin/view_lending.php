@@ -22,7 +22,7 @@ if ($sort === 'lent_asc') {
 }
 ?>
 <div class="card">
-    <h3><i class="fa-solid fa-timeline"></i> System Issue & Lending History Log</h3>
+    <h3><i class="fa-solid fa-timeline"></i>Lending History</h3>
     
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; gap:15px; flex-wrap:wrap;">
         <div style="flex:1; min-width:280px;">
@@ -48,10 +48,10 @@ if ($sort === 'lent_asc') {
             <thead>
                 <tr>
                     <th>Book Title</th>
+                    <th>Book ID</th>
                     <th>Member Name</th>
                     <th>Date of Lending</th>
                     <th>Due Date</th>
-                    <th>Overdue Fine status</th>
                     <th>Return Operations</th>
                 </tr>
             </thead>
@@ -65,12 +65,10 @@ if ($sort === 'lent_asc') {
                 $total_pages = ceil($total_items / $p_limit);
                 $p_offset = ($p_page - 1) * $p_limit;
 
-                $x = $db->query("SELECT l.*, p.title, m.name FROM lendings l JOIN physical_books p ON p.id = l.physical_book_id JOIN members m ON m.id = l.member_id ORDER BY $orderBy LIMIT $p_limit OFFSET $p_offset");
+                $x = $db->query("SELECT l.*, p.title, p.book_code, m.name FROM lendings l JOIN physical_books p ON p.id = l.physical_book_id JOIN members m ON m.id = l.member_id ORDER BY $orderBy LIMIT $p_limit OFFSET $p_offset");
                 $lCount = 0;
                 while($r = $x->fetch_assoc()) {
                     $lCount++;
-                    $fine_data = calculate_fine($r['due_date'], $r['returned_at']);
-                    $fine_html = render_fine_column($r, $fine_data, 'view_lending');
                     
                     $returnCol = $r['returned_at'] 
                         ? '<span style="font-size:12px; color:var(--text-muted); font-weight:600;"><i class="fa-solid fa-box-archive"></i> Settled ' . date('d-m-Y', strtotime($r['returned_at'])) . '</span>' 
@@ -95,11 +93,11 @@ if ($sort === 'lent_asc') {
                     
                     echo '
                     <tr' . $row_style . '>
-                        <td>' . e($r['title']) . '</td>
+                        <td style="font-weight:600; color:var(--navy-dark);">' . e($r['title']) . '</td>
+                        <td><code style="background:var(--bg-slate); padding:2px 6px; border-radius:4px; font-weight:700; font-size:12px; color:var(--navy-dark); border:1px solid var(--border-color);">' . e($r['book_code']) . '</code></td>
                         <td>' . e($r['name']) . '</td>
                         <td>' . date('d-m-Y h:i A', strtotime($r['lent_at'])) . '</td>
                         <td>' . $due_col_html . '</td>
-                        <td>' . $fine_html . '</td>
                         <td>' . $returnCol . '</td>
                     </tr>';
                 }

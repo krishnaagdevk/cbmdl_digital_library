@@ -206,7 +206,7 @@ if ($viewId) {
                     </form>
                 </div>
 
-                <div style="background:#fef2f2; padding:20px; border-radius:12px; border:1px solid #fca5a5;">
+                <!-- <div style="background:#fef2f2; padding:20px; border-radius:12px; border:1px solid #fca5a5;">
                     <h4 style="margin-top:0; color:#b91c1c;"><i class="fa-solid fa-triangle-exclamation"></i> Danger Zone</h4>
                     <p style="font-size:13px; color:#7f1d1d;">Remove this member profile permanently from the e-Library catalog.</p>
                     <form method="post" action="?action=delete_member" onsubmit="return confirm('Are you absolutely certain you want to delete this member account permanently? This action is irreversible.')">
@@ -214,7 +214,7 @@ if ($viewId) {
                         <input type="hidden" name="id" value="<?= $selected['id'] ?>">
                         <button class="danger btn btn-danger" style="width:100%;"><i class="fa-solid fa-trash-can"></i> Delete Member Account</button>
                     </form>
-                </div>
+                </div> -->
             </div>
         </div>
         <p style="margin-top:20px;"><a class="btn" href="?action=admin&tab=<?= $tab ?>" style="background:var(--navy-light);"><i class="fa-solid fa-arrow-left"></i> Back to Directory</a></p>

@@ -88,13 +88,31 @@ if ($resMemberPlan && $resMemberPlan->num_rows == 0) {
 // Add membership_fee to members table
 $resMemberFee = $db->query("SHOW COLUMNS FROM members LIKE 'membership_fee'");
 if ($resMemberFee && $resMemberFee->num_rows == 0) {
-    $db->query("ALTER TABLE members ADD COLUMN membership_fee DECIMAL(10, 2) DEFAULT 0.00");
+    $db->query("ALTER TABLE members ADD COLUMN membership_fee VARCHAR(50) DEFAULT ''");
+}
+
+// Add shelf_number to physical_books table
+$resShelf = $db->query("SHOW COLUMNS FROM physical_books LIKE 'shelf_number'");
+if ($resShelf && $resShelf->num_rows == 0) {
+    $db->query("ALTER TABLE physical_books ADD COLUMN shelf_number VARCHAR(100) NULL AFTER book_code");
 }
 
 // Add approved column to members table (0 = Pending Self-Service Application, 1 = Approved Active Member)
 $resMemberApproved = $db->query("SHOW COLUMNS FROM members LIKE 'approved'");
 if ($resMemberApproved && $resMemberApproved->num_rows == 0) {
     $db->query("ALTER TABLE members ADD COLUMN approved TINYINT(1) DEFAULT 1");
+}
+
+// Auto-migration check: Unique index on Aadhar number in members table
+$resAadharIdx = $db->query("SHOW INDEX FROM members WHERE Key_name = 'idx_aadhar_no'");
+if ($resAadharIdx && $resAadharIdx->num_rows == 0) {
+    @$db->query("ALTER TABLE members ADD UNIQUE INDEX idx_aadhar_no (aadhar_no)");
+}
+
+// Auto-migration check: Unique index on category_id + title in ebooks table
+$resEbookIdx = $db->query("SHOW INDEX FROM ebooks WHERE Key_name = 'idx_category_title'");
+if ($resEbookIdx && $resEbookIdx->num_rows == 0) {
+    @$db->query("ALTER TABLE ebooks ADD UNIQUE INDEX idx_category_title (category_id, title)");
 }
 
 // Auto-migration check: hold requests table for physical book reservations

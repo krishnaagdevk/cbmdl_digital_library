@@ -113,7 +113,7 @@ while ($r_row = $rl_query->fetch_assoc()) {
     <!-- Feature 4: Expiring Members KPI Card -->
     <div class="stat-card" style="border-left: 4px solid var(--accent-orange); cursor: pointer;" onclick="switchDashboardTab('inbox');">
         <div class="stat-info">
-            <h4>Expiring (7 days)</h4>
+            <h4>Expiring Membership<br> (7 days)</h4>
             <p style="font-size:20px; color:var(--accent-orange);"><?= $expiring_7_days_count ?></p>
             <span style="font-size:11px; color:var(--text-muted);">Membership renewals</span>
         </div>
@@ -133,7 +133,7 @@ while ($r_row = $rl_query->fetch_assoc()) {
         <?php endif; ?>
     </button>
     <button id="tab-density" class="tab-btn" onclick="switchDashboardTab('density')">
-        📁 Category Density Meter
+        📁 e-books Density
     </button>
     <button id="tab-lending" class="tab-btn" onclick="switchDashboardTab('lending')">
         ⏳ Lending Activity Logs
@@ -208,7 +208,7 @@ while ($r_row = $rl_query->fetch_assoc()) {
     ?>
     <div class="charts-container" style="margin-bottom: 0;">
         <div class="chart-wrapper">
-            <h4><i class="fa-solid fa-chart-column"></i> Physical Inventory Breakdown</h4>
+            <h4><i class="fa-solid fa-chart-column"></i> Physical Books Inventory</h4>
             <div style="display:flex; flex-direction:column; justify-content:space-between; height:100%; min-height:220px; padding:10px 0;">
                 <div style="display:flex; justify-content:space-around; align-items:flex-end; flex:1; padding-bottom:15px; border-bottom:2px solid var(--border-color);">
                     <div style="display:flex; flex-direction:column; align-items:center; width:25%;">
@@ -234,8 +234,8 @@ while ($r_row = $rl_query->fetch_assoc()) {
                     </div>
                 </div>
                 <div style="display:flex; justify-content:space-around; text-align:center; font-size:11px; font-weight:600; color:var(--text-muted); margin-top:10px;">
-                    <span style="width:33%;">Total Cataloged</span>
-                    <span style="width:33%;">Active Loans</span>
+                    <span style="width:33%;">Total Books</span>
+                    <span style="width:33%;">Total Lend</span>
                     <span style="width:33%;">In-House Stock</span>
                 </div>
             </div>
@@ -416,7 +416,7 @@ while ($r_row = $rl_query->fetch_assoc()) {
 <!-- TAB 3: CATEGORY DENSITY METER -->
 <div id="pane-density" class="dashboard-pane" style="display:none;">
     <div class="card" style="margin-bottom:0;">
-        <h3><i class="fa-solid fa-layer-group"></i> E-Book Category Repository Density</h3>
+        <h3><i class="fa-solid fa-layer-group"></i> E-Book Category</h3>
         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:15px; margin-top:15px;">
             <?php 
             if (empty($cat_distribution)) {
@@ -483,7 +483,7 @@ while ($r_row = $rl_query->fetch_assoc()) {
                                     ? '<span class="badge badge-red"><i class="fa-solid fa-clock"></i> Overdue (' . abs($days_diff) . 'd)</span>' 
                                     : ($days_diff <= 3
                                         ? '<span class="badge" style="background:#fffbeb; color:var(--accent-orange); border:1px solid var(--accent-orange); font-weight:600;"><i class="fa-solid fa-hourglass-half"></i> Due Soon (' . ($days_diff == 0 ? 'Today' : $days_diff . 'd') . ')</span>'
-                                        : '<span class="badge badge-blue"><i class="fa-solid fa-book"></i> Active Loan</span>'));
+                                        : '<span class="badge badge-red"><i class="fa-solid fa-book"></i> Not Returned</span>'));
                             echo '
                             <tr>
                                 <td>' . e($rl['title']) . '</td>
@@ -502,8 +502,8 @@ while ($r_row = $rl_query->fetch_assoc()) {
 </div>
 
 <!-- Tab Switcher Script Engine -->
-<script>
-function switchDashboardTab(tabId) {
+<script class="dynamic-script">
+window.switchDashboardTab = function(tabId) {
     // Hide all panes
     document.querySelectorAll('.dashboard-pane').forEach(el => el.style.display = 'none');
     // Remove active class from all buttons
@@ -519,5 +519,5 @@ function switchDashboardTab(tabId) {
     if (activeBtn) {
         activeBtn.classList.add('active');
     }
-}
+};
 </script>

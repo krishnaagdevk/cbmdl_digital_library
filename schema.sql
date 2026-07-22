@@ -160,6 +160,7 @@ CREATE TABLE `physical_books` (
   `id` int(11) NOT NULL,
   `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `book_code` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `shelf_number` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `price` decimal(10,2) NOT NULL,
   `author` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `publisher` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,

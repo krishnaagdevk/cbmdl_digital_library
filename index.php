@@ -1265,34 +1265,39 @@ if (admin()) {
         $k = trim($_POST['keywords'] ?? '');
         $edit_id = (int)($_POST['ebook_id'] ?? 0);
         
-        if ($edit_id > 0) {
-            // Delete old file
-            $oldStmt = $db->prepare("SELECT pdf_file FROM ebooks WHERE id = ?");
-            $oldStmt->bind_param("i", $edit_id);
-            $oldStmt->execute();
-            $old_row = $oldStmt->get_result()->fetch_assoc();
-            $old_pdf = $old_row['pdf_file'] ?? '';
-            $oldStmt->close();
-            
-            if ($old_pdf !== '') {
-                $old_file = 'uploads/' . basename($old_pdf);
-                if (is_file($old_file)) {
-                    unlink($old_file);
+        try {
+            if ($edit_id > 0) {
+                // Delete old file
+                $oldStmt = $db->prepare("SELECT pdf_file FROM ebooks WHERE id = ?");
+                $oldStmt->bind_param("i", $edit_id);
+                $oldStmt->execute();
+                $old_row = $oldStmt->get_result()->fetch_assoc();
+                $old_pdf = $old_row['pdf_file'] ?? '';
+                $oldStmt->close();
+                
+                if ($old_pdf !== '') {
+                    $old_file = 'uploads/' . basename($old_pdf);
+                    if (is_file($old_file)) {
+                        unlink($old_file);
+                    }
                 }
+                
+                $stmt = $db->prepare("UPDATE ebooks SET category_id = ?, title = ?, keywords = ?, pdf_file = ? WHERE id = ?");
+                $stmt->bind_param("isssi", $c, $t, $k, $out_name, $edit_id);
+                $stmt->execute();
+                $stmt->close();
+            } else {
+                $stmt = $db->prepare("INSERT INTO ebooks (category_id, title, keywords, pdf_file) VALUES (?, ?, ?, ?)");
+                $stmt->bind_param("isss", $c, $t, $k, $out_name);
+                $stmt->execute();
+                $stmt->close();
             }
-            
-            $stmt = $db->prepare("UPDATE ebooks SET category_id = ?, title = ?, keywords = ?, pdf_file = ? WHERE id = ?");
-            $stmt->bind_param("isssi", $c, $t, $k, $out_name, $edit_id);
-            $stmt->execute();
-            $stmt->close();
-        } else {
-            $stmt = $db->prepare("INSERT INTO ebooks (category_id, title, keywords, pdf_file) VALUES (?, ?, ?, ?)");
-            $stmt->bind_param("isss", $c, $t, $k, $out_name);
-            $stmt->execute();
-            $stmt->close();
+            echo json_encode(['success' => true, 'filename' => $out_name]);
+        } catch (\mysqli_sql_exception $e) {
+            if (is_file($out_path)) @unlink($out_path);
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Duplicate E-Book Title: An E-book with title "' . $t . '" already exists in this category.']);
         }
-        
-        echo json_encode(['success' => true, 'filename' => $out_name]);
         exit;
     }
 
@@ -1356,7 +1361,7 @@ if (admin()) {
         
         $output = fopen('php://output', 'w');
         fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF)); // UTF-8 BOM
-        fputcsv($output, ['Category', 'Book Code', 'Title', 'Author', 'Publisher', 'Price', 'Rack Location']);
+        fputcsv($output, ['Category', 'Book Code', 'Title', 'Author', 'Publisher', 'Price', 'Rack Location', 'Shelf Number']);
         
         $query = $db->query("SELECT * FROM physical_books ORDER BY id ASC");
         while ($row = $query->fetch_assoc()) {
@@ -1367,7 +1372,8 @@ if (admin()) {
                 $row['author'],
                 $row['publisher'] ?? '',
                 $row['price'] ?? 0.00,
-                'Shelf A1'
+                $row['shelf_number'] ?? 'Shelf A1',
+                $row['shelf_number'] ?? ''
             ]);
         }
         fclose($output);
@@ -1462,13 +1468,14 @@ if (admin()) {
                     }
                     
                     if ($type === 'physical') {
-                        // Format: Category, Book Code, Title, Author, Publisher, Price, Rack Location
+                        // Format: Category, Book Code, Title, Author, Publisher, Price, Rack Location / Shelf Number
                         $code = trim($data[1]);
                         $title = trim($data[2]);
                         $author = trim($data[3] ?? 'Unknown');
                         $publisher = trim($data[4] ?? '');
                         $price = (float)($data[5] ?? 0.00);
-                        $rack = trim($data[6] ?? 'Shelf A1');
+                        $rack = trim($data[6] ?? '');
+                        $shelf_num = trim($data[7] ?? $rack);
                         
                         if ($code === '' || $title === '') {
                             $skipped++;
@@ -1487,8 +1494,8 @@ if (admin()) {
                             continue;
                         }
                         
-                        $insStmt = $db->prepare("INSERT INTO physical_books (book_code, title, author, publisher, price) VALUES (?, ?, ?, ?, ?)");
-                        $insStmt->bind_param("ssssd", $code, $title, $author, $publisher, $price);
+                        $insStmt = $db->prepare("INSERT INTO physical_books (book_code, title, author, publisher, price, shelf_number) VALUES (?, ?, ?, ?, ?, ?)");
+                        $insStmt->bind_param("ssssds", $code, $title, $author, $publisher, $price, $shelf_num);
                         if ($insStmt->execute()) {
                             $imported++;
                         } else {
@@ -1719,18 +1726,21 @@ if (admin()) {
         $is_active = isset($_POST['is_active']) ? (int)$_POST['is_active'] : 1;
         $pass = trim($_POST['password'] ?? '');
         
-        if ($pass !== '') {
-            $hashed = password_hash($pass, PASSWORD_BCRYPT);
-            $stmt = $db->prepare("UPDATE members SET name = ?, guardian_name = ?, mobile = ?, email = ?, address = ?, aadhar_no = ?, is_active = ?, password = ? WHERE id = ?");
-            $stmt->bind_param("ssssssisi", $name, $g_name, $mobile, $email, $address, $aadhar, $is_active, $hashed, $id);
-        } else {
-            $stmt = $db->prepare("UPDATE members SET name = ?, guardian_name = ?, mobile = ?, email = ?, address = ?, aadhar_no = ?, is_active = ? WHERE id = ?");
-            $stmt->bind_param("ssssssii", $name, $g_name, $mobile, $email, $address, $aadhar, $is_active, $id);
+        try {
+            if ($pass !== '') {
+                $hashed = password_hash($pass, PASSWORD_BCRYPT);
+                $stmt = $db->prepare("UPDATE members SET name = ?, guardian_name = ?, mobile = ?, email = ?, address = ?, aadhar_no = ?, is_active = ?, password = ? WHERE id = ?");
+                $stmt->bind_param("ssssssisi", $name, $g_name, $mobile, $email, $address, $aadhar, $is_active, $hashed, $id);
+            } else {
+                $stmt = $db->prepare("UPDATE members SET name = ?, guardian_name = ?, mobile = ?, email = ?, address = ?, aadhar_no = ?, is_active = ? WHERE id = ?");
+                $stmt->bind_param("ssssssii", $name, $g_name, $mobile, $email, $address, $aadhar, $is_active, $id);
+            }
+            $stmt->execute();
+            $stmt->close();
+            flash('Member profile updated.');
+        } catch (\mysqli_sql_exception $e) {
+            flash('⚠️ Duplicate Entry Error: A member with this Mobile number or Aadhar number already exists.');
         }
-        $stmt->execute();
-        $stmt->close();
-        
-        flash('Member profile updated.');
         $refTab = $_GET['tab'] ?? 'members';
         go('?action=admin&tab=' . $refTab . '&view=' . $id);
     }
@@ -1838,18 +1848,22 @@ if (admin()) {
 
     if ($action === 'update_physical' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = (int)$_POST['id'];
+        $shelf_number = trim($_POST['shelf_number'] ?? '');
         $title = trim($_POST['title'] ?? '');
         $book_code = trim($_POST['book_code'] ?? '');
         $price = (float)($_POST['price'] ?? 0.00);
         $author = trim($_POST['author'] ?? '');
         $publisher = trim($_POST['publisher'] ?? '');
         
-        $stmt = $db->prepare("UPDATE physical_books SET title = ?, book_code = ?, price = ?, author = ?, publisher = ? WHERE id = ?");
-        $stmt->bind_param("ssdssi", $title, $book_code, $price, $author, $publisher, $id);
-        $ok = $stmt->execute();
-        $stmt->close();
-        
-        flash($ok ? 'Physical book updated.' : 'Error updating book: book code must be unique.');
+        try {
+            $stmt = $db->prepare("UPDATE physical_books SET shelf_number = ?, title = ?, book_code = ?, price = ?, author = ?, publisher = ? WHERE id = ?");
+            $stmt->bind_param("sssdssi", $shelf_number, $title, $book_code, $price, $author, $publisher, $id);
+            $stmt->execute();
+            $stmt->close();
+            flash('Physical book updated successfully.');
+        } catch (\mysqli_sql_exception $e) {
+            flash('⚠️ Duplicate Book Code / Bar Code: A physical book with ID "' . e($book_code) . '" already exists in the catalog database.');
+        }
         go('?action=admin&tab=physical');
     }
 
@@ -1859,52 +1873,60 @@ if (admin()) {
         $title = trim($_POST['title'] ?? '');
         $keywords = trim($_POST['keywords'] ?? '');
         
-        if (isset($_FILES['pdf']) && $_FILES['pdf']['error'] === 0) {
-            $f = $_FILES['pdf']['name'] ?? '';
-            $ext = strtolower(pathinfo($f, PATHINFO_EXTENSION));
-            if ($ext === 'pdf') {
-                $oldStmt = $db->prepare("SELECT pdf_file FROM ebooks WHERE id = ?");
-                $oldStmt->bind_param("i", $id);
-                $oldStmt->execute();
-                $old = $oldStmt->get_result()->fetch_assoc();
-                $oldStmt->close();
-                if ($old && is_file('uploads/' . $old['pdf_file'])) {
-                    unlink('uploads/' . $old['pdf_file']);
+        try {
+            if (isset($_FILES['pdf']) && $_FILES['pdf']['error'] === 0) {
+                $f = $_FILES['pdf']['name'] ?? '';
+                $ext = strtolower(pathinfo($f, PATHINFO_EXTENSION));
+                if ($ext === 'pdf') {
+                    $oldStmt = $db->prepare("SELECT pdf_file FROM ebooks WHERE id = ?");
+                    $oldStmt->bind_param("i", $id);
+                    $oldStmt->execute();
+                    $old = $oldStmt->get_result()->fetch_assoc();
+                    $oldStmt->close();
+                    if ($old && is_file('uploads/' . $old['pdf_file'])) {
+                        unlink('uploads/' . $old['pdf_file']);
+                    }
+                    
+                    $name = uniqid('book_') . '.pdf';
+                    move_uploaded_file($_FILES['pdf']['tmp_name'], 'uploads/' . $name);
+                    
+                    $stmt = $db->prepare("UPDATE ebooks SET category_id = ?, title = ?, keywords = ?, pdf_file = ? WHERE id = ?");
+                    $stmt->bind_param("isssi", $category_id, $title, $keywords, $name, $id);
+                } else {
+                    flash('Only PDF files are allowed.');
+                    go('?action=admin&tab=ebooks');
                 }
-                
-                $name = uniqid('book_') . '.pdf';
-                move_uploaded_file($_FILES['pdf']['tmp_name'], 'uploads/' . $name);
-                
-                $stmt = $db->prepare("UPDATE ebooks SET category_id = ?, title = ?, keywords = ?, pdf_file = ? WHERE id = ?");
-                $stmt->bind_param("isssi", $category_id, $title, $keywords, $name, $id);
             } else {
-                flash('Only PDF files are allowed.');
-                go('?action=admin&tab=ebooks');
+                $stmt = $db->prepare("UPDATE ebooks SET category_id = ?, title = ?, keywords = ? WHERE id = ?");
+                $stmt->bind_param("issi", $category_id, $title, $keywords, $id);
             }
-        } else {
-            $stmt = $db->prepare("UPDATE ebooks SET category_id = ?, title = ?, keywords = ? WHERE id = ?");
-            $stmt->bind_param("issi", $category_id, $title, $keywords, $id);
+            
+            $stmt->execute();
+            $stmt->close();
+            flash('E-book updated successfully.');
+        } catch (\mysqli_sql_exception $e) {
+            flash('⚠️ Duplicate E-Book Title: An E-book titled "' . e($title) . '" already exists in this category.');
         }
-        
-        $ok = $stmt->execute();
-        $stmt->close();
-        flash($ok ? 'E-book updated.' : 'Error updating E-book.');
         go('?action=admin&tab=ebooks');
     }
 
     if ($action === 'add_physical' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $shelf_number = trim($_POST['shelf_number'] ?? '');
         $title = trim($_POST['title'] ?? '');
         $book_code = trim($_POST['book_code'] ?? '');
         $price = (float)($_POST['price'] ?? 0.00);
         $author = trim($_POST['author'] ?? '');
         $publisher = trim($_POST['publisher'] ?? '');
         
-        $stmt = $db->prepare("INSERT INTO physical_books (title, book_code, price, author, publisher) VALUES (?, ?, ?, ?, ?)");
-        $stmt->bind_param("ssdss", $title, $book_code, $price, $author, $publisher);
-        $ok = $stmt->execute();
-        $stmt->close();
-        
-        flash($ok ? 'Physical book added.' : 'Error: Book code must be unique.');
+        try {
+            $stmt = $db->prepare("INSERT INTO physical_books (shelf_number, title, book_code, price, author, publisher) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("sssdss", $shelf_number, $title, $book_code, $price, $author, $publisher);
+            $stmt->execute();
+            $stmt->close();
+            flash('Physical book added successfully.');
+        } catch (\mysqli_sql_exception $e) {
+            flash('⚠️ Duplicate Book Code / Bar Code: A physical book with ID "' . e($book_code) . '" already exists in the catalog database.');
+        }
         go('?action=admin&tab=physical');
     }
 

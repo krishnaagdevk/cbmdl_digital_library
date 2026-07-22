@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" type="image/x-icon" href="images/favicon.ico">
     <script>window.BASE_URL = "<?= BASE_URL ?>";</script>
-    <title>MCB e-Library - Cantonment Cantonment Library</title>
+    <title>MCB e-Library</title>
     
     <style>
         :root {
@@ -674,6 +674,88 @@
             <i class="fa-solid <?= $is_error_flash ? 'fa-circle-xmark' : 'fa-circle-check' ?>" style="<?= $is_error_flash ? 'color:var(--accent-red);' : '' ?>"></i>
             <span><?= e($f) ?></span>
         </div>
+        <?php if ($is_error_flash): ?>
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    const msg = <?= json_encode($f) ?>;
+                    // Custom Modal Dialog Popup
+                    let modal = document.getElementById('errorNoticeModalDialog');
+                    if (!modal) {
+                        modal = document.createElement('div');
+                        modal.id = 'errorNoticeModalDialog';
+                        modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.6); backdrop-filter:blur(4px); z-index:99999; display:flex; align-items:center; justify-content:center; padding:20px;';
+                        modal.innerHTML = `
+                            <div style="background:var(--bg-card, #ffffff); border-radius:16px; border:1px solid var(--border-color, #e2e8f0); width:100%; max-width:440px; padding:28px 24px 24px 24px; box-shadow:0 20px 40px rgba(0,0,0,0.2); text-align:center; animation:modalScale 0.25s ease-out;">
+                                <div style="width:60px; height:60px; border-radius:50%; background:#fef2f2; color:#ef4444; display:flex; align-items:center; justify-content:center; margin:0 auto 16px auto; font-size:28px; border:2px solid #fca5a5;">
+                                    <i class="fa-solid fa-triangle-exclamation"></i>
+                                </div>
+                                <h3 style="margin:0 0 10px 0; font-size:18px; font-weight:700; color:var(--navy-dark, #0f172a);">Duplicate / Invalid Entry Alert</h3>
+                                <p style="font-size:14px; color:var(--text-dark, #1e293b); line-height:1.5; margin:0 0 24px 0; background:#f8fafc; padding:12px; border-radius:8px; border:1px solid #e2e8f0; text-align:left;">${typeof escapeHtml === 'function' ? escapeHtml(msg) : msg}</p>
+                                <button onclick="document.getElementById('errorNoticeModalDialog').remove()" style="width:100%; background:linear-gradient(135deg, #ef4444, #dc2626); color:white; border:none; padding:12px 20px; border-radius:10px; font-weight:700; font-size:14px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:8px;">
+                                    <i class="fa-solid fa-circle-xmark"></i> Close & Acknowledge
+                                </button>
+                            </div>
+                        `;
+                        document.body.appendChild(modal);
+                    }
+                });
+            </script>
+        <?php else: ?>
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    const msg = <?= json_encode($f) ?>;
+                    // Toast Notification Popup Component
+                    let container = document.getElementById('toastNotificationContainer');
+                    if (!container) {
+                        container = document.createElement('div');
+                        container.id = 'toastNotificationContainer';
+                        container.style.cssText = 'position:fixed; top:24px; right:24px; display:flex; flex-direction:column; gap:12px; z-index:99999; pointer-events:none; max-width:380px; width:calc(100% - 48px);';
+                        document.body.appendChild(container);
+                    }
+                    
+                    const toast = document.createElement('div');
+                    toast.style.cssText = `
+                        background: #ffffff;
+                        color: #0f172a;
+                        border-radius: 12px;
+                        padding: 16px;
+                        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
+                        border: 1px solid #e2e8f0;
+                        border-left: 5px solid #10b981;
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                        pointer-events: auto;
+                        transform: translateX(120%);
+                        transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s;
+                        opacity: 0;
+                    `;
+                    
+                    toast.innerHTML = `
+                        <div style="width:32px; height:32px; border-radius:50%; background:#ecfdf5; color:#10b981; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:16px;">
+                            <i class="fa-solid fa-circle-check"></i>
+                        </div>
+                        <div style="flex:1; font-size:13px; font-weight:600; color:#0f172a; line-height:1.4;">
+                            ${typeof escapeHtml === 'function' ? escapeHtml(msg) : msg}
+                        </div>
+                        <button onclick="this.parentElement.remove()" style="background:none; border:none; padding:0; cursor:pointer; color:#94a3b8; font-size:14px;"><i class="fa-solid fa-xmark"></i></button>
+                    `;
+                    
+                    container.appendChild(toast);
+                    
+                    requestAnimationFrame(() => {
+                        toast.style.transform = 'translateX(0)';
+                        toast.style.opacity = '1';
+                    });
+                    
+                    setTimeout(() => {
+                        toast.style.transform = 'translateX(120%)';
+                        toast.style.opacity = '0';
+                        setTimeout(() => toast.remove(), 400);
+                    }, 5000);
+                });
+            </script>
+        <?php endif; ?>
         <?php if ($f === 'Reading request sent to librarian.'): ?>
             <script>
                 alert("🎉 Your e-reading permission request has been submitted successfully to the librarian!\n\nPlease wait for the librarian to review and approve your request.");
