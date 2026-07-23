@@ -1239,6 +1239,88 @@ if (admin()) {
         go('?action=admin&tab=profile');
     }
 
+    // --- BACKUP & RESTORE MANAGEMENT ROUTES ---
+    if ($action === 'generate_db_backup' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        try {
+            $backupService = new \App\Services\BackupService($db);
+            $res = $backupService->createDatabaseBackup();
+            flash("✅ Database backup created successfully: {$res['filename']} ({$res['size_formatted']})");
+        } catch (\Exception $e) {
+            flash("⚠️ Backup failed: " . $e->getMessage());
+        }
+        go('?action=admin&tab=backups');
+    }
+
+    if ($action === 'generate_full_backup' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        try {
+            $backupService = new \App\Services\BackupService($db);
+            $res = $backupService->createFullSystemBackup();
+            flash("✅ Complete system backup (.zip) created successfully: {$res['filename']} ({$res['size_formatted']})");
+        } catch (\Exception $e) {
+            flash("⚠️ Full system backup failed: " . $e->getMessage());
+        }
+        go('?action=admin&tab=backups');
+    }
+
+    if ($action === 'download_backup') {
+        $file = $_GET['file'] ?? '';
+        if ($file === '') {
+            flash('⚠️ No backup file specified.');
+            go('?action=admin&tab=backups');
+        }
+        $backupService = new \App\Services\BackupService($db);
+        $backupService->downloadBackup($file);
+        exit;
+    }
+
+    if ($action === 'delete_backup' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $file = $_POST['file'] ?? '';
+        if ($file !== '') {
+            $backupService = new \App\Services\BackupService($db);
+            if ($backupService->deleteBackup($file)) {
+                flash("✅ Backup file '{$file}' was deleted successfully.");
+            } else {
+                flash("⚠️ Failed to delete backup file or file not found.");
+            }
+        }
+        go('?action=admin&tab=backups');
+    }
+
+    if ($action === 'restore_backup' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $file = $_POST['file'] ?? '';
+        
+        // Check if an external .sql file was uploaded
+        if (isset($_FILES['backup_file']) && $_FILES['backup_file']['error'] === UPLOAD_ERR_OK) {
+            $uploadedTmp = $_FILES['backup_file']['tmp_name'];
+            $uploadedName = $_FILES['backup_file']['name'];
+            $ext = strtolower(pathinfo($uploadedName, PATHINFO_EXTENSION));
+            if ($ext !== 'sql') {
+                flash("⚠️ Only .sql backup files can be uploaded for database restoration.");
+                go('?action=admin&tab=backups');
+            }
+            $safeName = 'uploaded_restore_' . date('Y-m-d_H-i-s') . '.sql';
+            $backupService = new \App\Services\BackupService($db);
+            $targetPath = $backupService->getBackupDir() . '/' . $safeName;
+            if (move_uploaded_file($uploadedTmp, $targetPath)) {
+                $file = $safeName;
+            }
+        }
+
+        if ($file === '') {
+            flash('⚠️ Please select or upload a valid .sql backup file to restore.');
+            go('?action=admin&tab=backups');
+        }
+
+        try {
+            $backupService = new \App\Services\BackupService($db);
+            $res = $backupService->restoreDatabaseBackup($file);
+            flash("✅ " . $res['message']);
+        } catch (\Exception $e) {
+            flash("⚠️ Database restoration failed: " . $e->getMessage());
+        }
+        go('?action=admin&tab=backups');
+    }
+
     if ($action === 'add_category' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $n = trim($_POST['name'] ?? '');
         if ($n !== '') {

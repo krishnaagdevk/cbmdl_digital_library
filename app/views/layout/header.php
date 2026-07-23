@@ -735,12 +735,45 @@
             align-items: center;
             justify-content: center;
         }
-        .password-toggle-btn:hover {
-            color: #10b981;
+        /* Login Page Header Spacing & Font Adjustments */
+        body.login-page .header-logo {
+            padding: 12px 5% 6px 5% !important;
+            margin-bottom: 0 !important;
+        }
+
+        body.login-page .header-logo img {
+            max-height: 80px !important;
+        }
+
+        body.login-page .header-logo h1 {
+            font-size: 26px !important;
+            line-height: 1.3 !important;
+        }
+
+        body.login-page .header-logo h1 .header-sub-text {
+            font-size: 18px !important;
+            margin-top: 3px !important;
+        }
+
+        body.login-page .header-title-sub {
+            margin: 4px 0 6px 0 !important;
+            font-size: 26px !important;
+        }
+
+        body.login-page main {
+            padding: 4px 3% 10px 3% !important;
+        }
+
+        body.login-page footer {
+            padding: 8px 15px !important;
+            font-size: 12px !important;
         }
     </style>
 </head>
-<body>
+<?php
+$is_login_view = in_array($_GET['action'] ?? '', ['admin-login', 'member-login', 'login']) || (empty($_SESSION['admin']) && empty($_SESSION['member']));
+?>
+<body class="<?= $is_login_view ? 'login-page' : '' ?>">
 
     <!-- Global Toast Notification System -->
     <script>

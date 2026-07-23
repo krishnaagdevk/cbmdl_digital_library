@@ -5,7 +5,7 @@ $tab = $_GET['tab'] ?? 'dashboard';
 $side_req_count = (int)$db->query("SELECT COUNT(*) c FROM reading_requests WHERE status='Pending'")->fetch_assoc()['c'];
 $side_prt_count = (int)$db->query("SELECT COUNT(*) c FROM print_requests WHERE status='Pending'")->fetch_assoc()['c'];
 
-$master_data_tabs = ['plans', 'active_plans', 'create_plan', 'shift_timings', 'login_window', 'admin_login_logs', 'member_login_logs'];
+$master_data_tabs = ['categories', 'plans', 'active_plans', 'create_plan', 'shift_timings', 'login_window', 'admin_login_logs', 'member_login_logs'];
 $is_master_data_active = in_array($tab, $master_data_tabs);
 ?>
 <script>
@@ -56,6 +56,9 @@ if (typeof window.toggleSidebarSubmenu !== 'function') {
                 <i class="fa-solid fa-chevron-down toggle-icon"></i>
             </button>
             <div class="sidebar-submenu" style="<?= $is_master_data_active ? 'display:flex;' : 'display:none;' ?>">
+                <a href="?action=admin&tab=categories" class="<?= $tab === 'categories' ? 'active' : '' ?>">
+                    <i class="fa-solid fa-folder-open"></i>E-Book Categories
+                </a>
                 <a href="?action=admin&tab=active_plans" class="<?= ($tab === 'active_plans' || $tab === 'plans') ? 'active' : '' ?>">
                     <i class="fa-solid fa-list-check"></i> Active Membership Plans
                 </a>
@@ -77,7 +80,7 @@ if (typeof window.toggleSidebarSubmenu !== 'function') {
             </div>
         </div>
 
-        <a href="?action=admin&tab=categories" class="<?= $tab === 'categories' ? 'active' : '' ?>"><i class="fa-solid fa-folder-open"></i>E-Book Categories</a>
+        <a href="?action=admin&tab=backups" class="<?= $tab === 'backups' ? 'active' : '' ?>"><i class="fa-solid fa-box-archive"></i>System Backups</a>
         <a href="?action=admin&tab=profile" class="<?= $tab === 'profile' ? 'active' : '' ?>"><i class="fa-solid fa-user-shield"></i>Librarian Profile</a>
         <a href="?action=logout" style="margin-top:15px; color:#ef4444; border-top:1px solid var(--border-color); padding-top:12px; font-weight:600;"><i class="fa-solid fa-right-from-bracket"></i>Logout Panel</a>
     </div>
@@ -382,7 +385,7 @@ if (typeof window.toggleSidebarSubmenu !== 'function') {
             'physical', 'view_physical', 'requests', 'prints', 
             'members', 'view_members', 'membership_history', 'plans', 
             'active_plans', 'create_plan', 'shift_timings', 'login_window', 
-            'admin_login_logs', 'member_login_logs', 'lending', 'view_lending', 'profile'
+            'admin_login_logs', 'member_login_logs', 'lending', 'view_lending', 'profile', 'backups'
         ];
         if (in_array($tab, $allowed_tabs)) {
             require __DIR__ . "/admin/{$tab}.php";

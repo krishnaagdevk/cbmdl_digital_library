@@ -34,21 +34,28 @@ $x = $stmt->get_result();
                 while($r = $x->fetch_assoc()) {
                     $count++;
                     $isExp = ($r['status'] === 'Expired') || (!empty($r['expires_at']) && strtotime($r['expires_at']) <= time());
-                    $badgeClass = 'badge-orange';
-                    if ($r['status'] === 'Approved' && !$isExp) {
-                        $badgeClass = 'badge-green';
-                    } elseif ($r['status'] === 'Rejected' || $isExp) {
-                        $badgeClass = 'badge-red';
+                    $hasStarted = !empty($r['started_reading_at']);
+
+                    if ($r['status'] === 'Pending') {
+                        $badgeHtml = '<span class="badge badge-orange"><i class="fa-solid fa-hourglass-half"></i> Pending</span>';
+                    } elseif ($r['status'] === 'Approved' && !$isExp) {
+                        $badgeHtml = '<span class="badge badge-green"><i class="fa-solid fa-book-open-reader"></i> Active Reading</span>';
+                    } elseif ($r['status'] === 'Rejected') {
+                        $badgeHtml = '<span class="badge badge-red"><i class="fa-solid fa-circle-xmark"></i> Permission Denied</span>';
+                    } elseif ($isExp) {
+                        if ($hasStarted) {
+                            $badgeHtml = '<span class="badge" style="background:#dcfce7; color:#15803d; border:1px solid #bbf7d0; font-weight:700;"><i class="fa-solid fa-circle-check"></i> Completed Reading</span>';
+                        } else {
+                            $badgeHtml = '<span class="badge badge-red" style="background:#fef2f2; color:#b91c1c; border:1px solid #fecaca;"><i class="fa-solid fa-clock-rotate-left"></i> Session Expired</span>';
+                        }
                     }
-                    
-                    $statusText = $isExp ? 'Expired' : $r['status'];
                     
                     echo '
                     <tr>
                         <td>' . e($r['title']) . '</td>
                         <td>' . date('d-m-Y h:i A', strtotime($r['requested_at'])) . '</td>
                         <td>' . ($r['approved_at'] ? date('d-m-Y h:i A', strtotime($r['approved_at'])) . ($r['expires_at'] ? ' to ' . date('d-m-Y h:i A', strtotime($r['expires_at'])) : ' (' . (int)$r['duration_minutes'] . ' mins)') : '--') . '</td>
-                        <td><span class="badge ' . $badgeClass . '">' . $statusText . '</span></td>
+                        <td>' . $badgeHtml . '</td>
                     </tr>';
                 }
                 if ($count === 0) {

@@ -86,16 +86,7 @@ $latest_ebooks_result = $db->query("SELECT e.*, c.name category FROM ebooks e JO
             <div style="display:flex; gap:10px; margin-bottom:15px; flex-wrap:wrap;">
                 <a href="?action=export_ebooks_csv" class="btn" style="background:var(--navy-dark); font-size:12px; display:inline-flex; align-items:center; gap:5px;"><i class="fa-solid fa-download"></i> Export E-Books CSV</a>
             </div>
-            <form method="post" action="?action=import_books_csv" enctype="multipart/form-data" style="border-top:1px solid var(--border-color); padding-top:15px; margin:0;">
-                <?= csrf_input() ?>
-                <input type="hidden" name="import_type" value="ebooks">
-                <label for="import_csv" style="font-size:12px; font-weight:700;">Select CSV Metadata File to Import</label>
-                <div style="display:flex; gap:10px; align-items:center; margin-top:5px;">
-                    <input type="file" id="import_csv" name="csv_file" accept=".csv, .txt, text/csv, text/plain" required style="margin:0; font-size:12px; padding:6px 10px; flex:1;">
-                    <button class="btn" type="submit" style="font-size:12px; padding:8px 15px; background:var(--primary);"><i class="fa-solid fa-file-import"></i> Batch Import</button>
-                </div>
-                <p style="font-size:10px; color:var(--text-muted); margin: 6px 0 0 0;"><i class="fa-solid fa-circle-info"></i> CSV Format: <code>Category, Title, Keywords</code> (First row treated as header & skipped)</p>
-            </form>
+       
         </div>
     <?php endif; ?>
 </div>

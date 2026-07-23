@@ -17,7 +17,7 @@ if ($statusFilter !== 'all') {
 }
 if ($searchQuery !== '') {
     $sq = $db->real_escape_string($searchQuery);
-    $where[] = "(username LIKE '%$sq%' OR ip_address LIKE '%$sq%' OR user_agent LIKE '%$sq%')";
+    $where[] = "(username LIKE '%$sq%' OR ip_address LIKE '%$sq%')";
 }
 $whereSql = !empty($where) ? "WHERE " . implode(' AND ', $where) : "";
 
@@ -60,7 +60,6 @@ $logsQuery = $db->query("SELECT * FROM admin_login_logs $whereSql ORDER BY id DE
                     <th style="width:60px;">ID</th>
                     <th>Admin Username</th>
                     <th>IP Address</th>
-                    <th>User Agent / Browser</th>
                     <th>Attempt Status</th>
                     <th>Login Date & Time</th>
                 </tr>
@@ -72,9 +71,6 @@ $logsQuery = $db->query("SELECT * FROM admin_login_logs $whereSql ORDER BY id DE
                             <td><strong>#<?= $log['id'] ?></strong></td>
                             <td style="font-weight:600; color:var(--navy-dark);"><?= e($log['username']) ?></td>
                             <td><code style="background:var(--bg-slate); padding:2px 6px; border-radius:4px; font-size:12px; font-family:monospace; color:var(--navy-dark);"><?= e($log['ip_address']) ?></code></td>
-                            <td style="font-size:12px; color:var(--text-muted); max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="<?= e($log['user_agent']) ?>">
-                                <?= e($log['user_agent'] ?: 'N/A') ?>
-                            </td>
                             <td>
                                 <?php if ($log['status'] === 'Success'): ?>
                                     <span class="badge badge-green" style="font-size:11px; padding:3px 8px;"><i class="fa-solid fa-circle-check"></i> Success</span>
@@ -89,7 +85,7 @@ $logsQuery = $db->query("SELECT * FROM admin_login_logs $whereSql ORDER BY id DE
                     <?php endwhile; ?>
                 <?php else: ?>
                     <tr>
-                        <td colspan="6" style="text-align:center; padding:30px; color:var(--text-muted);">
+                        <td colspan="5" style="text-align:center; padding:30px; color:var(--text-muted);">
                             <i class="fa-solid fa-shield-halved" style="font-size:32px; display:block; margin-bottom:10px; opacity:0.5;"></i>
                             No admin login logs found matching the filter.
                         </td>

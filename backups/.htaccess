@@ -1,0 +1,2 @@
+# Prevent direct public web access to backup files
+Deny from all

@@ -10,10 +10,12 @@ if ($status_filter === 'Pending') {
     $where_clauses[] = "r.status = 'Pending'";
 } elseif ($status_filter === 'Approved') {
     $where_clauses[] = "r.status = 'Approved' AND (r.expires_at IS NULL OR r.expires_at > NOW())";
+} elseif ($status_filter === 'Completed') {
+    $where_clauses[] = "(r.status = 'Expired' OR (r.status = 'Approved' AND r.expires_at <= NOW())) AND r.started_reading_at IS NOT NULL";
+} elseif ($status_filter === 'Expired') {
+    $where_clauses[] = "(r.status = 'Expired' OR (r.status = 'Approved' AND r.expires_at <= NOW())) AND r.started_reading_at IS NULL";
 } elseif ($status_filter === 'Rejected') {
     $where_clauses[] = "r.status = 'Rejected'";
-} elseif ($status_filter === 'Expired') {
-    $where_clauses[] = "(r.status = 'Expired' OR (r.status = 'Approved' AND r.expires_at <= NOW()))";
 }
 
 if ($search !== '') {
@@ -53,9 +55,10 @@ $query_str = "SELECT r.*, m.name, m.membership_id, e.title FROM reading_requests
             <select id="req_status" name="status_filter">
                 <option value="All" <?= $status_filter === 'All' ? 'selected' : '' ?>>All Requests</option>
                 <option value="Pending" <?= $status_filter === 'Pending' ? 'selected' : '' ?>>Pending Requests Only</option>
-                <option value="Approved" <?= $status_filter === 'Approved' ? 'selected' : '' ?>>Approved Requests Only</option>
-                <option value="Rejected" <?= $status_filter === 'Rejected' ? 'selected' : '' ?>>Rejected Requests Only</option>
-                <option value="Expired" <?= $status_filter === 'Expired' ? 'selected' : '' ?>>Expired Requests Only</option>
+                <option value="Approved" <?= $status_filter === 'Approved' ? 'selected' : '' ?>>Active Reading Sessions</option>
+                <option value="Completed" <?= $status_filter === 'Completed' ? 'selected' : '' ?>>Completed Reading Only</option>
+                <option value="Expired" <?= $status_filter === 'Expired' ? 'selected' : '' ?>>Session Expired Only</option>
+                <option value="Rejected" <?= $status_filter === 'Rejected' ? 'selected' : '' ?>>Permission Denied Only</option>
             </select>
         </div>
         
@@ -91,17 +94,29 @@ $query_str = "SELECT r.*, m.name, m.membership_id, e.title FROM reading_requests
                 } else {
                     while($r = $x->fetch_assoc()) {
                         $isExp = ($r['status'] === 'Expired') || ($r['status'] === 'Approved' && !empty($r['expires_at']) && strtotime($r['expires_at']) <= time());
-                        $statusText = $isExp ? 'Expired' : $r['status'];
-                        $badgeClass = 'badge-orange';
-                        if ($r['status'] === 'Approved' && !$isExp) $badgeClass = 'badge-green';
-                        if ($r['status'] === 'Rejected' || $isExp) $badgeClass = 'badge-red';
+                        $hasStarted = !empty($r['started_reading_at']);
+                        
+                        // Status Badge styling and text determination
+                        if ($r['status'] === 'Pending') {
+                            $badgeHtml = '<span class="badge badge-orange"><i class="fa-solid fa-hourglass-half"></i> Pending</span>';
+                        } elseif ($r['status'] === 'Approved' && !$isExp) {
+                            $badgeHtml = '<span class="badge badge-green"><i class="fa-solid fa-book-open-reader"></i> Active Reading</span>';
+                        } elseif ($r['status'] === 'Rejected') {
+                            $badgeHtml = '<span class="badge badge-red"><i class="fa-solid fa-circle-xmark"></i> Permission Denied</span>';
+                        } elseif ($isExp) {
+                            if ($hasStarted) {
+                                $badgeHtml = '<span class="badge" style="background:#dcfce7; color:#15803d; border:1px solid #bbf7d0; font-weight:700;"><i class="fa-solid fa-circle-check"></i> Completed Reading</span>';
+                            } else {
+                                $badgeHtml = '<span class="badge badge-red" style="background:#fef2f2; color:#b91c1c; border:1px solid #fecaca;"><i class="fa-solid fa-clock-rotate-left"></i> Session Expired</span>';
+                            }
+                        }
                         
                         echo '<tr>';
                         echo '<td><code>' . e($r['membership_id']) . '</code></td>';
                         echo '<td><strong style="color:var(--navy-dark);">' . e($r['name']) . '</strong></td>';
                         echo '<td>' . e($r['title']) . '</td>';
                         echo '<td>' . date('d-m-Y h:i A', strtotime($r['requested_at'])) . '</td>';
-                        echo '<td><span class="badge ' . $badgeClass . '">' . $statusText . '</span></td>';
+                        echo '<td>' . $badgeHtml . '</td>';
                         echo '<td>';
                         if ($r['status'] === 'Pending') {
                             echo '
@@ -120,16 +135,20 @@ $query_str = "SELECT r.*, m.name, m.membership_id, e.title FROM reading_requests
                             </div>';
                         } elseif ($r['status'] === 'Approved' && !$isExp) {
                             if (!empty($r['expires_at'])) {
-                                echo '<span style="font-size:12px; color:var(--accent-green); font-weight:600;"><i class="fa-solid fa-circle-check"></i> Active session till ' . date('d-m-Y h:i A', strtotime($r['expires_at'])) . '</span>';
+                                echo '<span style="font-size:12px; color:var(--accent-green); font-weight:600;"><i class="fa-solid fa-book-open-reader"></i> Active session till ' . date('d-m-Y h:i A', strtotime($r['expires_at'])) . '</span>';
                             } elseif (!empty($r['approved_at'])) {
                                 echo '<span style="font-size:12px; color:var(--accent-green); font-weight:600;"><i class="fa-solid fa-circle-check"></i> Approved at ' . date('d-m-Y h:i A', strtotime($r['approved_at'])) . ' (' . (int)$r['duration_minutes'] . ' mins)</span>';
                             } else {
                                 echo '<span style="font-size:12px; color:var(--accent-green); font-weight:600;"><i class="fa-solid fa-circle-check"></i> Approved (' . (int)$r['duration_minutes'] . ' mins)</span>';
                             }
                         } elseif ($isExp) {
-                            echo '<span style="font-size:12px; color:var(--text-muted); font-weight:600;"><i class="fa-solid fa-clock-rotate-left"></i> Session Expired</span>';
+                            if ($hasStarted) {
+                                echo '<span style="font-size:12px; color:var(--accent-green); font-weight:700;"><i class="fa-solid fa-circle-check"></i> Completed Reading (' . date('d-m-Y h:i A', strtotime($r['expires_at'])) . ')</span>';
+                            } else {
+                                echo '<span style="font-size:12px; color:#ef4444; font-weight:600;"><i class="fa-solid fa-clock-rotate-left"></i> Session Expired (Unused)</span>';
+                            }
                         } else {
-                            echo '<span style="font-size:12px; color:var(--accent-red); font-weight:600;"><i class="fa-solid fa-circle-xmark"></i> Permission Declined</span>';
+                            echo '<span style="font-size:12px; color:var(--accent-red); font-weight:600;"><i class="fa-solid fa-circle-xmark"></i> Permission Denied</span>';
                         }
                         echo '</td>';
                         echo '</tr>';
