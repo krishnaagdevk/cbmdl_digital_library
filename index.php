@@ -85,6 +85,27 @@ function calculate_fine($due_date, $returned_at = null) {
     return ['days' => 0, 'fine' => 0.00];
 }
 
+// 2b. Membership History Audit Helper
+function log_membership_history($db, $member_id, $action_type = 'Initial Joining') {
+    $stmt = $db->prepare("SELECT m.*, p.name as plan_name FROM members m LEFT JOIN membership_plans p ON m.membership_plan_id = p.id WHERE m.id = ?");
+    if (!$stmt) return;
+    $stmt->bind_param("i", $member_id);
+    $stmt->execute();
+    $m = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    
+    if ($m && !empty($m['membership_id'])) {
+        $pName = !empty($m['plan_name']) ? $m['plan_name'] : $m['duration'];
+        $fee = (float)($m['membership_fee'] ?? 0.00);
+        $histStmt = $db->prepare("INSERT INTO membership_history (member_id, membership_id, membership_plan_id, plan_name, duration, shift, start_date, end_date, membership_fee, payment_id, action_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        if ($histStmt) {
+            $histStmt->bind_param("isisssssdss", $m['id'], $m['membership_id'], $m['membership_plan_id'], $pName, $m['duration'], $m['shift'], $m['start_date'], $m['end_date'], $fee, $m['payment_id'], $action_type);
+            $histStmt->execute();
+            $histStmt->close();
+        }
+    }
+}
+
 // 3. Secure PDF Streaming Routes (Prepared Statements & Access Control)
 if ($action === 'download_pdf') {
     if (!admin()) exit('Unauthorized');
@@ -97,7 +118,7 @@ if ($action === 'download_pdf') {
     $stmt->close();
     
     if ($b) {
-        $file = 'uploads/' . basename($b['pdf_file']);
+        $file = __DIR__ . '/uploads/' . basename($b['pdf_file']);
         if (is_file($file)) {
             header('Content-Type: application/pdf');
             header('Content-Disposition: inline; filename="' . basename($b['title']) . '.pdf"');
@@ -121,7 +142,7 @@ if ($action === 'read_pdf') {
     $stmt->close();
     
     if (!$r) exit('No active permission for this book.');
-    $file = 'uploads/' . basename($r['pdf_file']);
+    $file = __DIR__ . '/uploads/' . basename($r['pdf_file']);
     if (is_file($file)) {
         header('Content-Type: application/pdf');
         header('Content-Disposition: inline');
@@ -145,27 +166,21 @@ if ($action === 'secure_pdf_viewer') {
     $pdfTitle = 'Secure Interactive Reader';
     $streamUrl = '';
     
-    if ($source === 'admin') {
+    if ($source === 'admin' || admin()) {
         if (!admin()) exit('Unauthorized');
-        $stmt = $db->prepare("SELECT title FROM ebooks WHERE id = ?");
-        $stmt->bind_param("i", $id);
-        $stmt->execute();
-        $b = $stmt->get_result()->fetch_assoc();
-        $stmt->close();
-        
-        if (!$b) exit('Book not found.');
-        $pdfTitle = $b['title'];
-        $streamUrl = BASE_URL . '?action=view_pdf_content&id=' . $id;
+        go(BASE_URL . '?action=view_pdf_content&id=' . $id);
     } elseif ($source === 'member') {
         if (!member()) exit('Unauthorized');
         $mid = (int)$_SESSION['member'];
-        $stmt = $db->prepare("SELECT r.id, e.title FROM reading_requests r JOIN ebooks e ON e.id = r.ebook_id WHERE (r.id = ? OR r.ebook_id = ?) AND r.member_id = ? AND r.status = 'Approved' AND r.expires_at > NOW() ORDER BY r.id DESC LIMIT 1");
+        $stmt = $db->prepare("SELECT r.id, e.title, e.pdf_file FROM reading_requests r JOIN ebooks e ON e.id = r.ebook_id WHERE (r.id = ? OR r.ebook_id = ?) AND r.member_id = ? AND r.status = 'Approved' AND r.expires_at > NOW() ORDER BY r.id DESC LIMIT 1");
         $stmt->bind_param("iii", $id, $id, $mid);
         $stmt->execute();
         $r = $stmt->get_result()->fetch_assoc();
         $stmt->close();
         
-        if (!$r) exit('No active permission for this book.');
+        if (!$r || empty($r['pdf_file'])) {
+            exit('<div style="font-family:system-ui, sans-serif; text-align:center; padding:60px 20px; color:#ef4444; background:#0b0f19; height:100vh; box-sizing:border-box;"><h2 style="font-size:24px; margin-bottom:12px;">⚠️ Permission Expired or Book Not Found</h2><p style="color:#9ca3af; font-size:15px; max-width:500px; margin:0 auto 20px;">Your e-reading request for this book is either not approved or your active reading session has expired.</p><a href="' . BASE_URL . '?action=user&tab=books" style="display:inline-block; padding:10px 20px; background:#3b82f6; color:#fff; text-decoration:none; border-radius:8px; font-weight:600;">Return to Dashboard</a></div>');
+        }
         $pdfTitle = $r['title'];
         $streamUrl = BASE_URL . '?action=read_member_pdf_content&id=' . (int)$r['id'];
     } else {
@@ -452,27 +467,50 @@ if ($action === 'secure_pdf_viewer') {
                 flex-direction: column;
                 align-items: center;
                 justify-content: flex-start;
+                gap: 24px;
                 padding: 40px 20px;
                 background-color: var(--bg-primary);
                 position: relative;
                 box-sizing: border-box;
             }
 
-            .canvas-shadow-box {
+            .pdf-page-wrapper {
+                flex-shrink: 0;
+            }
+
+            .page-inner {
                 position: relative;
+                width: 100%;
+                height: 100%;
                 background-color: #ffffff;
                 border-radius: 4px;
                 box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.5);
-                transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 overflow: hidden;
             }
 
-            #mainCanvas {
+            .pdf-page-canvas {
                 display: block;
-                max-width: 100%;
+                width: 100%;
+                height: 100%;
+            }
+
+            .page-placeholder {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 10px;
+                color: var(--text-secondary);
+                opacity: 0.4;
+                font-size: 32px;
+            }
+
+            .page-placeholder-num {
+                font-size: 13px;
+                font-weight: 600;
             }
 
             .loading-screen {
@@ -577,11 +615,7 @@ if ($action === 'secure_pdf_viewer') {
                 <div id="thumbnailList" class="thumbnail-container"></div>
             </aside>
 
-            <section class="viewport-scroll-area">
-                <div class="canvas-shadow-box" id="canvasBox">
-                    <canvas id="mainCanvas"></canvas>
-                </div>
-            </section>
+            <section class="viewport-scroll-area"></section>
         </main>
 
         <script>
@@ -589,23 +623,29 @@ if ($action === 'secure_pdf_viewer') {
 
             const pdfUrl = '<?= $streamUrl ?>';
             let pdfDoc = null;
+            let numPages = 0;
             let currentPageNum = 1;
             let currentScale = 1.0;
             let currentRotation = 0;
-            let pageRendering = false;
-            let pageNumPending = null;
 
-            const mainCanvas = document.getElementById('mainCanvas');
-            const ctx = mainCanvas.getContext('2d');
-            const canvasBox = document.getElementById('canvasBox');
+            // Per-page state for the virtualized continuous-scroll viewport.
+            // Pages are only rasterized to a <canvas> while near the visible area;
+            // canvases outside the buffer are torn down to bound memory on huge PDFs,
+            // while the already-fetched PDFPageProxy (pageProxies) and its base
+            // dimensions (pageBaseDims) stay cached so scrolling back is instant.
+            let pageWrappers = [];
+            const pageProxies = {};
+            const pageBaseDims = {};
+            const renderedPages = new Set();
+            const pendingRenders = new Set();
+            const renderTasks = {};
+
             const loader = document.getElementById('loader');
             const loaderText = document.getElementById('loaderText');
             const pageNumInput = document.getElementById('pageNumInput');
             const pageCountLabel = document.getElementById('pageCount');
             const zoomPercentLabel = document.getElementById('zoomPercent');
             const viewportScrollArea = document.querySelector('.viewport-scroll-area');
-            let lastTransitionTime = 0;
-            const COOLDOWN_MS = 600;
 
             document.addEventListener('contextmenu', e => e.preventDefault());
             document.addEventListener('keydown', function(e) {
@@ -620,82 +660,252 @@ if ($action === 'secure_pdf_viewer') {
             });
 
             loaderText.textContent = 'Loading pages securely...';
-            
+
             pdfjsLib.getDocument({
                 url: pdfUrl,
                 withCredentials: true
             }).promise.then(function(doc) {
                 pdfDoc = doc;
-                pageCountLabel.textContent = doc.numPages;
-                pageNumInput.max = doc.numPages;
-                
-                buildThumbnailSidebar();
-                
-                renderPage(currentPageNum).then(() => {
-                    loader.style.opacity = '0';
-                    setTimeout(() => loader.style.display = 'none', 300);
+                numPages = doc.numPages;
+                pageCountLabel.textContent = numPages;
+                pageNumInput.max = numPages;
+
+                return getPageProxy(1).then(function() {
+                    buildPagesLayout();
+                    buildThumbnailSidebar();
+                    return renderPageIfNeeded(1);
                 });
+            }).then(function() {
+                updateVirtualization();
+                loader.style.opacity = '0';
+                setTimeout(() => loader.style.display = 'none', 300);
             }).catch(function(err) {
                 console.error('Error loading secure PDF: ', err);
                 loaderText.innerHTML = '<span style="color:#ef4444;"><span class="fa-solid fa-triangle-exclamation"></span> Error accessing file content or your e-reading permission has expired.</span>';
             });
 
-            function renderPage(num) {
-                pageRendering = true;
-                return pdfDoc.getPage(num).then(function(page) {
+            // Fetches (once) and caches the PDFPageProxy for a page, along with
+            // its unscaled/unrotated base size used to lay out not-yet-rendered pages.
+            function getPageProxy(num) {
+                if (!pageProxies[num]) {
+                    pageProxies[num] = pdfDoc.getPage(num).then(function(page) {
+                        const base = page.getViewport({ scale: 1.0, rotation: 0 });
+                        pageBaseDims[num] = { width: base.width, height: base.height };
+                        return page;
+                    });
+                }
+                return pageProxies[num];
+            }
+
+            function buildPagesLayout() {
+                viewportScrollArea.innerHTML = '';
+                pageWrappers = new Array(numPages + 1).fill(null);
+                renderedPages.clear();
+
+                for (let i = 1; i <= numPages; i++) {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'pdf-page-wrapper';
+                    wrapper.dataset.page = i;
+
+                    const inner = document.createElement('div');
+                    inner.className = 'page-inner';
+
+                    const placeholder = document.createElement('div');
+                    placeholder.className = 'page-placeholder';
+                    placeholder.innerHTML = '<span class="fa-solid fa-file-pdf"></span><span class="page-placeholder-num">' + i + '</span>';
+                    inner.appendChild(placeholder);
+
+                    wrapper.appendChild(inner);
+                    viewportScrollArea.appendChild(wrapper);
+                    pageWrappers[i] = wrapper;
+                }
+
+                applyPageSizing();
+            }
+
+            // Resizes every page wrapper for the current zoom/rotation. Pages whose real
+            // dimensions we already know (pageBaseDims) size exactly; others fall back to
+            // page 1's template, which is corrected the moment that page actually renders.
+            function applyPageSizing() {
+                const template = pageBaseDims[1] || { width: 800, height: 1120 };
+                const rotated = (currentRotation % 180) !== 0;
+
+                for (let i = 1; i <= numPages; i++) {
+                    const wrapper = pageWrappers[i];
+                    if (!wrapper) continue;
+                    const dims = pageBaseDims[i] || template;
+                    const w = (rotated ? dims.height : dims.width) * currentScale;
+                    const h = (rotated ? dims.width : dims.height) * currentScale;
+                    wrapper.style.width = w + 'px';
+                    wrapper.style.height = h + 'px';
+                }
+            }
+
+            function renderPageIfNeeded(num) {
+                if (renderedPages.has(num) || pendingRenders.has(num)) return Promise.resolve();
+                pendingRenders.add(num);
+
+                return getPageProxy(num).then(function(page) {
+                    pendingRenders.delete(num);
+                    const wrapper = pageWrappers[num];
+                    if (!wrapper) return;
+
                     const viewport = page.getViewport({ scale: currentScale, rotation: currentRotation });
-                    
-                    mainCanvas.height = viewport.height;
-                    mainCanvas.width = viewport.width;
-                    
-                    canvasBox.style.width = viewport.width + 'px';
-                    canvasBox.style.height = viewport.height + 'px';
+                    wrapper.style.width = viewport.width + 'px';
+                    wrapper.style.height = viewport.height + 'px';
 
-                    const renderContext = {
-                        canvasContext: ctx,
-                        viewport: viewport
-                    };
-                    
-                    const renderTask = page.render(renderContext);
-                    
+                    const inner = wrapper.querySelector('.page-inner');
+                    let canvas = inner.querySelector('canvas');
+                    if (!canvas) {
+                        canvas = document.createElement('canvas');
+                        canvas.className = 'pdf-page-canvas';
+                        inner.appendChild(canvas);
+                    }
+                    canvas.width = viewport.width;
+                    canvas.height = viewport.height;
+                    const pageCtx = canvas.getContext('2d');
+
+                    const renderTask = page.render({ canvasContext: pageCtx, viewport: viewport });
+                    renderTasks[num] = renderTask;
+
                     return renderTask.promise.then(function() {
-                        // Apply security watermark overlay on canvas
-                        ctx.save();
-                        ctx.font = 'bold ' + Math.max(16, Math.round(viewport.width / 25)) + 'px sans-serif';
-                        ctx.fillStyle = 'rgba(150, 150, 150, 0.18)';
-                        ctx.textAlign = 'center';
-                        ctx.textBaseline = 'middle';
-                        ctx.translate(viewport.width / 2, viewport.height / 2);
-                        ctx.rotate(-Math.PI / 6);
-                        ctx.fillText('CBMDLM SECURE DIGITAL READER - AUTHORIZED COPY', 0, 0);
-                        ctx.restore();
+                        delete renderTasks[num];
 
-                        pageRendering = false;
-                        updateActiveThumbnail(num);
-                        
-                        if (pageNumPending !== null) {
-                            renderPage(pageNumPending);
-                            pageNumPending = null;
+                        // Apply security watermark overlay on canvas
+                        pageCtx.save();
+                        pageCtx.font = 'bold ' + Math.max(16, Math.round(viewport.width / 25)) + 'px sans-serif';
+                        pageCtx.fillStyle = 'rgba(150, 150, 150, 0.18)';
+                        pageCtx.textAlign = 'center';
+                        pageCtx.textBaseline = 'middle';
+                        pageCtx.translate(viewport.width / 2, viewport.height / 2);
+                        pageCtx.rotate(-Math.PI / 6);
+                        pageCtx.fillText('CBMDLM SECURE DIGITAL READER - AUTHORIZED COPY', 0, 0);
+                        pageCtx.restore();
+
+                        const placeholder = inner.querySelector('.page-placeholder');
+                        if (placeholder) placeholder.remove();
+                        renderedPages.add(num);
+                    }).catch(function(err) {
+                        delete renderTasks[num];
+                        if (err && err.name !== 'RenderingCancelledException') {
+                            console.error('Page render error:', err);
                         }
                     });
                 });
             }
 
-            function queueRenderPage(num) {
-                pageNumInput.value = num;
-                if (pageRendering) {
-                    pageNumPending = num;
-                    return new Promise((resolve) => {
-                        const checkInterval = setInterval(() => {
-                            if (!pageRendering) {
-                                clearInterval(checkInterval);
-                                resolve();
-                            }
-                        }, 30);
-                    });
-                } else {
-                    return renderPage(num);
+            // Tears down a page's canvas to free memory once it scrolls well out of
+            // view, but keeps its cached PDFPageProxy so re-entering view re-renders
+            // instantly with no re-fetch.
+            function unrenderPage(num) {
+                if (renderTasks[num]) {
+                    renderTasks[num].cancel();
+                    delete renderTasks[num];
                 }
+                pendingRenders.delete(num);
+                if (!renderedPages.has(num)) return;
+
+                const wrapper = pageWrappers[num];
+                if (!wrapper) return;
+                const inner = wrapper.querySelector('.page-inner');
+                const canvas = inner && inner.querySelector('canvas');
+                if (canvas) {
+                    canvas.width = 0;
+                    canvas.height = 0;
+                    canvas.remove();
+                }
+                if (inner && !inner.querySelector('.page-placeholder')) {
+                    const placeholder = document.createElement('div');
+                    placeholder.className = 'page-placeholder';
+                    placeholder.innerHTML = '<span class="fa-solid fa-file-pdf"></span><span class="page-placeholder-num">' + num + '</span>';
+                    inner.appendChild(placeholder);
+                }
+                renderedPages.delete(num);
+            }
+
+            // Single geometry pass driving both virtualization (render pages near the
+            // viewport, free pages far from it) and the page-number indicator (whichever
+            // page occupies the most visible area). Runs rAF-throttled off scroll/resize.
+            function updateVirtualization() {
+                if (!pdfDoc) return;
+                const containerRect = viewportScrollArea.getBoundingClientRect();
+                const buffer = Math.max(containerRect.height, 600);
+
+                let bestPage = currentPageNum;
+                let bestVisibleArea = -1;
+
+                for (let i = 1; i <= numPages; i++) {
+                    const wrapper = pageWrappers[i];
+                    if (!wrapper) continue;
+                    const r = wrapper.getBoundingClientRect();
+                    const relTop = r.top - containerRect.top;
+                    const relBottom = r.bottom - containerRect.top;
+
+                    const inBufferRange = relBottom >= -buffer && relTop <= containerRect.height + buffer;
+                    if (inBufferRange) {
+                        renderPageIfNeeded(i);
+                    } else if (renderedPages.has(i)) {
+                        unrenderPage(i);
+                    }
+
+                    const visibleTop = Math.max(relTop, 0);
+                    const visibleBottom = Math.min(relBottom, containerRect.height);
+                    const visibleArea = Math.max(0, visibleBottom - visibleTop);
+                    if (visibleArea > bestVisibleArea) {
+                        bestVisibleArea = visibleArea;
+                        bestPage = i;
+                    }
+                }
+
+                if (bestVisibleArea > 0 && bestPage !== currentPageNum) {
+                    currentPageNum = bestPage;
+                    pageNumInput.value = bestPage;
+                    updateActiveThumbnail(bestPage);
+                }
+            }
+
+            let scrollTicking = false;
+            viewportScrollArea.addEventListener('scroll', function() {
+                if (scrollTicking) return;
+                scrollTicking = true;
+                requestAnimationFrame(function() {
+                    updateVirtualization();
+                    scrollTicking = false;
+                });
+            }, { passive: true });
+
+            window.addEventListener('resize', function() {
+                requestAnimationFrame(updateVirtualization);
+            });
+
+            function scrollToPage(num, smooth) {
+                const wrapper = pageWrappers[num];
+                if (!wrapper) return;
+                wrapper.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' });
+            }
+
+            // Re-lays out every page for a new zoom/rotation, keeping the page the
+            // user was reading anchored at the top instead of letting the resize
+            // scroll them to an arbitrary spot.
+            function relayoutAndRerender() {
+                const anchorPage = currentPageNum;
+                applyPageSizing();
+
+                Object.keys(renderTasks).forEach(function(num) {
+                    renderTasks[num].cancel();
+                    delete renderTasks[num];
+                });
+                Array.from(renderedPages).forEach(function(num) {
+                    const wrapper = pageWrappers[num];
+                    const canvas = wrapper && wrapper.querySelector('canvas');
+                    if (canvas) canvas.remove();
+                });
+                renderedPages.clear();
+
+                requestAnimationFrame(function() {
+                    scrollToPage(anchorPage, false);
+                    updateVirtualization();
+                });
             }
 
             function buildThumbnailSidebar() {
@@ -716,16 +926,13 @@ if ($action === 'secure_pdf_viewer') {
                     threshold: 0.05
                 });
 
-                for (let i = 1; i <= pdfDoc.numPages; i++) {
+                for (let i = 1; i <= numPages; i++) {
                     const card = document.createElement('div');
                     card.className = 'thumbnail-card';
                     card.id = 'thumb-card-' + i;
                     card.dataset.page = i;
                     card.onclick = () => {
-                        currentPageNum = i;
-                        queueRenderPage(i).then(() => {
-                            viewportScrollArea.scrollTop = 0;
-                        });
+                        scrollToPage(i, true);
                     };
 
                     const viewportDiv = document.createElement('div');
@@ -788,58 +995,48 @@ if ($action === 'secure_pdf_viewer') {
 
             document.getElementById('prevPageBtn').onclick = () => {
                 if (currentPageNum <= 1) return;
-                currentPageNum--;
-                queueRenderPage(currentPageNum).then(() => {
-                    viewportScrollArea.scrollTop = 0;
-                });
+                scrollToPage(currentPageNum - 1, true);
             };
 
             document.getElementById('nextPageBtn').onclick = () => {
-                if (currentPageNum >= pdfDoc.numPages) return;
-                currentPageNum++;
-                queueRenderPage(currentPageNum).then(() => {
-                    viewportScrollArea.scrollTop = 0;
-                });
+                if (currentPageNum >= numPages) return;
+                scrollToPage(currentPageNum + 1, true);
             };
 
             pageNumInput.onchange = (e) => {
                 let val = parseInt(e.target.value);
                 if (isNaN(val) || val < 1) val = 1;
-                if (val > pdfDoc.numPages) val = pdfDoc.numPages;
-                currentPageNum = val;
-                queueRenderPage(val).then(() => {
-                    viewportScrollArea.scrollTop = 0;
-                });
+                if (val > numPages) val = numPages;
+                scrollToPage(val, false);
             };
 
             document.getElementById('zoomInBtn').onclick = () => {
                 if (currentScale >= 3.0) return;
-                currentScale += 0.2;
+                currentScale = +(currentScale + 0.2).toFixed(2);
                 zoomPercentLabel.textContent = Math.round(currentScale * 100) + '%';
-                queueRenderPage(currentPageNum);
+                relayoutAndRerender();
             };
 
             document.getElementById('zoomOutBtn').onclick = () => {
                 if (currentScale <= 0.5) return;
-                currentScale -= 0.2;
+                currentScale = +(currentScale - 0.2).toFixed(2);
                 zoomPercentLabel.textContent = Math.round(currentScale * 100) + '%';
-                queueRenderPage(currentPageNum);
+                relayoutAndRerender();
             };
 
             document.getElementById('zoomFitBtn').onclick = () => {
-                const viewportScrollArea = document.querySelector('.viewport-scroll-area');
-                pdfDoc.getPage(currentPageNum).then(function(page) {
+                getPageProxy(currentPageNum).then(function(page) {
                     const originalViewport = page.getViewport({ scale: 1.0, rotation: currentRotation });
                     const fitWidth = viewportScrollArea.clientWidth - 80;
                     currentScale = fitWidth / originalViewport.width;
                     zoomPercentLabel.textContent = Math.round(currentScale * 100) + '%';
-                    queueRenderPage(currentPageNum);
+                    relayoutAndRerender();
                 });
             };
 
             document.getElementById('rotateBtn').onclick = () => {
                 currentRotation = (currentRotation + 90) % 360;
-                queueRenderPage(currentPageNum);
+                relayoutAndRerender();
             };
 
             const sidebar = document.getElementById('sidebar');
@@ -867,84 +1064,6 @@ if ($action === 'secure_pdf_viewer') {
                     fullscreenBtn.innerHTML = '<span class="fa-expand fa-solid"></span> Fullscreen';
                 }
             });
-
-            // Smooth hybrid continuous scroll transition handlers (up-to-down & top-to-up)
-            viewportScrollArea.addEventListener('wheel', function(e) {
-                const now = Date.now();
-                if (now - lastTransitionTime < COOLDOWN_MS) {
-                    return;
-                }
-
-                if (e.deltaY > 0) {
-                    // Scroll down: detect if viewport scroll has reached the bottom
-                    const isAtBottom = viewportScrollArea.scrollHeight - viewportScrollArea.scrollTop <= viewportScrollArea.clientHeight + 10;
-                    if (isAtBottom) {
-                        if (currentPageNum < pdfDoc.numPages) {
-                            lastTransitionTime = now;
-                            currentPageNum++;
-                            queueRenderPage(currentPageNum).then(() => {
-                                viewportScrollArea.scrollTop = 0; // instantly reset next page to top
-                            });
-                            e.preventDefault();
-                        }
-                    }
-                } else if (e.deltaY < 0) {
-                    // Scroll up: detect if viewport scroll has reached the top
-                    const isAtTop = viewportScrollArea.scrollTop <= 10;
-                    if (isAtTop) {
-                        if (currentPageNum > 1) {
-                            lastTransitionTime = now;
-                            currentPageNum--;
-                            queueRenderPage(currentPageNum).then(() => {
-                                // Jump directly to the bottom of the previous page
-                                setTimeout(() => {
-                                    viewportScrollArea.scrollTop = viewportScrollArea.scrollHeight - viewportScrollArea.clientHeight;
-                                }, 30);
-                            });
-                            e.preventDefault();
-                        }
-                    }
-                }
-            }, { passive: false });
-
-            // Mobile and trackpad touch swipe-based transition handlers
-            let touchStartY = 0;
-            viewportScrollArea.addEventListener('touchstart', function(e) {
-                if (e.touches.length === 1) {
-                    touchStartY = e.touches[0].clientY;
-                }
-            }, { passive: true });
-
-            viewportScrollArea.addEventListener('touchmove', function(e) {
-                if (e.touches.length !== 1) return;
-                const now = Date.now();
-                if (now - lastTransitionTime < COOLDOWN_MS) return;
-
-                const touchCurrentY = e.touches[0].clientY;
-                const diffY = touchStartY - touchCurrentY;
-
-                if (diffY > 15) { // Swipe up (scroll down)
-                    const isAtBottom = viewportScrollArea.scrollHeight - viewportScrollArea.scrollTop <= viewportScrollArea.clientHeight + 15;
-                    if (isAtBottom && currentPageNum < pdfDoc.numPages) {
-                        lastTransitionTime = now;
-                        currentPageNum++;
-                        queueRenderPage(currentPageNum).then(() => {
-                            viewportScrollArea.scrollTop = 0;
-                        });
-                    }
-                } else if (diffY < -15) { // Swipe down (scroll up)
-                    const isAtTop = viewportScrollArea.scrollTop <= 15;
-                    if (isAtTop && currentPageNum > 1) {
-                        lastTransitionTime = now;
-                        currentPageNum--;
-                        queueRenderPage(currentPageNum).then(() => {
-                            setTimeout(() => {
-                                viewportScrollArea.scrollTop = viewportScrollArea.scrollHeight - viewportScrollArea.clientHeight;
-                            }, 30);
-                        });
-                    }
-                }
-            }, { passive: true });
         </script>
     </body>
     </html>
@@ -1016,7 +1135,7 @@ if (admin()) {
         $password = trim($_POST['password'] ?? '');
         
         if ($username === '') {
-            flash('User ID is required.');
+            flash('⚠️ User ID is required.');
             go('?action=admin&tab=profile');
         }
         
@@ -1029,9 +1148,13 @@ if (admin()) {
             $stmt->bind_param("si", $username, $admin_id);
         }
         
-        $ok = $stmt->execute();
-        $stmt->close();
-        flash($ok ? 'Admin profile updated successfully.' : 'User ID already exists.');
+        try {
+            $ok = $stmt->execute();
+            $stmt->close();
+            flash($ok ? 'Admin profile updated successfully.' : '⚠️ User ID already exists.');
+        } catch (\mysqli_sql_exception $e) {
+            flash('⚠️ User ID already exists in system.');
+        }
         go('?action=admin&tab=profile');
     }
 
@@ -1041,35 +1164,65 @@ if (admin()) {
             $stmt = $db->prepare("INSERT IGNORE INTO categories (name) VALUES (?)");
             $stmt->bind_param("s", $n);
             $stmt->execute();
+            $affected = $stmt->affected_rows;
             $stmt->close();
-            flash('Category saved.');
+            if ($affected > 0) {
+                flash('Category "' . e($n) . '" created successfully.');
+            } else {
+                flash('⚠️ Category name "' . e($n) . '" already exists.');
+            }
         } else {
-            flash('Category name cannot be empty.');
+            flash('⚠️ Category name cannot be empty.');
         }
         go('?action=admin&tab=categories');
     }
 
     if ($action === 'delete_category' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = (int)($_POST['id'] ?? 0);
-        // Clean up E-book PDF files from disk belonging to ebooks under this category to avoid storage leaks
-        $ebsStmt = $db->prepare("SELECT pdf_file FROM ebooks WHERE category_id = ?");
-        if ($ebsStmt) {
-            $ebsStmt->bind_param("i", $id);
-            $ebsStmt->execute();
-            $res = $ebsStmt->get_result();
-            while ($eb = $res->fetch_assoc()) {
-                $f_file = 'uploads/' . basename($eb['pdf_file']);
-                if (is_file($f_file)) {
-                    @unlink($f_file);
-                }
+        if ($id > 0) {
+            // Fetch category name for clearer toast message
+            $catName = 'Category';
+            $cStmt = $db->prepare("SELECT name FROM categories WHERE id = ? LIMIT 1");
+            if ($cStmt) {
+                $cStmt->bind_param("i", $id);
+                $cStmt->execute();
+                $cRes = $cStmt->get_result()->fetch_assoc();
+                if ($cRes) $catName = '"' . e($cRes['name']) . '"';
+                $cStmt->close();
             }
-            $ebsStmt->close();
+
+            // Clean up E-book PDF files from disk belonging to ebooks under this category to avoid storage leaks
+            $ebsStmt = $db->prepare("SELECT pdf_file FROM ebooks WHERE category_id = ?");
+            if ($ebsStmt) {
+                $ebsStmt->bind_param("i", $id);
+                $ebsStmt->execute();
+                $res = $ebsStmt->get_result();
+                while ($eb = $res->fetch_assoc()) {
+                    $f_file = 'uploads/' . basename($eb['pdf_file']);
+                    if (is_file($f_file)) {
+                        @unlink($f_file);
+                    }
+                }
+                $ebsStmt->close();
+            }
+
+            try {
+                $stmt = $db->prepare("DELETE FROM categories WHERE id = ?");
+                $stmt->bind_param("i", $id);
+                $stmt->execute();
+                $affected = $stmt->affected_rows;
+                $stmt->close();
+                if ($affected > 0) {
+                    flash($catName . ' and all associated e-books deleted successfully.');
+                } else {
+                    flash('⚠️ Category not found or already deleted.');
+                }
+            } catch (\mysqli_sql_exception $e) {
+                flash('⚠️ Failed to delete category due to a database constraint.');
+            }
+        } else {
+            flash('⚠️ Invalid category ID specified.');
         }
-        $stmt = $db->prepare("DELETE FROM categories WHERE id = ?");
-        $stmt->bind_param("i", $id);
-        $stmt->execute();
-        $stmt->close();
-        flash('Category and all associated e-books deleted.');
         go('?action=admin&tab=categories');
     }
 
@@ -1096,6 +1249,10 @@ if (admin()) {
     }
 
     if ($action === 'view_pdf_content') {
+        if (!admin()) {
+            http_response_code(403);
+            exit('Unauthorized');
+        }
         $id = (int)($_GET['id'] ?? 0);
         $stmt = $db->prepare("SELECT * FROM ebooks WHERE id = ?");
         $stmt->bind_param("i", $id);
@@ -1103,10 +1260,13 @@ if (admin()) {
         $b = $stmt->get_result()->fetch_assoc();
         $stmt->close();
         
-        if ($b) {
-            $file = 'uploads/' . basename($b['pdf_file']);
-            stream_file_ranged($file, 'application/pdf', true, 300);
+        if ($b && !empty($b['pdf_file'])) {
+            $file = __DIR__ . '/uploads/' . basename($b['pdf_file']);
+            if (is_file($file)) {
+                stream_file_ranged($file, 'application/pdf', true, 300);
+            }
         }
+        http_response_code(404);
         exit('File not found.');
     }
 
@@ -1520,10 +1680,10 @@ if (admin()) {
                 fclose($handle);
                 flash("🎉 Catalog Ingestion Complete: Imported {$imported} items. (Skipped/Duplicate: {$skipped})");
             } else {
-                flash("Error opening uploaded CSV file.");
+                flash("⚠️ Error opening uploaded CSV file.");
             }
         } else {
-            flash("Error uploading file. Please ensure it is a valid CSV.");
+            flash("⚠️ Error uploading file. Please ensure it is a valid CSV.");
         }
         go('?action=admin&tab=' . $type);
     }
@@ -1546,75 +1706,21 @@ if (admin()) {
                 $t = trim($_POST['title'] ?? '');
                 $k = trim($_POST['keywords'] ?? '');
                 
-                $stmt = $db->prepare("INSERT INTO ebooks (category_id, title, keywords, pdf_file) VALUES (?, ?, ?, ?)");
-                $stmt->bind_param("isss", $c, $t, $k, $name);
-                $stmt->execute();
-                $stmt->close();
-                flash('E-book uploaded.');
-            } else {
-                flash('Uploaded file is not a valid PDF MIME-type.');
-            }
-        } else {
-            flash('Only PDF file is allowed.');
-        }
-        go('?action=admin&tab=ebooks');
-    }
-
-    if ($action === 'update_ebook' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-        if (!admin()) {
-            http_response_code(403);
-            exit('Unauthorized');
-        }
-        verify_csrf();
-        
-        $id = (int)$_POST['id'];
-        $c = (int)$_POST['category_id'];
-        $t = trim($_POST['title'] ?? '');
-        $k = trim($_POST['keywords'] ?? '');
-        
-        $file_name = null;
-        if (!empty($_FILES['pdf']['name']) && $_FILES['pdf']['error'] === 0) {
-            $f = $_FILES['pdf']['name'];
-            $ext = strtolower(pathinfo($f, PATHINFO_EXTENSION));
-            if ($ext === 'pdf') {
-                $tmp = $_FILES['pdf']['tmp_name'];
-                $finfo = finfo_open(FILEINFO_MIME_TYPE);
-                $mime = finfo_file($finfo, $tmp);
-                finfo_close($finfo);
-                
-                if ($mime === 'application/pdf') {
-                    $file_name = uniqid('book_') . '.pdf';
-                    move_uploaded_file($tmp, 'uploads/' . $file_name);
-                    
-                    // Delete old file
-                    $oldStmt = $db->prepare("SELECT pdf_file FROM ebooks WHERE id = ?");
-                    $oldStmt->bind_param("i", $id);
-                    $oldStmt->execute();
-                    $old_row = $oldStmt->get_result()->fetch_assoc();
-                    $old_pdf = $old_row['pdf_file'] ?? '';
-                    $oldStmt->close();
-                    
-                    if ($old_pdf !== '') {
-                        $old_file = 'uploads/' . basename($old_pdf);
-                        if (is_file($old_file)) {
-                            unlink($old_file);
-                        }
-                    }
+                try {
+                    $stmt = $db->prepare("INSERT INTO ebooks (category_id, title, keywords, pdf_file) VALUES (?, ?, ?, ?)");
+                    $stmt->bind_param("isss", $c, $t, $k, $name);
+                    $stmt->execute();
+                    $stmt->close();
+                    flash('E-book "' . e($t) . '" uploaded successfully.');
+                } catch (\mysqli_sql_exception $e) {
+                    flash('⚠️ Duplicate E-Book Title: An E-book titled "' . e($t) . '" already exists in this category.');
                 }
+            } else {
+                flash('⚠️ Uploaded file is not a valid PDF MIME-type.');
             }
-        }
-        
-        if ($file_name) {
-            $stmt = $db->prepare("UPDATE ebooks SET category_id = ?, title = ?, keywords = ?, pdf_file = ? WHERE id = ?");
-            $stmt->bind_param("isssi", $c, $t, $k, $file_name, $id);
         } else {
-            $stmt = $db->prepare("UPDATE ebooks SET category_id = ?, title = ?, keywords = ? WHERE id = ?");
-            $stmt->bind_param("issi", $c, $t, $k, $id);
+            flash('⚠️ Only PDF files are allowed.');
         }
-        $stmt->execute();
-        $stmt->close();
-        
-        flash('E-book updated.');
         go('?action=admin&tab=ebooks');
     }
 
@@ -1635,13 +1741,16 @@ if (admin()) {
         $stmt->execute();
         $stmt->close();
         
-        flash('E-book deleted.');
+        flash('E-book deleted successfully.');
         go('?action=admin&tab=ebooks');
     }
 
     if ($action === 'add_member' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $d = trim($_POST['duration'] ?? '');
-        $shift = in_array($_POST['shift'] ?? '', ['Both', 'Morning', 'Evening']) ? $_POST['shift'] : 'Both';
+        $shift = trim($_POST['shift'] ?? '');
+        if ($shift === '') {
+            $shift = 'Morning';
+        }
         $plan_id = isset($_POST['plan_id']) && $_POST['plan_id'] !== '' ? (int)$_POST['plan_id'] : null;
         $start = date('Y-m-d');
         
@@ -1652,29 +1761,30 @@ if (admin()) {
         }
         // Ensure payment_id is never empty string (required NOT NULL column)
         if ($data['payment_id'] === '') {
-            flash('Error: Payment / Transaction ID is required.');
+            flash('⚠️ Error: Payment / Transaction ID is required.');
             go('?action=admin&tab=members');
         }
         
         $gender = in_array($data['gender'], ['Male', 'Female', 'Other']) ? $data['gender'] : 'Male';
         
         if ($data['name'] === '' || $data['mobile'] === '' || $data['aadhar_no'] === '') {
-            flash('Error: Name, Mobile, and Aadhar Number are required.');
+            flash('⚠️ Error: Name, Mobile, and Aadhar Number are required.');
             go('?action=admin&tab=members');
         }
         
         $fee = (float)$data['membership_fee'];
         $feeStr = '';
         
-        // Auto-lookup amount & duration from selected membership_plan_id if empty
+        // Auto-lookup amount & duration from selected membership_plan_id
         if ($plan_id) {
             $pStmt = $db->prepare("SELECT duration, amount FROM membership_plans WHERE id = ?");
             $pStmt->bind_param("i", $plan_id);
             $pStmt->execute();
             $pRes = $pStmt->get_result()->fetch_assoc();
             if ($pRes) {
-                if ($fee <= 0.00) { $fee = (float)$pRes['amount']; }
-                if ($d === '') $d = $pRes['duration'];
+                $fee = (float)$pRes['amount'];
+                $d = $pRes['duration'];
+                $data['membership_fee'] = $fee;
             }
             $pStmt->close();
         }
@@ -1703,14 +1813,22 @@ if (admin()) {
         $chkAadhar->close();
         
         if ($data['payment_id'] !== '') {
-            $chkPay = $db->prepare("SELECT id FROM members WHERE payment_id = ? LIMIT 1");
+            $chkPay = $db->prepare("SELECT id FROM members WHERE LOWER(payment_id) = LOWER(?) LIMIT 1");
             $chkPay->bind_param("s", $data['payment_id']);
             $chkPay->execute();
-            if ($chkPay->get_result()->num_rows > 0) {
-                $dup_errors[] = "Transaction / Payment ID ('" . e($data['payment_id']) . "') has already been used for another membership.";
+            $memPayExists = ($chkPay->get_result()->num_rows > 0);
+            $chkPay->close();
+
+            $chkHist = $db->prepare("SELECT id FROM membership_history WHERE LOWER(payment_id) = LOWER(?) LIMIT 1");
+            $chkHist->bind_param("s", $data['payment_id']);
+            $chkHist->execute();
+            $histPayExists = ($chkHist->get_result()->num_rows > 0);
+            $chkHist->close();
+
+            if ($memPayExists || $histPayExists) {
+                $dup_errors[] = "Transaction / Payment ID ('" . e($data['payment_id']) . "') has already been recorded in the database.";
                 $dup_fields[] = 'payment_id';
             }
-            $chkPay->close();
         }
 
         $chkMobile = $db->prepare("SELECT id FROM members WHERE mobile = ? LIMIT 1");
@@ -1768,7 +1886,8 @@ if (admin()) {
                 $upStmt->bind_param("si", $mid_code, $new_id);
                 $upStmt->execute();
                 $upStmt->close();
-                flash('Member created. Membership ID: ' . $mid_code);
+                log_membership_history($db, $new_id, 'Initial Joining');
+                flash('✅ Member created successfully. Issued Membership ID: ' . $mid_code);
             }
         } catch (\mysqli_sql_exception $e) {
             flash('⚠️ Duplicate Entry Error: A member with these details already exists. ' . $e->getMessage());
@@ -1784,39 +1903,71 @@ if (admin()) {
         $id = (int)$_POST['id'];
         $plan_id = isset($_POST['plan_id']) && $_POST['plan_id'] !== '' ? (int)$_POST['plan_id'] : null;
         $d = trim($_POST['duration'] ?? '');
-        $shift = in_array($_POST['shift'] ?? '', ['Both', 'Morning', 'Evening']) ? $_POST['shift'] : 'Both';
+        $shift = trim($_POST['shift'] ?? '');
+        if ($shift === '') {
+            $shift = 'Morning';
+        }
         $fee = (float)($_POST['membership_fee'] ?? 0.00);
         $payment_id = trim($_POST['payment_id'] ?? '');
-        
-        // Auto-lookup amount & duration from selected membership_plan_id if empty
+
+        if ($payment_id === '') {
+            flash('⚠️ Error: Transaction / Payment Reference ID is required to approve membership.');
+            go('?action=admin&tab=members&view=' . $id);
+        }
+
+        // Auto-lookup amount & duration from selected membership_plan_id
         if ($plan_id) {
             $pStmt = $db->prepare("SELECT duration, amount FROM membership_plans WHERE id = ?");
             $pStmt->bind_param("i", $plan_id);
             $pStmt->execute();
             $pRes = $pStmt->get_result()->fetch_assoc();
             if ($pRes) {
-                if ($fee <= 0.00) $fee = (float)$pRes['amount'];
-                if ($d === '') $d = $pRes['duration'];
+                $fee = (float)$pRes['amount'];
+                $d = $pRes['duration'];
             }
             $pStmt->close();
         }
         if ($d === '') $d = 'Yearly';
-        
+
+        // Check for duplicate payment_id in membership_history or members
+        $chkHist = $db->prepare("SELECT id FROM membership_history WHERE LOWER(payment_id) = LOWER(?) LIMIT 1");
+        $chkHist->bind_param("s", $payment_id);
+        $chkHist->execute();
+        $histDup = ($chkHist->get_result()->num_rows > 0);
+        $chkHist->close();
+
+        $chkMem = $db->prepare("SELECT id FROM members WHERE LOWER(payment_id) = LOWER(?) AND id != ? LIMIT 1");
+        $chkMem->bind_param("si", $payment_id, $id);
+        $chkMem->execute();
+        $memDup = ($chkMem->get_result()->num_rows > 0);
+        $chkMem->close();
+
+        if ($histDup || $memDup) {
+            flash("⚠️ Duplicate Transaction Error: Payment ID ('" . e($payment_id) . "') has already been recorded for another transaction or membership. Approval rejected.");
+            go('?action=admin&tab=members&view=' . $id);
+        }
+
         $start = date('Y-m-d');
         $end = membership_end($d);
         $mid_code = 'CBMDLM' . $id;
-        
-        $stmt = $db->prepare("UPDATE members SET membership_id = ?, membership_plan_id = ?, membership_fee = ?, payment_id = ?, duration = ?, shift = ?, start_date = ?, end_date = ?, is_active = 1, approved = 1 WHERE id = ?");
-        $stmt->bind_param("sissssssi", $mid_code, $plan_id, $fee, $payment_id, $d, $shift, $start, $end, $id);
-        $ok = $stmt->execute();
-        $stmt->close();
-        
-        if ($ok) {
-            flash('Member application approved. Membership ID issued: ' . $mid_code);
-        } else {
-            flash('Error approving member application.');
+
+        try {
+            $stmt = $db->prepare("UPDATE members SET membership_id = ?, membership_plan_id = ?, membership_fee = ?, payment_id = ?, duration = ?, shift = ?, start_date = ?, end_date = ?, is_active = 1, approved = 1 WHERE id = ?");
+            $stmt->bind_param("sissssssi", $mid_code, $plan_id, $fee, $payment_id, $d, $shift, $start, $end, $id);
+            $ok = $stmt->execute();
+            $stmt->close();
+
+            if ($ok) {
+                log_membership_history($db, $id, 'Initial Joining');
+                flash('✅ Member application approved successfully! Issued Membership ID: ' . $mid_code);
+            } else {
+                flash('⚠️ Error approving member application.');
+            }
+        } catch (\mysqli_sql_exception $e) {
+            flash('⚠️ Duplicate Entry Error: Could not approve membership due to a duplicate transaction reference or database conflict.');
         }
-        go('?action=admin&tab=members');
+
+        go('?action=admin&tab=members&view=' . $id);
     }
 
     if ($action === 'update_member' && $_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -1843,7 +1994,7 @@ if (admin()) {
             }
             $stmt->execute();
             $stmt->close();
-            flash('Member profile updated.');
+            flash('Member profile updated successfully.');
         } catch (\mysqli_sql_exception $e) {
             flash('⚠️ Duplicate Entry Error: A member with this Mobile number or Aadhar number already exists.');
         }
@@ -1851,33 +2002,229 @@ if (admin()) {
         go('?action=admin&tab=' . $refTab . '&view=' . $id);
     }
 
+    if ($action === 'request_renewal' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        if (!member()) {
+            flash('⚠️ Please log in to submit a renewal request.');
+            go('?action=login');
+        }
+        $member = $_SESSION['member'];
+        $member_id = (int)$member['id'];
+        $plan_id = (int)($_POST['plan_id'] ?? 0);
+        $shift = trim($_POST['shift'] ?? 'Morning');
+        $payment_id = trim($_POST['payment_id'] ?? '');
+
+        if ($plan_id <= 0 || $payment_id === '') {
+            flash('⚠️ Error: Please select a membership plan and provide a transaction reference ID.');
+            go('?action=user&tab=history');
+        }
+
+        // Check if there is already a pending renewal request for this member
+        $chkReq = $db->prepare("SELECT id FROM renewal_requests WHERE member_id = ? AND status = 'Pending' LIMIT 1");
+        $chkReq->bind_param("i", $member_id);
+        $chkReq->execute();
+        if ($chkReq->get_result()->num_rows > 0) {
+            $chkReq->close();
+            flash('⚠️ You already have a pending renewal request under review by the librarian.');
+            go('?action=user&tab=history');
+        }
+        $chkReq->close();
+
+        // Check for duplicate payment_id
+        $chkPay = $db->prepare("SELECT id FROM renewal_requests WHERE LOWER(payment_id) = LOWER(?) AND status != 'Rejected' LIMIT 1");
+        $chkPay->bind_param("s", $payment_id);
+        $chkPay->execute();
+        if ($chkPay->get_result()->num_rows > 0) {
+            $chkPay->close();
+            flash("⚠️ Duplicate Payment Reference: Transaction ID ('" . e($payment_id) . "') is already associated with another renewal request.");
+            go('?action=user&tab=history');
+        }
+        $chkPay->close();
+
+        // Insert renewal request
+        $ins = $db->prepare("INSERT INTO renewal_requests (member_id, membership_plan_id, shift, payment_id, status) VALUES (?, ?, ?, ?, 'Pending')");
+        $ins->bind_param("iiss", $member_id, $plan_id, $shift, $payment_id);
+        if ($ins->execute()) {
+            flash('✅ Online renewal request submitted successfully! The librarian will verify your payment and update your pass.');
+        } else {
+            flash('⚠️ Error submitting renewal request. Please try again.');
+        }
+        $ins->close();
+        go('?action=user&tab=history');
+    }
+
+    if ($action === 'approve_renewal_request' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        if (!admin()) exit('Unauthorized');
+        $req_id = (int)$_POST['id'];
+
+        $rStmt = $db->prepare("SELECT r.*, m.name as member_name, m.start_date, m.end_date, m.is_active, m.approved FROM renewal_requests r JOIN members m ON r.member_id = m.id WHERE r.id = ? AND r.status = 'Pending'");
+        $rStmt->bind_param("i", $req_id);
+        $rStmt->execute();
+        $req = $rStmt->get_result()->fetch_assoc();
+        $rStmt->close();
+
+        if (!$req) {
+            flash('⚠️ Error: Pending renewal request not found.');
+            go('?action=admin&tab=members');
+        }
+
+        $id = (int)$req['member_id'];
+        $plan_id = (int)$req['membership_plan_id'];
+        $payment_id = $req['payment_id'];
+        $shift = $req['shift'];
+
+        $d = 'Yearly';
+        $fee = 0.00;
+        $pStmt = $db->prepare("SELECT duration, amount FROM membership_plans WHERE id = ?");
+        $pStmt->bind_param("i", $plan_id);
+        $pStmt->execute();
+        if ($pRes = $pStmt->get_result()->fetch_assoc()) {
+            $d = $pRes['duration'];
+            $fee = (float)$pRes['amount'];
+        }
+        $pStmt->close();
+
+        $today = date('Y-m-d');
+        $isCurrentlyActive = (!empty($req['end_date']) && $req['end_date'] >= $today && ($req['is_active'] ?? 1) == 1 && ($req['approved'] ?? 1) == 1);
+        $start = $isCurrentlyActive ? date('Y-m-d', strtotime($req['end_date'] . ' +1 day')) : $today;
+        $end = membership_end($d, $start);
+
+        $db->begin_transaction();
+        try {
+            $stmt = $db->prepare("UPDATE members SET duration = ?, start_date = ?, end_date = ?, payment_id = ?, membership_plan_id = ?, membership_fee = ?, shift = ?, is_active = 1 WHERE id = ?");
+            $stmt->bind_param("ssssidsi", $d, $start, $end, $payment_id, $plan_id, $fee, $shift, $id);
+            $stmt->execute();
+            $stmt->close();
+
+            $upReq = $db->prepare("UPDATE renewal_requests SET status = 'Approved', approved_at = NOW() WHERE id = ?");
+            $upReq->bind_param("i", $req_id);
+            $upReq->execute();
+            $upReq->close();
+
+            log_membership_history($db, $id, 'Renewal');
+            $db->commit();
+
+            flash('✅ Online Renewal Request Approved for ' . e($req['member_name']) . '! Active pass extended to ' . date('d M Y', strtotime($end)) . '.');
+        } catch (\Throwable $e) {
+            $db->rollback();
+            flash('⚠️ Transaction Error: Could not approve renewal request. ' . $e->getMessage());
+        }
+
+        go('?action=admin&tab=members');
+    }
+
+    if ($action === 'reject_renewal_request' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        if (!admin()) exit('Unauthorized');
+        $req_id = (int)$_POST['id'];
+
+        $upReq = $db->prepare("UPDATE renewal_requests SET status = 'Rejected' WHERE id = ? AND status = 'Pending'");
+        $upReq->bind_param("i", $req_id);
+        if ($upReq->execute() && $upReq->affected_rows > 0) {
+            flash('Renewal request marked as rejected.');
+        } else {
+            flash('⚠️ Request not found or already processed.');
+        }
+        $upReq->close();
+
+        go('?action=admin&tab=members');
+    }
+
     if ($action === 'renew_member' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = (int)$_POST['id'];
-        $d = $_POST['duration'] ?? 'Yearly';
         $plan_id = isset($_POST['plan_id']) && $_POST['plan_id'] !== '' ? (int)$_POST['plan_id'] : null;
         $payment_id = trim($_POST['payment_id'] ?? '');
         $fee = (float)($_POST['membership_fee'] ?? 0.00);
-        
-        // If fee was not passed in POST, auto-fetch amount from selected membership_plan_id
-        if ($fee <= 0.00 && $plan_id) {
-            $pStmt = $db->prepare("SELECT amount FROM membership_plans WHERE id = ?");
+        $d = trim($_POST['duration'] ?? '');
+        $refTab = $_GET['tab'] ?? 'members';
+
+        if ($payment_id === '') {
+            flash('⚠️ Error: Transaction / Payment Reference ID is required to process renewal.');
+            go('?action=admin&tab=' . $refTab . '&view=' . $id);
+        }
+
+        // Fetch duration & amount from selected membership_plan_id FIRST before calculating end date
+        if ($plan_id) {
+            $pStmt = $db->prepare("SELECT duration, amount FROM membership_plans WHERE id = ?");
             $pStmt->bind_param("i", $plan_id);
             $pStmt->execute();
             $pRes = $pStmt->get_result()->fetch_assoc();
-            if ($pRes) $fee = (float)$pRes['amount'];
+            if ($pRes) {
+                $d = $pRes['duration'];
+                $fee = (float)$pRes['amount'];
+            }
             $pStmt->close();
         }
-        
-        $start = date('Y-m-d');
-        $end = membership_end($d);
-        
-        $stmt = $db->prepare("UPDATE members SET duration = ?, start_date = ?, end_date = ?, payment_id = ?, membership_plan_id = ?, membership_fee = ? WHERE id = ?");
-        $stmt->bind_param("ssssidi", $d, $start, $end, $payment_id, $plan_id, $fee, $id);
-        $stmt->execute();
-        $stmt->close();
-        
-        flash('Membership renewed successfully.');
-        $refTab = $_GET['tab'] ?? 'members';
+
+        $validDurations = ['Yearly', 'Half Yearly', 'Quarterly', 'Monthly', 'Daily'];
+        if (!in_array($d, $validDurations)) $d = 'Yearly';
+
+        // Fetch member details to check current active status and pass expiration
+        $mStmt = $db->prepare("SELECT name, start_date, end_date, is_active, approved FROM members WHERE id = ?");
+        $mStmt->bind_param("i", $id);
+        $mStmt->execute();
+        $mRes = $mStmt->get_result()->fetch_assoc();
+        $mName = $mRes['name'] ?? 'Member';
+        $mStmt->close();
+
+        $today = date('Y-m-d');
+        $isCurrentlyActive = ($mRes && !empty($mRes['end_date']) && $mRes['end_date'] >= $today && ($mRes['is_active'] ?? 1) == 1 && ($mRes['approved'] ?? 1) == 1);
+
+        if ($isCurrentlyActive) {
+            // Active membership: renewal term starts on the NEXT DAY after current pass expires
+            $start = date('Y-m-d', strtotime($mRes['end_date'] . ' +1 day'));
+        } else {
+            // Expired or inactive membership: renewal term starts TODAY
+            $start = $today;
+        }
+
+        // Calculate end date based on new start date AND updated duration $d
+        $end = membership_end($d, $start);
+
+        // Check for duplicate payment_id in membership_history or members
+        $chkHist = $db->prepare("SELECT id FROM membership_history WHERE LOWER(payment_id) = LOWER(?) LIMIT 1");
+        $chkHist->bind_param("s", $payment_id);
+        $chkHist->execute();
+        $histDup = ($chkHist->get_result()->num_rows > 0);
+        $chkHist->close();
+
+        $chkMem = $db->prepare("SELECT id FROM members WHERE LOWER(payment_id) = LOWER(?) AND id != ? LIMIT 1");
+        $chkMem->bind_param("si", $payment_id, $id);
+        $chkMem->execute();
+        $memDup = ($chkMem->get_result()->num_rows > 0);
+        $chkMem->close();
+
+        if ($histDup || $memDup) {
+            flash("⚠️ Duplicate Transaction Error: Transaction / Payment ID ('" . e($payment_id) . "') has already been recorded in the database. Renewal failed.");
+            go('?action=admin&tab=' . $refTab . '&view=' . $id);
+        }
+
+        $shift = trim($_POST['shift'] ?? '');
+
+        $db->begin_transaction();
+        try {
+            if ($shift !== '') {
+                $stmt = $db->prepare("UPDATE members SET duration = ?, start_date = ?, end_date = ?, payment_id = ?, membership_plan_id = ?, membership_fee = ?, shift = ?, is_active = 1 WHERE id = ?");
+                $stmt->bind_param("ssssidsi", $d, $start, $end, $payment_id, $plan_id, $fee, $shift, $id);
+            } else {
+                $stmt = $db->prepare("UPDATE members SET duration = ?, start_date = ?, end_date = ?, payment_id = ?, membership_plan_id = ?, membership_fee = ?, is_active = 1 WHERE id = ?");
+                $stmt->bind_param("ssssidi", $d, $start, $end, $payment_id, $plan_id, $fee, $id);
+            }
+            $stmt->execute();
+            $stmt->close();
+
+            log_membership_history($db, $id, 'Renewal');
+            $db->commit();
+
+            if ($isCurrentlyActive) {
+                $msg = '✅ Early Renewal Applied for ' . e($mName) . '! Active pass extended: New term starts ' . date('d M Y', strtotime($start)) . ' and valid until ' . date('d M Y', strtotime($end)) . ' (' . e($d) . ', Fee: ₹' . number_format($fee, 2) . ').';
+            } else {
+                $msg = '✅ Membership Renewed Successfully for ' . e($mName) . '! New active term: ' . date('d M Y', strtotime($start)) . ' to ' . date('d M Y', strtotime($end)) . ' (' . e($d) . ', Fee: ₹' . number_format($fee, 2) . ').';
+            }
+            flash($msg);
+        } catch (\Throwable $e) {
+            $db->rollback();
+            flash('⚠️ Duplicate Entry Error: Could not process renewal due to a duplicate transaction reference or database constraint.');
+        }
+
         go('?action=admin&tab=' . $refTab . '&view=' . $id);
     }
 
@@ -1901,13 +2248,17 @@ if (admin()) {
         $amount = (float)($_POST['amount'] ?? 0.00);
         
         if ($name !== '') {
-            $stmt = $db->prepare("INSERT INTO membership_plans (name, duration, amount) VALUES (?, ?, ?)");
-            $stmt->bind_param("ssd", $name, $duration, $amount);
-            $stmt->execute();
-            $stmt->close();
-            flash('Membership plan added successfully.');
+            try {
+                $stmt = $db->prepare("INSERT INTO membership_plans (name, duration, amount) VALUES (?, ?, ?)");
+                $stmt->bind_param("ssd", $name, $duration, $amount);
+                $stmt->execute();
+                $stmt->close();
+                flash('Membership plan "' . e($name) . '" created successfully.');
+            } catch (\mysqli_sql_exception $e) {
+                flash('⚠️ Duplicate Plan Name: A membership plan named "' . e($name) . '" already exists.');
+            }
         } else {
-            flash('Plan name is required.');
+            flash('⚠️ Plan name is required.');
         }
         go('?action=admin&tab=plans');
     }
@@ -1919,24 +2270,32 @@ if (admin()) {
         $amount = (float)($_POST['amount'] ?? 0.00);
         
         if ($name !== '') {
-            $stmt = $db->prepare("UPDATE membership_plans SET name = ?, duration = ?, amount = ? WHERE id = ?");
-            $stmt->bind_param("ssdi", $name, $duration, $amount, $id);
-            $stmt->execute();
-            $stmt->close();
-            flash('Membership plan updated successfully.');
+            try {
+                $stmt = $db->prepare("UPDATE membership_plans SET name = ?, duration = ?, amount = ? WHERE id = ?");
+                $stmt->bind_param("ssdi", $name, $duration, $amount, $id);
+                $stmt->execute();
+                $stmt->close();
+                flash('Membership plan "' . e($name) . '" updated successfully.');
+            } catch (\mysqli_sql_exception $e) {
+                flash('⚠️ Duplicate Plan Name: A membership plan named "' . e($name) . '" already exists.');
+            }
         } else {
-            flash('Plan name is required.');
+            flash('⚠️ Plan name is required.');
         }
         go('?action=admin&tab=plans');
     }
 
     if ($action === 'delete_plan' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = (int)$_POST['id'];
-        $stmt = $db->prepare("DELETE FROM membership_plans WHERE id = ?");
-        $stmt->bind_param("i", $id);
-        $stmt->execute();
-        $stmt->close();
-        flash('Membership plan deleted successfully.');
+        try {
+            $stmt = $db->prepare("DELETE FROM membership_plans WHERE id = ?");
+            $stmt->bind_param("i", $id);
+            $stmt->execute();
+            $stmt->close();
+            flash('Membership plan deleted successfully.');
+        } catch (\mysqli_sql_exception $e) {
+            flash('⚠️ Integrity Warning: Cannot delete a membership plan that is assigned to existing members.');
+        }
         go('?action=admin&tab=plans');
     }
 
@@ -2111,7 +2470,7 @@ if (admin()) {
         $stmt->execute();
         $stmt->close();
         
-        flash('Reading permission approved.');
+        flash('Reading permission approved successfully.');
         go('?action=admin&tab=requests');
     }
 
@@ -2121,7 +2480,7 @@ if (admin()) {
         $stmt->bind_param("i", $id);
         $stmt->execute();
         $stmt->close();
-        flash('Request rejected.');
+        flash('Request rejected successfully.');
         go('?action=admin&tab=requests');
     }
 
@@ -2133,7 +2492,7 @@ if (admin()) {
         $tx = trim($_POST['transaction_id'] ?? '');
         
         if (!$tx) {
-            flash('Payment / Transaction ID is mandatory.');
+            flash('⚠️ Payment / Transaction ID is mandatory.');
             go('?action=admin&tab=lending');
         }
         
@@ -2168,14 +2527,12 @@ if (admin()) {
             $lStmt->execute();
             $lStmt->close();
             
-            // Availability is tracked dynamically via lendings table. No direct is_available column is required.
-            
             // Auto-complete any active/awaiting holds for this member and book
             $db->query("UPDATE hold_requests SET status = 'Completed' WHERE physical_book_id = " . (int)$book['id'] . " AND member_id = " . (int)$m['id'] . " AND status IN ('Active', 'Awaiting Collection')");
             
-            flash('Book lent successfully.');
+            flash('Book issued successfully.');
         } else {
-            flash('Member or available book was not found.');
+            flash('⚠️ Member or available book copy was not found.');
         }
         go('?action=admin&tab=lending');
     }
@@ -2196,7 +2553,6 @@ if (admin()) {
         
         if ($pbRow) {
             $book_id = $pbRow['physical_book_id'];
-            // Availability is tracked dynamically via lendings table. No direct is_available column is required.
             
             // Check if there is an active hold reservation on this book
             $holdStmt = $db->prepare("SELECT h.id, m.name FROM hold_requests h JOIN members m ON m.id = h.member_id WHERE h.physical_book_id = ? AND h.status = 'Active' ORDER BY h.id ASC LIMIT 1");
@@ -2209,10 +2565,10 @@ if (admin()) {
                 $db->query("UPDATE hold_requests SET status = 'Awaiting Collection' WHERE id = " . (int)$holdRow['id']);
                 flash("🎉 Book returned successfully! NOTE: This book has an active hold reservation by member '" . e($holdRow['name']) . "'. It has been placed in 'Awaiting Collection' status.");
             } else {
-                flash('Book marked as returned and available.');
+                flash('Book returned successfully and marked as available.');
             }
         } else {
-            flash('Book marked as returned.');
+            flash('Book returned successfully.');
         }
         $ref = $_POST['tab'] ?? 'lending';
         go('?action=admin&tab=' . $ref);
@@ -2224,7 +2580,7 @@ if (admin()) {
         $stmt->bind_param("i", $id);
         $stmt->execute();
         $stmt->close();
-        flash('Print request completed.');
+        flash('Print request marked as completed successfully.');
         go('?action=admin&tab=prints');
     }
 }
@@ -2242,9 +2598,10 @@ if (member()) {
         $r = $stmt->get_result()->fetch_assoc();
         $stmt->close();
         
-        if (!$r || !$r['pdf_file']) exit('No active permission for this book.');
+        if (!$r || empty($r['pdf_file'])) {
+            exit('<div style="font-family:system-ui, sans-serif; text-align:center; padding:60px 20px; color:#ef4444; background:#0b0f19; height:100vh; box-sizing:border-box;"><h2 style="font-size:24px; margin-bottom:12px;">⚠️ Permission Expired or Book Not Found</h2><p style="color:#9ca3af; font-size:15px; max-width:500px; margin:0 auto 20px;">Your e-reading request for this book is either not approved or your active reading session has expired.</p><a href="' . BASE_URL . '?action=user&tab=books" style="display:inline-block; padding:10px 20px; background:#3b82f6; color:#fff; text-decoration:none; border-radius:8px; font-weight:600;">Return to Dashboard</a></div>');
+        }
         
-        // Redirect directly to the secure viewer (same engine admin uses) — no iframe wrapper
         go(BASE_URL . '?action=secure_pdf_viewer&source=member&id=' . urlencode($r['id']));
     }
 
@@ -2258,9 +2615,12 @@ if (member()) {
         $stmt->close();
         
         if ($r && !empty($r['pdf_file'])) {
-            $file = 'uploads/' . basename($r['pdf_file']);
-            stream_file_ranged($file, 'application/pdf', true, 300);
+            $file = __DIR__ . '/uploads/' . basename($r['pdf_file']);
+            if (is_file($file)) {
+                stream_file_ranged($file, 'application/pdf', true, 300);
+            }
         }
+        http_response_code(403);
         exit('File not found or e-reading permission has expired.');
     }
 
@@ -2308,9 +2668,9 @@ if (member()) {
             $stmt->bind_param("ii", $mid, $id);
             $stmt->execute();
             $stmt->close();
-            flash('Reading request sent to librarian.');
+            flash('Reading request submitted successfully to the librarian.');
         } else {
-            flash('Reading request already submitted and pending approval.');
+            flash('⚠️ Reading request already submitted and pending approval.');
         }
         go('?action=user&tab=books');
     }
@@ -2393,18 +2753,21 @@ if (member()) {
         exit;
     }
 
-
-
     if ($action === 'request_print' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = (int)$_POST['ebook_id'];
         $p = trim($_POST['pages'] ?? '');
+        
+        if ($p === '') {
+            flash('⚠️ Please specify valid page numbers for printing.');
+            go('?action=user&tab=books');
+        }
         
         $stmt = $db->prepare("INSERT INTO print_requests (member_id, ebook_id, pages) VALUES (?, ?, ?)");
         $stmt->bind_param("iis", $mid, $id, $p);
         $stmt->execute();
         $stmt->close();
         
-        flash('Print request sent to librarian.');
+        flash('Print request submitted successfully to the librarian.');
         go('?action=user&tab=books');
     }
 }

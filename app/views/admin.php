@@ -26,6 +26,7 @@ $side_prt_count = (int)$db->query("SELECT COUNT(*) c FROM print_requests WHERE s
         <a href="?action=admin&tab=view_lending" class="<?= $tab === 'view_lending' ? 'active' : '' ?>"><i class="fa-solid fa-clock-rotate-left"></i>View Lending List</a>
         <a href="?action=admin&tab=members" class="<?= $tab === 'members' ? 'active' : '' ?>"><i class="fa-solid fa-user-plus"></i> Add Membership</a>
         <a href="?action=admin&tab=view_members" class="<?= $tab === 'view_members' ? 'active' : '' ?>"><i class="fa-solid fa-users"></i>View Membership</a>
+        <a href="?action=admin&tab=membership_history" class="<?= $tab === 'membership_history' ? 'active' : '' ?>"><i class="fa-solid fa-clock-rotate-left"></i> Membership History</a>
         <a href="?action=admin&tab=plans" class="<?= $tab === 'plans' ? 'active' : '' ?>"><i class="fa-solid fa-user-master"></i>Master Data</a>
         <a href="?action=admin&tab=categories" class="<?= $tab === 'categories' ? 'active' : '' ?>"><i class="fa-solid fa-folder-open"></i>E-Book Categories</a>
         <a href="?action=admin&tab=profile" class="<?= $tab === 'profile' ? 'active' : '' ?>"><i class="fa-solid fa-user-shield"></i>Librarian Profile</a>
@@ -137,73 +138,9 @@ $side_prt_count = (int)$db->query("SELECT COUNT(*) c FROM print_requests WHERE s
             let isInitialAdminPoll = true;
 
             function showAdminToastNotification(message, type = 'info') {
-                let container = document.getElementById('toastNotificationContainer');
-                if (!container) {
-                    container = document.createElement('div');
-                    container.id = 'toastNotificationContainer';
-                    container.style.cssText = `
-                        position: fixed;
-                        top: 24px;
-                        right: 24px;
-                        display: flex;
-                        flex-direction: column;
-                        gap: 12px;
-                        z-index: 10000;
-                        pointer-events: none;
-                        max-width: 380px;
-                        width: calc(100% - 48px);
-                    `;
-                    document.body.appendChild(container);
+                if (window.showToast) {
+                    window.showToast(message, type);
                 }
-                
-                const toast = document.createElement('div');
-                toast.style.cssText = `
-                    background: var(--card-bg, #ffffff);
-                    color: var(--text-color, #1e293b);
-                    border-radius: 12px;
-                    padding: 16px;
-                    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-                    border: 1px solid var(--border-color, #e2e8f0);
-                    border-left: 5px solid var(--accent-orange, #f59e0b);
-                    display: flex;
-                    align-items: flex-start;
-                    gap: 12px;
-                    pointer-events: auto;
-                    transform: translateX(120%);
-                    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s, margin 0.4s;
-                    opacity: 0;
-                `;
-                
-                if (type === 'print') {
-                    toast.style.borderLeftColor = 'var(--accent-blue, #3b82f6)';
-                }
-                
-                let iconHtml = '<i class="fa-solid fa-bell" style="color:var(--accent-orange); font-size:18px;"></i>';
-                if (type === 'print') {
-                    iconHtml = '<i class="fa-solid fa-print" style="color:var(--accent-blue); font-size:18px;"></i>';
-                }
-                
-                toast.innerHTML = `
-                    <div style="flex-shrink:0;">${iconHtml}</div>
-                    <div style="flex:1; font-size:13px; line-height:1.5;">
-                        <div style="font-weight:700; margin-bottom:2px; color:var(--navy-dark);">${type === 'print' ? 'New Print Job Request' : 'New Reading Permission Request'}</div>
-                        <div>${message}</div>
-                    </div>
-                    <button onclick="this.parentElement.remove()" style="background:none; border:none; padding:0; cursor:pointer; color:var(--text-muted); font-size:14px;"><i class="fa-solid fa-xmark"></i></button>
-                `;
-                
-                container.appendChild(toast);
-                
-                requestAnimationFrame(() => {
-                    toast.style.transform = 'translateX(0)';
-                    toast.style.opacity = '1';
-                });
-                
-                setTimeout(() => {
-                    toast.style.transform = 'translateX(120%)';
-                    toast.style.opacity = '0';
-                    setTimeout(() => toast.remove(), 400);
-                }, 8000);
             }
 
             function pollAdminNotifications() {
@@ -327,7 +264,7 @@ $side_prt_count = (int)$db->query("SELECT COUNT(*) c FROM print_requests WHERE s
 
         <?php
         // Include modular tab view
-        $allowed_tabs = ['dashboard', 'categories', 'ebooks', 'view_ebooks', 'physical', 'view_physical', 'requests', 'prints', 'members', 'view_members', 'plans', 'lending', 'view_lending', 'profile'];
+        $allowed_tabs = ['dashboard', 'categories', 'ebooks', 'view_ebooks', 'physical', 'view_physical', 'requests', 'prints', 'members', 'view_members', 'membership_history', 'plans', 'lending', 'view_lending', 'profile'];
         if (in_array($tab, $allowed_tabs)) {
             require __DIR__ . "/admin/{$tab}.php";
         } else {

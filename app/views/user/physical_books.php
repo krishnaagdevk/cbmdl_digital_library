@@ -20,22 +20,32 @@ $m_search = trim($_GET['p_search'] ?? '');
 </div>
 
 <!-- Real-time Filter Search Script -->
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const searchInput = document.getElementById('p_sc_term');
-    searchInput.addEventListener('keyup', function() {
-        const value = this.value.toLowerCase().trim();
-        const rows = document.querySelectorAll('.physical-book-card');
-        rows.forEach(row => {
-            const text = row.textContent.toLowerCase();
-            if (text.includes(value)) {
-                row.style.display = 'flex';
-            } else {
-                row.style.display = 'none';
-            }
-        });
-    });
-});
+<script class="dynamic-script">
+(function() {
+    function initUserPhysicalScript() {
+        const searchInput = document.getElementById('p_sc_term');
+        if (searchInput) {
+            searchInput.addEventListener('keyup', function() {
+                const value = this.value.toLowerCase().trim();
+                const rows = document.querySelectorAll('.physical-book-card');
+                rows.forEach(row => {
+                    const text = row.textContent.toLowerCase();
+                    if (text.includes(value)) {
+                        row.style.display = 'flex';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initUserPhysicalScript);
+    } else {
+        initUserPhysicalScript();
+    }
+})();
 </script>
 
 <h3 style="margin-top:25px; margin-bottom:15px;"><i class="fa-solid fa-book"></i> Available Physical Catalog</h3>

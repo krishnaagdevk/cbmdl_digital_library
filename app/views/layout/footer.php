@@ -30,7 +30,7 @@
             const iconMap = {
                 'fa-book-bookmark': '📖',
                 'fa-book-open': '📖',
-                'fa-book': '📖',
+                'fa-book': '📚',
                 'fa-house-chimney': '🏠',
                 'fa-right-from-bracket': '🚪',
                 'fa-right-to-bracket': '🚪',
@@ -76,7 +76,8 @@
                 'fa-chart-line': '📈',
                 'fa-gauge-high': '📊',
                 'fa-user-gear' : '🧑‍🦱',
-                'fa-user-master': '👮‍♂️'
+                'fa-user-master': '👮‍♂️',
+                'fa-id-card-clip': '📜'
             };
             
             document.querySelectorAll('i[class*="fa-"]').forEach(el => {
@@ -251,7 +252,7 @@
         function openPdfModal(requestId, expiresAtUnix, title, isAdmin = false) {
             let targetUrl = '';
             if (isAdmin) {
-                targetUrl = '?action=secure_pdf_viewer&source=admin&id=' + requestId;
+                targetUrl = '?action=view_pdf_content&id=' + requestId;
             } else {
                 targetUrl = '?action=read_member_pdf&id=' + requestId;
             }
@@ -320,8 +321,9 @@
             if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 'P' || e.key === 's' || e.key === 'S')) {
                 const modal = document.getElementById('pdfModal');
                 if (modal && modal.classList.contains('show')) {
-                    e.preventDefault();
-                    alert("🔒 Security Warning: Direct printing and downloading of e-library PDFs is restricted.");
+                    if (window.showToast) {
+                        window.showToast("🔒 Security Warning: Direct printing and downloading of e-library PDFs is restricted.", "warning");
+                    }
                 }
             }
         });
@@ -439,7 +441,7 @@
                         document.body.appendChild(newScript);
                         newScript.remove(); // Cleanup executed script tag
                     });
-                    
+
                     // Re-initialize core forms/features on new nodes
                     initializePageFeatures();
                     

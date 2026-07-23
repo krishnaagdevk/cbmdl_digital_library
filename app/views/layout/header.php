@@ -673,6 +673,92 @@
 </head>
 <body>
 
+    <!-- Global Toast Notification System -->
+    <script>
+        window.showToast = function(msg, type) {
+            if (!msg) return;
+            var container = document.getElementById('toastNotificationContainer');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'toastNotificationContainer';
+                container.style.position = 'fixed';
+                container.style.top = '24px';
+                container.style.right = '24px';
+                container.style.display = 'flex';
+                container.style.flexDirection = 'column';
+                container.style.gap = '12px';
+                container.style.zIndex = '999999';
+                container.style.pointerEvents = 'none';
+                container.style.maxWidth = '420px';
+                container.style.width = 'calc(100% - 48px)';
+                document.body.appendChild(container);
+            }
+
+            var isError   = (type === 'error' || type === 'danger');
+            var isWarning = (type === 'warning' || type === 'orange');
+            var isReading = (type === 'reading');
+            var isPrint   = (type === 'print');
+            var isInfo    = (type === 'info');
+
+            var borderColor = isWarning ? '#f59e0b' : (isError ? '#ef4444' : (isReading ? '#8b5cf6' : (isPrint ? '#3b82f6' : (isInfo ? '#0284c7' : '#10b981'))));
+            var iconBg     = isWarning ? '#fffbeb' : (isError ? '#fef2f2' : (isReading ? '#f5f3ff' : (isPrint ? '#eff6ff' : (isInfo ? '#f0f9ff' : '#ecfdf5'))));
+            var iconColor  = isWarning ? '#f59e0b' : (isError ? '#ef4444' : (isReading ? '#8b5cf6' : (isPrint ? '#3b82f6' : (isInfo ? '#0284c7' : '#10b981'))));
+            var iconClass  = isWarning ? 'fa-triangle-exclamation' : (isError ? 'fa-circle-xmark' : (isReading ? 'fa-book-open' : (isPrint ? 'fa-print' : (isInfo ? 'fa-circle-info' : 'fa-circle-check'))));
+
+            var toast = document.createElement('div');
+            toast.style.cssText = [
+                'background:#ffffff',
+                'color:#0f172a',
+                'border-radius:12px',
+                'padding:16px',
+                'box-shadow:0 12px 30px -5px rgba(0,0,0,.2),0 8px 10px -6px rgba(0,0,0,.1)',
+                'border:1px solid #e2e8f0',
+                'border-left:6px solid ' + borderColor,
+                'display:flex',
+                'align-items:flex-start',
+                'gap:12px',
+                'pointer-events:auto',
+                'transform:translateX(120%)',
+                'transition:transform .4s cubic-bezier(.16,1,.3,1),opacity .4s',
+                'opacity:0'
+            ].join(';');
+
+            var iconWrap = document.createElement('div');
+            iconWrap.style.cssText = 'width:32px;height:32px;border-radius:50%;background:' + iconBg + ';color:' + iconColor + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;';
+            var icon = document.createElement('i');
+            icon.className = 'fa-solid ' + iconClass;
+            iconWrap.appendChild(icon);
+
+            var msgDiv = document.createElement('div');
+            msgDiv.style.cssText = 'flex:1;font-size:13px;font-weight:600;color:#0f172a;line-height:1.5;white-space:pre-line;word-break:break-word;';
+            msgDiv.innerHTML = msg;
+
+            var closeBtn = document.createElement('button');
+            closeBtn.type = 'button';
+            closeBtn.style.cssText = 'background:none;border:none;padding:0;cursor:pointer;color:#94a3b8;font-size:14px;flex-shrink:0;';
+            var closeIcon = document.createElement('i');
+            closeIcon.className = 'fa-solid fa-xmark';
+            closeBtn.appendChild(closeIcon);
+            closeBtn.addEventListener('click', function() { toast.remove(); });
+
+            toast.appendChild(iconWrap);
+            toast.appendChild(msgDiv);
+            toast.appendChild(closeBtn);
+            container.appendChild(toast);
+
+            setTimeout(function() {
+                toast.style.transform = 'translateX(0)';
+                toast.style.opacity = '1';
+            }, 30);
+
+            setTimeout(function() {
+                toast.style.transform = 'translateX(120%)';
+                toast.style.opacity = '0';
+                setTimeout(function() { if (toast.parentNode) toast.remove(); }, 420);
+            }, 7000);
+        };
+    </script>
+
     <!-- Dynamic Session Flash Messages -->
     <?php if ($f = flash()): ?>
         <?php
@@ -690,119 +776,27 @@
             stristr($f, 'failed') !== false ||
             stristr($f, 'rejected') !== false ||
             stristr($f, 'cannot') !== false ||
-            stristr($f, 'required') !== false
+            stristr($f, 'required') !== false ||
+            stristr($f, 'empty') !== false ||
+            stristr($f, 'already exists') !== false
         );
-        $notice_class = $is_inactive_flash ? 'notice-orange' : ($is_error_flash ? 'notice-red' : '');
         ?>
-        <div class="notice <?= $notice_class ?>">
-            <i class="fa-solid <?= $is_inactive_flash ? 'fa-triangle-exclamation' : ($is_error_flash ? 'fa-circle-xmark' : 'fa-circle-check') ?>" style="<?= $is_inactive_flash ? 'color:#f59e0b;' : ($is_error_flash ? 'color:var(--accent-red);' : '') ?>"></i>
-            <span><?= e($f) ?></span>
-        </div>
-
-        <script>
+        <script class="dynamic-script">
             (function() {
                 var msg = <?= json_encode($f) ?>;
                 var isError = <?= json_encode($is_error_flash) ?>;
                 var isWarning = <?= json_encode($is_inactive_flash) ?>;
-
-                function showGlobalToast() {
-                    var container = document.getElementById('toastNotificationContainer');
-                    if (!container) {
-                        container = document.createElement('div');
-                        container.id = 'toastNotificationContainer';
-                        container.style.position = 'fixed';
-                        container.style.top = '24px';
-                        container.style.right = '24px';
-                        container.style.display = 'flex';
-                        container.style.flexDirection = 'column';
-                        container.style.gap = '12px';
-                        container.style.zIndex = '999999';
-                        container.style.pointerEvents = 'none';
-                        container.style.maxWidth = '420px';
-                        container.style.width = 'calc(100% - 48px)';
-                        document.body.appendChild(container);
-                    }
-
-                    var borderColor = isWarning ? '#f59e0b' : (isError ? '#ef4444' : '#10b981');
-                    var iconBg     = isWarning ? '#fffbeb'  : (isError ? '#fef2f2' : '#ecfdf5');
-                    var iconColor  = isWarning ? '#f59e0b'  : (isError ? '#ef4444' : '#10b981');
-                    var iconClass  = isWarning ? 'fa-triangle-exclamation' : (isError ? 'fa-triangle-exclamation' : 'fa-circle-check');
-
-                    // Build toast wrapper
-                    var toast = document.createElement('div');
-                    toast.style.cssText = [
-                        'background:#ffffff',
-                        'color:#0f172a',
-                        'border-radius:12px',
-                        'padding:16px',
-                        'box-shadow:0 12px 30px -5px rgba(0,0,0,.2),0 8px 10px -6px rgba(0,0,0,.1)',
-                        'border:1px solid #e2e8f0',
-                        'border-left:6px solid ' + borderColor,
-                        'display:flex',
-                        'align-items:flex-start',
-                        'gap:12px',
-                        'pointer-events:auto',
-                        'transform:translateX(120%)',
-                        'transition:transform .4s cubic-bezier(.16,1,.3,1),opacity .4s',
-                        'opacity:0'
-                    ].join(';');
-
-                    // Icon bubble
-                    var iconWrap = document.createElement('div');
-                    iconWrap.style.cssText = 'width:32px;height:32px;border-radius:50%;background:' + iconBg + ';color:' + iconColor + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;';
-                    var icon = document.createElement('i');
-                    icon.className = 'fa-solid ' + iconClass;
-                    iconWrap.appendChild(icon);
-
-                    // Message text
-                    var msgDiv = document.createElement('div');
-                    msgDiv.style.cssText = 'flex:1;font-size:13px;font-weight:600;color:#0f172a;line-height:1.5;white-space:pre-line;word-break:break-word;';
-                    msgDiv.textContent = msg;
-
-                    // Close button
-                    var closeBtn = document.createElement('button');
-                    closeBtn.type = 'button';
-                    closeBtn.style.cssText = 'background:none;border:none;padding:0;cursor:pointer;color:#94a3b8;font-size:14px;flex-shrink:0;';
-                    var closeIcon = document.createElement('i');
-                    closeIcon.className = 'fa-solid fa-xmark';
-                    closeBtn.appendChild(closeIcon);
-                    closeBtn.addEventListener('click', function() { toast.remove(); });
-
-                    toast.appendChild(iconWrap);
-                    toast.appendChild(msgDiv);
-                    toast.appendChild(closeBtn);
-                    container.appendChild(toast);
-
-                    // Animate in
-                    setTimeout(function() {
-                        toast.style.transform = 'translateX(0)';
-                        toast.style.opacity = '1';
-                    }, 30);
-
-                    // Auto dismiss after 7s
-                    setTimeout(function() {
-                        toast.style.transform = 'translateX(120%)';
-                        toast.style.opacity = '0';
-                        setTimeout(function() { if (toast.parentNode) toast.remove(); }, 420);
-                    }, 7000);
-                }
-
+                var type = isWarning ? 'warning' : (isError ? 'error' : 'success');
+                var fireToast = function() {
+                    if (window.showToast) window.showToast(msg, type);
+                };
                 if (document.readyState === 'loading') {
-                    document.addEventListener('DOMContentLoaded', showGlobalToast);
+                    document.addEventListener('DOMContentLoaded', fireToast);
                 } else {
-                    showGlobalToast();
+                    fireToast();
                 }
             })();
         </script>
-        <?php if ($f === 'Reading request sent to librarian.'): ?>
-            <script>
-                alert("🎉 Your e-reading permission request has been submitted successfully to the librarian!\n\nPlease wait for the librarian to review and approve your request.");
-            </script>
-        <?php elseif ($f === 'Print request sent to librarian.'): ?>
-            <script>
-                alert("🖨️ Your print job request has been submitted successfully to the librarian!\n\nPlease check with the library front desk for printed handouts.");
-            </script>
-        <?php endif; ?>
     <?php endif; ?>
 
     <!-- Navigation Bar -->

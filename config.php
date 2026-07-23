@@ -140,6 +140,49 @@ if ($resGender && $resGender->num_rows == 0) {
     $db->query("ALTER TABLE members ADD COLUMN gender ENUM('Male', 'Female', 'Other') DEFAULT 'Male' AFTER name");
 }
 
+// Auto-migration check: membership_history table
+$db->query("CREATE TABLE IF NOT EXISTS membership_history (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    member_id INT NOT NULL,
+    membership_id VARCHAR(30) NOT NULL,
+    membership_plan_id INT NULL,
+    plan_name VARCHAR(100) NULL,
+    duration VARCHAR(50) NOT NULL,
+    shift VARCHAR(50) DEFAULT 'Both',
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    membership_fee DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    payment_id VARCHAR(150) NULL,
+    action_type ENUM('Initial Joining', 'Renewal', 'Plan Switch', 'Manual Adjustment') NOT NULL DEFAULT 'Initial Joining',
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+// Backfill initial membership_history entries for existing approved members if history is empty
+$resHistCountQuery = $db->query("SELECT COUNT(*) c FROM membership_history");
+if ($resHistCountQuery) {
+    $resHistCount = $resHistCountQuery->fetch_assoc()['c'];
+    if ($resHistCount == 0) {
+        $db->query("INSERT INTO membership_history (member_id, membership_id, membership_plan_id, plan_name, duration, shift, start_date, end_date, membership_fee, payment_id, action_type, created_at)
+            SELECT 
+                m.id as member_id,
+                m.membership_id,
+                m.membership_plan_id,
+                p.name as plan_name,
+                IF(m.duration != '', m.duration, 'Yearly') as duration,
+                IF(m.shift != '', m.shift, 'Both') as shift,
+                m.start_date,
+                m.end_date,
+                CAST(m.membership_fee AS DECIMAL(10,2)) as membership_fee,
+                m.payment_id,
+                'Initial Joining' as action_type,
+                m.created_at
+            FROM members m
+            LEFT JOIN membership_plans p ON m.membership_plan_id = p.id
+            WHERE m.approved = 1 AND m.membership_id != ''");
+    }
+}
+
 // Auto-migration check: work_shifts table for dynamic shift time definitions
 $db->query("CREATE TABLE IF NOT EXISTS work_shifts (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -197,12 +240,26 @@ $db->query("CREATE TABLE IF NOT EXISTS hold_requests (
     FOREIGN KEY(physical_book_id) REFERENCES physical_books(id) ON DELETE CASCADE
 )");
 
+// Auto-migration check: renewal requests table for online member pass renewals
+$db->query("CREATE TABLE IF NOT EXISTS renewal_requests (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    member_id INT NOT NULL,
+    membership_plan_id INT NOT NULL,
+    shift VARCHAR(50) DEFAULT 'Morning',
+    payment_id VARCHAR(150) NOT NULL,
+    status ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
+    requested_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    approved_at DATETIME NULL,
+    FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE,
+    FOREIGN KEY (membership_plan_id) REFERENCES membership_plans(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
 function e($v){ return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
 function admin(){ return isset($_SESSION['admin']); }
 function member(){ return isset($_SESSION['member']); }
 function go($url){ header('Location: '.$url); exit; }
-function flash($msg=''){ if($msg) $_SESSION['flash']=$msg; $x=$_SESSION['flash']??''; unset($_SESSION['flash']); return $x; }
-function membership_end($duration){ 
+function flash($msg=''){ if($msg !== ''){ $_SESSION['flash']=$msg; return $msg; } $x=$_SESSION['flash']??''; unset($_SESSION['flash']); return $x; }
+function membership_end($duration, $startDate = null){ 
     $map = [
         'Yearly' => '+1 year',
         'Half Yearly' => '+6 months',
@@ -211,7 +268,8 @@ function membership_end($duration){
         'Daily' => '+1 day'
     ]; 
     $span = isset($map[$duration]) ? $map[$duration] : '+1 year';
-    return date('Y-m-d', strtotime($span)); 
+    $baseTime = $startDate ? strtotime($startDate) : time();
+    return date('Y-m-d', strtotime($span, $baseTime)); 
 }
 function active_member($m){ return $m && $m['end_date'] >= date('Y-m-d') && (!isset($m['is_active']) || $m['is_active'] == 1); }
 
@@ -394,7 +452,6 @@ function stream_file_ranged($file, $contentType = 'application/pdf', $isPrivate 
     }
     
     header('Content-Disposition: inline');
-    header("Content-Security-Policy: default-src 'self'; script-src 'none'; object-src 'self'; style-src 'unsafe-inline'; frame-src 'self';");
     header('X-Content-Type-Options: nosniff');
     
     // Stream only requested byte range

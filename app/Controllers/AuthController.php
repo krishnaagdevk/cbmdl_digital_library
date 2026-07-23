@@ -16,11 +16,12 @@ final class AuthController {
             clear_failed_attempts();
             session_regenerate_id(true);
             $_SESSION['admin'] = $admin['id'];
+            flash('Welcome back! Logged in as Admin.');
             header('Location: index.php?action=admin');
             exit;
         }
         register_failed_attempt();
-        $_SESSION['flash'] = 'Invalid admin credentials.';
+        flash('⚠️ Invalid admin credentials.');
         header('Location: admin-login');
         exit;
     }
@@ -61,17 +62,17 @@ final class AuthController {
                 if ($pwdCorrect) {
                     // Check approval / active status / expiry
                     if ($member['approved'] == 0) {
-                        $_SESSION['flash'] = 'Your membership registration is pending approval from the librarian.';
+                        flash('⚠️ Your membership registration is pending approval from the librarian.');
                         header('Location: member-login');
                         exit;
                     }
                     if ($member['is_active'] == 0) {
-                        $_SESSION['flash'] = 'Your membership is inactive kindly contact librarian';
+                        flash('⚠️ Your membership is inactive. Kindly contact the librarian.');
                         header('Location: member-login');
                         exit;
                     }
                     if ($member['end_date'] < date('Y-m-d')) {
-                        $_SESSION['flash'] = 'Your membership has expired. Kindly contact librarian.';
+                        flash('⚠️ Your membership has expired. Kindly contact the librarian.');
                         header('Location: member-login');
                         exit;
                     }
@@ -82,7 +83,7 @@ final class AuthController {
                         $time_win = get_shift_time_window($shift, $this->db);
                         $fmt_start = date('h:i A', strtotime($time_win['start_time']));
                         $fmt_end = date('h:i A', strtotime($time_win['end_time']));
-                        $_SESSION['flash'] = "🔒 Shift Access Restricted: Your account is assigned to the '" . $shift . "' shift (" . $fmt_start . " - " . $fmt_end . "). You cannot log in outside your assigned shift timings.";
+                        flash("🔒 Shift Access Restricted: Your account is assigned to the '" . $shift . "' shift (" . $fmt_start . " - " . $fmt_end . "). You cannot log in outside your assigned shift timings.");
                         header('Location: member-login');
                         exit;
                     }
@@ -90,6 +91,7 @@ final class AuthController {
                     clear_failed_attempts();
                     session_regenerate_id(true);
                     $_SESSION['member'] = $member['id'];
+                    flash('Welcome back! Logged in successfully.');
                     header('Location: index.php?action=user');
                     exit;
                 }
@@ -97,7 +99,7 @@ final class AuthController {
         }
         
         register_failed_attempt();
-        $_SESSION['flash'] = 'Invalid login credentials.';
+        flash('⚠️ Invalid login credentials.');
         header('Location: member-login');
         exit;
     }

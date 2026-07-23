@@ -217,6 +217,31 @@ INSERT INTO `membership_plans` (`id`, `name`, `duration`, `amount`) VALUES
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `membership_history`
+--
+
+CREATE TABLE `membership_history` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `member_id` int(11) NOT NULL,
+  `membership_id` varchar(30) NOT NULL,
+  `membership_plan_id` int(11) DEFAULT NULL,
+  `plan_name` varchar(100) DEFAULT NULL,
+  `duration` varchar(50) NOT NULL,
+  `shift` varchar(50) DEFAULT 'Both',
+  `start_date` date NOT NULL,
+  `end_date` date NOT NULL,
+  `membership_fee` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `payment_id` varchar(150) DEFAULT NULL,
+  `action_type` enum('Initial Joining','Renewal','Plan Switch','Manual Adjustment') NOT NULL DEFAULT 'Initial Joining',
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `member_id` (`member_id`),
+  CONSTRAINT `membership_history_ibfk_1` FOREIGN KEY (`member_id`) REFERENCES `members` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `physical_books`
 --
 

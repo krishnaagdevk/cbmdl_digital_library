@@ -179,7 +179,7 @@ if ($viewId) {
                                 </div>
                                 <div style="text-align:right; border-top:1px solid #475569; width:90px; padding-top:2px;">
                                     <span style="font-size:7px; color:#0f172a; font-weight:700; text-transform:uppercase; display:block;">Issued By Authority</span>
-                                    <span style="font-size:6px; color:#64748b; display:block;">CBMDL Librarian</span>
+                                    <span style="font-size:6px; color:#64748b; display:block;">CBMDL</span>
                                 </div>
                             </div>
                         </div>
@@ -194,41 +194,31 @@ if ($viewId) {
                     <form method="post" action="?action=renew_member&tab=<?= $tab ?>">
                         <?= csrf_input() ?>
                         <input type="hidden" name="id" value="<?= $selected['id'] ?>">
-                        <label for="ren_plan">Choose Renewal Plan</label>
-                        <select id="ren_plan" name="plan_id" required onchange="updateRenewPlanDetails()">
+                        <label for="ren_plan_vm">Choose Renewal Plan *</label>
+                        <select id="ren_plan_vm" name="plan_id" required>
                             <option value="">Select Plan Class...</option>
                             <?php
                             $plans = $db->query("SELECT * FROM membership_plans ORDER BY amount ASC");
                             while ($p = $plans->fetch_assoc()) {
-                                echo '<option value="' . $p['id'] . '" data-amount="' . e($p['amount']) . '" data-duration="' . e($p['duration']) . '">' . e($p['name']) . ' (' . e($p['duration']) . ' - ₹' . e($p['amount']) . ')</option>';
+                                $pSel = (($selected['membership_plan_id'] ?? 0) == $p['id']) ? 'selected' : '';
+                                echo '<option value="' . $p['id'] . '" ' . $pSel . '>' . e($p['name']) . ' (' . e($p['duration']) . ' - ₹' . e($p['amount']) . ')</option>';
                             }
                             ?>
                         </select>
 
-                        <label for="ren_duration">Renewal Term Duration (Auto-set)</label>
-                        <input id="ren_duration" name="duration" readonly style="background:var(--bg-slate); font-weight:600;" placeholder="Term will auto-fill" required>
-
-                        <label for="ren_fee">Plan Due Amount (INR) (Auto-set)</label>
-                        <input id="ren_fee" readonly style="background:var(--bg-slate); font-weight:600;" placeholder="Amount will auto-fill">
-
-                        <script>
-                        function updateRenewPlanDetails() {
-                            const planSelect = document.getElementById('ren_plan');
-                            const selectedOption = planSelect.options[planSelect.selectedIndex];
-                            const durationInput = document.getElementById('ren_duration');
-                            const feeInput = document.getElementById('ren_fee');
-                            
-                            if (selectedOption && selectedOption.value !== '') {
-                                const amount = selectedOption.getAttribute('data-amount');
-                                const duration = selectedOption.getAttribute('data-duration');
-                                durationInput.value = duration;
-                                feeInput.value = amount;
-                            } else {
-                                durationInput.value = '';
-                                feeInput.value = '';
+                        <label for="ren_shift_vm">Library Work Shift / Timing *</label>
+                        <select id="ren_shift_vm" name="shift" required>
+                            <?php 
+                            $shiftsRes = $db->query("SELECT * FROM work_shifts ORDER BY id ASC");
+                            while ($s = $shiftsRes->fetch_assoc()) {
+                                $sName = $s['name'];
+                                $sel = (($selected['shift'] ?? 'Morning') === $sName) ? 'selected' : '';
+                                $sStart = date('h:i A', strtotime($s['start_time']));
+                                $sEnd = date('h:i A', strtotime($s['end_time']));
+                                echo '<option value="' . e($sName) . '" ' . $sel . '>' . e($sName) . ' Shift (' . $sStart . ' - ' . $sEnd . ')</option>';
                             }
-                        }
-                        </script>
+                            ?>
+                        </select>
                         <label for="ren_pay">Reference Transaction / Payment ID</label>
                         <input id="ren_pay" name="payment_id" placeholder="Transaction Reference" required>
                         <button style="width:100%;"><i class="fa-solid fa-circle-check"></i> Process Renewal</button>
@@ -246,6 +236,91 @@ if ($viewId) {
                 </div> -->
             </div>
         </div>
+
+        <!-- Membership History & Renewal Timeline -->
+        <?php
+        $mHistStmt = $db->prepare("SELECT * FROM membership_history WHERE member_id = ? ORDER BY id DESC");
+        $mHistStmt->bind_param("i", $selected['id']);
+        $mHistStmt->execute();
+        $mHistRes = $mHistStmt->get_result();
+        ?>
+        <div style="margin-top: 30px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.02);">
+            <h4 style="margin-top:0; display:flex; align-items:center; gap:8px;">
+                <i class="fa-solid fa-clock-rotate-left" style="color:var(--primary);"></i> Membership Renewal & History Timeline
+            </h4>
+            <p style="font-size:12px; color:var(--text-muted); margin-bottom:15px;">Chronological audit log of all renewals, plan changes, and fee transactions for <?= e($selected['name']) ?>.</p>
+            
+            <div style="overflow-x:auto;">
+                <table class="table" style="width:100%; border-collapse:collapse; font-size:12px;">
+                    <thead>
+                        <tr style="background:var(--bg-slate); text-align:left; color:var(--text-muted);">
+                            <th style="padding:10px;">#</th>
+                            <th style="padding:10px;">Action Type</th>
+                            <th style="padding:10px;">Plan & Term</th>
+                            <th style="padding:10px;">Validity Period</th>
+                            <th style="padding:10px;">Shift</th>
+                            <th style="padding:10px;">Fee Paid</th>
+                            <th style="padding:10px;">Payment Ref ID</th>
+                            <th style="padding:10px;">Logged On</th>
+                            <th style="padding:10px; text-align:right;">Receipt</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if ($mHistRes->num_rows === 0): ?>
+                            <tr>
+                                <td colspan="9" style="text-align:center; padding:20px; color:var(--text-muted);">
+                                    No historical records logged yet for this member.
+                                </td>
+                            </tr>
+                        <?php else: ?>
+                            <?php $hCount = 1; while ($hRow = $mHistRes->fetch_assoc()): ?>
+                                <tr style="border-bottom:1px solid var(--border-color);">
+                                    <td style="padding:10px; color:var(--text-muted);"><?= $hCount++ ?></td>
+                                    <td style="padding:10px;">
+                                        <?php if ($hRow['action_type'] === 'Initial Joining'): ?>
+                                            <span class="badge badge-blue" style="font-size:10px; padding:2px 6px;"><i class="fa-solid fa-user-plus"></i> Initial Joining</span>
+                                        <?php elseif ($hRow['action_type'] === 'Renewal'): ?>
+                                            <span class="badge badge-green" style="font-size:10px; padding:2px 6px;"><i class="fa-solid fa-rotate"></i> Renewal</span>
+                                        <?php else: ?>
+                                            <span class="badge badge-orange" style="font-size:10px; padding:2px 6px;"><?= e($hRow['action_type']) ?></span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td style="padding:10px;">
+                                        <strong><?= e($hRow['plan_name'] ?? $hRow['duration']) ?></strong>
+                                    </td>
+                                    <td style="padding:10px;">
+                                        <?= date('d-m-Y', strtotime($hRow['start_date'])) ?> &rarr; <?= date('d-m-Y', strtotime($hRow['end_date'])) ?>
+                                    </td>
+                                    <td style="padding:10px;"><?= e($hRow['shift']) ?></td>
+                                    <td style="padding:10px; font-weight:700; color:#16a34a;">₹<?= number_format($hRow['membership_fee'], 2) ?></td>
+                                    <td style="padding:10px; font-family:monospace;"><?= e($hRow['payment_id'] ?? 'N/A') ?></td>
+                                    <td style="padding:10px; color:var(--text-muted);"><?= date('d M Y, H:i', strtotime($hRow['created_at'])) ?></td>
+                                    <td style="padding:10px; text-align:right;">
+                                        <button onclick='printReceipt(<?= json_encode([
+                                            "memberName" => $selected["name"],
+                                            "membershipId" => $selected["membership_id"] ?: "N/A",
+                                            "mobile" => $selected["mobile"] ?: "N/A",
+                                            "actionType" => $hRow["action_type"],
+                                            "planName" => $hRow["plan_name"] ?: $hRow["duration"],
+                                            "duration" => $hRow["duration"],
+                                            "shift" => $hRow["shift"],
+                                            "startDate" => date("d M Y", strtotime($hRow["start_date"])),
+                                            "endDate" => date("d M Y", strtotime($hRow["end_date"])),
+                                            "fee" => number_format($hRow["membership_fee"], 2),
+                                            "paymentId" => $hRow["payment_id"] ?: "N/A",
+                                            "date" => date("d M Y, h:i A", strtotime($hRow["created_at"]))
+                                        ]) ?>)' class="btn" style="padding:3px 8px; font-size:11px; background:var(--bg-slate); border:1px solid var(--border-color);">
+                                            <i class="fa-solid fa-print"></i> Receipt
+                                        </button>
+                                    </td>
+                                </tr>
+                            <?php endwhile; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <p style="margin-top:20px;"><a class="btn" href="?action=admin&tab=<?= $tab ?>" style="background:var(--navy-light);"><i class="fa-solid fa-arrow-left"></i> Back to Directory</a></p>
     </div>
 <?php else: ?>
@@ -445,21 +520,83 @@ if ($viewId) {
                 </div>
             </div>
         <?php endif; ?>
-        <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const filterInput = document.getElementById('viewMembersFilter');
-            const membersTable = document.getElementById('viewMembersTable');
-            if (filterInput && membersTable) {
-                filterInput.addEventListener('keyup', function() {
-                    const val = this.value.toLowerCase().trim();
-                    const rows = membersTable.querySelectorAll('tbody tr');
-                    rows.forEach(row => {
-                        const text = row.textContent.toLowerCase();
-                        row.style.display = text.includes(val) ? '' : 'none';
+        <script class="dynamic-script">
+        (function() {
+            function initViewMembersScript() {
+                const filterInput = document.getElementById('viewMembersFilter');
+                const membersTable = document.getElementById('viewMembersTable');
+                if (filterInput && membersTable) {
+                    filterInput.addEventListener('keyup', function() {
+                        const val = this.value.toLowerCase().trim();
+                        const rows = membersTable.querySelectorAll('tbody tr');
+                        rows.forEach(row => {
+                            const text = row.textContent.toLowerCase();
+                            row.style.display = text.includes(val) ? '' : 'none';
+                        });
                     });
-                });
+                }
             }
-        });
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initViewMembersScript);
+            } else {
+                initViewMembersScript();
+            }
+        })();
         </script>
     </div>
 <?php endif; ?>
+
+<!-- Modal: Printable Official Payment Receipt -->
+<div id="receiptModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:9999; justify-content:center; align-items:center; padding:15px;">
+    <div style="background:white; border-radius:12px; max-width:520px; width:100%; padding:30px; box-shadow:0 10px 25px rgba(0,0,0,0.3); position:relative; font-family:sans-serif;">
+        <button onclick="closeReceiptModal()" style="position:absolute; top:15px; right:15px; background:none; border:none; font-size:20px; cursor:pointer; color:#666;">&times;</button>
+        
+        <div id="printableReceiptArea">
+            <div style="text-align:center; border-bottom:2px solid #2563eb; padding-bottom:15px; margin-bottom:20px;">
+                <h2 style="margin:0; font-size:18px; color:#1e293b; text-transform:uppercase; font-weight:800;">CBMDL Digital Library</h2>
+                <div style="font-size:11px; color:#64748b; font-weight:600; margin-top:3px;">MEERUT CANTONMENT BOARD</div>
+                <div style="font-size:13px; font-weight:700; color:#2563eb; margin-top:8px; letter-spacing:1px; text-transform:uppercase;">Official Fee Payment Receipt</div>
+            </div>
+
+            <table style="width:100%; border-collapse:collapse; font-size:13px; margin-bottom:20px;">
+                <tr><td style="padding:6px 0; color:#64748b; width:40%;">Member Name:</td><td style="padding:6px 0; font-weight:700; color:#0f172a;" id="rcptMemberName">-</td></tr>
+                <tr><td style="padding:6px 0; color:#64748b;">Membership ID:</td><td style="padding:6px 0; font-weight:700; color:#0f172a;" id="rcptMembershipId">-</td></tr>
+                <tr><td style="padding:6px 0; color:#64748b;">Action Type:</td><td style="padding:6px 0; font-weight:700; color:#2563eb;" id="rcptActionType">-</td></tr>
+                <tr><td style="padding:6px 0; color:#64748b;">Plan & Duration:</td><td style="padding:6px 0; font-weight:700; color:#0f172a;" id="rcptPlanName">-</td></tr>
+                <tr><td style="padding:6px 0; color:#64748b;">Shift Allocated:</td><td style="padding:6px 0; font-weight:700; color:#0f172a;" id="rcptShift">-</td></tr>
+                <tr><td style="padding:6px 0; color:#64748b;">Validity Term:</td><td style="padding:6px 0; font-weight:700; color:#0f172a;" id="rcptValidity">-</td></tr>
+                <tr><td style="padding:6px 0; color:#64748b;">Amount Paid:</td><td style="padding:6px 0; font-weight:800; font-size:16px; color:#16a34a;" id="rcptFee">-</td></tr>
+                <tr><td style="padding:6px 0; color:#64748b;">Transaction UTR / ID:</td><td style="padding:6px 0; font-family:monospace; font-weight:700; color:#0f172a;" id="rcptPaymentId">-</td></tr>
+                <tr><td style="padding:6px 0; color:#64748b;">Date & Time:</td><td style="padding:6px 0; color:#64748b;" id="rcptDate">-</td></tr>
+            </table>
+
+            <div style="text-align:center; border-top:1px dashed #cbd5e1; padding-top:12px; font-size:11px; color:#94a3b8;">
+                This is a computer-generated official payment receipt issued by CBMDL e-Library.
+            </div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;" class="no-print">
+            <button type="button" onclick="closeReceiptModal()" class="btn" style="background:#f1f5f9; color:#334155;">Close</button>
+            <button type="button" onclick="window.print()" class="btn" style="background:#2563eb; color:white;"><i class="fa-solid fa-print"></i> Print Receipt</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function printReceipt(data) {
+    document.getElementById('rcptMemberName').innerText = data.memberName;
+    document.getElementById('rcptMembershipId').innerText = data.membershipId;
+    document.getElementById('rcptActionType').innerText = data.actionType;
+    document.getElementById('rcptPlanName').innerText = data.planName + ' (' + data.duration + ')';
+    document.getElementById('rcptShift').innerText = data.shift + ' Shift';
+    document.getElementById('rcptValidity').innerText = data.startDate + ' to ' + data.endDate;
+    document.getElementById('rcptFee').innerText = '₹' + data.fee;
+    document.getElementById('rcptPaymentId').innerText = data.paymentId;
+    document.getElementById('rcptDate').innerText = data.date;
+    document.getElementById('receiptModal').style.display = 'flex';
+}
+function closeReceiptModal() {
+    document.getElementById('receiptModal').style.display = 'none';
+}
+</script>
+

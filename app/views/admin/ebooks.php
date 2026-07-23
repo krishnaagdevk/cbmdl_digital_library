@@ -139,7 +139,7 @@ $latest_ebooks_result = $db->query("SELECT e.*, c.name category FROM ebooks e JO
                             <td style="font-size:12px; color:var(--text-secondary);"><?= e($r['keywords'] ?: '—') ?></td>
                             <td>
                                 <div style="display:flex; gap:5px;">
-                                    <a class="btn" style="background:var(--navy-light); padding:6px 12px; font-size:12px; display:inline-flex; align-items:center; gap:4px;" onclick="openPdfModal(<?= $r['id'] ?>, null, '<?= e(addslashes($r['title'])) ?>', true)"><i class="fa-solid fa-eye"></i> View PDF</a> 
+                                    <a class="btn" style="background:var(--navy-light); padding:6px 12px; font-size:12px; display:inline-flex; align-items:center; gap:4px;" href="?action=view_pdf_content&id=<?= $r['id'] ?>" target="_blank"><i class="fa-solid fa-eye"></i> View PDF</a> 
                                     <a class="btn" style="background:var(--primary); padding:6px 12px; font-size:12px; display:inline-flex; align-items:center; gap:4px;" href="?action=admin&tab=ebooks&edit=<?= $r['id'] ?>"><i class="fa-solid fa-pen-to-square"></i> Edit</a>
                                     <form method="post" action="?action=delete_ebook" class="delete-form" style="display:inline; margin:0;">
                                         <?= csrf_input() ?>
@@ -174,7 +174,7 @@ function handleChunkedSubmit(e, isEdit) {
     const fileInput = form.querySelector('[name="pdf"]');
     
     if (!catSelect.value || !titleInput.value) {
-        alert('Category and Title are mandatory parameters.');
+        if (window.showToast) window.showToast('⚠️ Category and Title are mandatory parameters.', 'error');
         return;
     }
     
@@ -201,7 +201,7 @@ function handleChunkedSubmit(e, isEdit) {
             }
         })
         .catch(err => {
-            alert(err.message);
+            if (window.showToast) window.showToast('⚠️ ' + (err.message || 'Metadata update failed.'), 'error');
             btn.disabled = false;
             btn.innerHTML = origText;
         });
@@ -209,12 +209,12 @@ function handleChunkedSubmit(e, isEdit) {
     }
     
     if (!file) {
-        alert('Please choose a valid PDF book to upload.');
+        if (window.showToast) window.showToast('⚠️ Please choose a valid PDF book to upload.', 'error');
         return;
     }
     
     if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
-        alert('Security check failed: Only application/pdf files are permitted inside e-Library catalogs.');
+        if (window.showToast) window.showToast('⚠️ Security check failed: Only application/pdf files are permitted inside e-Library catalogs.', 'error');
         return;
     }
 
@@ -254,6 +254,7 @@ function handleChunkedSubmit(e, isEdit) {
             
             card.querySelector('.upload-progress-text').innerHTML = '✅ Merged and cataloged successfully!';
             card.querySelector('.upload-cancel-btn').style.display = 'none';
+            if (window.showToast) window.showToast('E-book uploaded successfully.', 'success');
             
             // Only reload/navigate if there are NO OTHER active uploads in progress!
             const runningCount = Object.keys(window.activeUploads || {}).length;
@@ -283,6 +284,7 @@ function handleChunkedSubmit(e, isEdit) {
             
             card.querySelector('.upload-progress-text').innerHTML = `<span style="color:var(--accent-red); font-weight:600;"><i class="fa-solid fa-triangle-exclamation"></i> Error: ${escapeHtml(err)}</span>`;
             card.querySelector('.upload-cancel-btn').style.display = 'none';
+            if (window.showToast) window.showToast('⚠️ Upload failed: ' + err, 'error');
         }
     );
 

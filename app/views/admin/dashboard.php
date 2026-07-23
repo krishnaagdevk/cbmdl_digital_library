@@ -38,9 +38,9 @@ while ($c_row = $cat_query->fetch_assoc()) {
     $cat_distribution[] = $c_row;
 }
 
-// Recent lending transactions
+// Overdue or upcoming due dates (within 3 days) lending transactions
 $recent_lendings = [];
-$rl_query = $db->query("SELECT l.*, p.title, m.name FROM lendings l JOIN physical_books p ON p.id = l.physical_book_id JOIN members m ON m.id = l.member_id ORDER BY l.lent_at DESC LIMIT 4");
+$rl_query = $db->query("SELECT l.*, p.title, p.book_code, m.name, m.membership_id FROM lendings l JOIN physical_books p ON p.id = l.physical_book_id JOIN members m ON m.id = l.member_id WHERE l.returned_at IS NULL AND l.due_date <= DATE_ADD(CURDATE(), INTERVAL 3 DAY) ORDER BY l.due_date ASC");
 while ($r_row = $rl_query->fetch_assoc()) {
     $recent_lendings[] = $r_row;
 }
@@ -123,21 +123,23 @@ while ($r_row = $rl_query->fetch_assoc()) {
 
 <!-- Beautiful Dynamic Tabbed Layout Control -->
 <div class="dashboard-tabs" style="display:flex; gap:10px; margin-top:25px; margin-bottom:20px; border-bottom:2px solid var(--border-color); padding-bottom:10px; overflow-x:auto;">
-    <button id="tab-stats" class="tab-btn active" onclick="switchDashboardTab('stats')">
-        📊 Visual Charts & Analytics
-    </button>
-    <button id="tab-inbox" class="tab-btn" onclick="switchDashboardTab('inbox')">
-        📬 Inbox Queues & Operations
-        <?php if ($tot_requests + $tot_prints + $expiring_7_days_count > 0): ?>
-            <span class="badge badge-orange" style="font-size:10px; padding:2px 6px; margin-left: 5px;"><?= $tot_requests + $tot_prints + $expiring_7_days_count ?></span>
+<button id="tab-lending" class="tab-btn active" onclick="switchDashboardTab('lending')">
+        ⏳ Lending Activity Logs
+    </button>    
+      <button id="tab-inbox" class="tab-btn" onclick="switchDashboardTab('inbox')">
+        ⏰ Expiring Memberships
+        <?php if ($expiring_7_days_count > 0): ?>
+            <span class="badge badge-orange" style="font-size:10px; padding:2px 6px; margin-left: 5px;"><?= $expiring_7_days_count ?></span>
         <?php endif; ?>
     </button>
+<button id="tab-stats" class="tab-btn" onclick="switchDashboardTab('stats')">
+        📊 Visual Charts & Analytics
+    </button>
+  
     <button id="tab-density" class="tab-btn" onclick="switchDashboardTab('density')">
         📁 e-books Density
     </button>
-    <button id="tab-lending" class="tab-btn" onclick="switchDashboardTab('lending')">
-        ⏳ Lending Activity Logs
-    </button>
+    
 </div>
 
 <!-- Tabbed Panes Styling -->
@@ -183,7 +185,7 @@ while ($r_row = $rl_query->fetch_assoc()) {
 </style>
 
 <!-- TAB 1: CHARTS & ANALYTICS PANE -->
-<div id="pane-stats" class="dashboard-pane">
+<div id="pane-stats" class="dashboard-pane" style="display:none;">
     <?php 
         $gradient_segments = [];
         $current_angle = 0;
@@ -280,103 +282,30 @@ while ($r_row = $rl_query->fetch_assoc()) {
     </div>
 </div>
 
-<!-- TAB 2: INBOUND QUEUES & OPERATIONS -->
+<!-- TAB 2: EXPIRING MEMBERSHIPS -->
 <div id="pane-inbox" class="dashboard-pane" style="display:none;">
-    
-    <!-- Consolidated Pending Requests Queue -->
-    <div class="card" style="margin-bottom:25px;">
-        <h3><i class="fa-solid fa-bell" style="color:var(--accent-orange);"></i> Consolidated Pending Requests Queue</h3>
+    <div class="card" style="margin-bottom: 0; border-left: 5px solid var(--accent-orange);">
+        <h3 style="color: var(--accent-orange); margin-top:0;">
+            <i class="fa-solid fa-hourglass-half"></i> Memberships Expiring within 7 Days
+            <?php if ($expiring_7_days_count > 0): ?>
+                <span class="badge badge-orange" style="font-size:12px; margin-left:8px;"><?= $expiring_7_days_count ?> Expiring</span>
+            <?php endif; ?>
+        </h3>
         <div class="table-responsive">
             <table>
                 <thead>
                     <tr>
-                        <th>Member ID</th>
-                        <th>Member Name</th>
-                        <th>E-Book Title</th>
-                        <th>Category Type</th>
-                        <th>Details / Specs</th>
-                        <th>Request Time</th>
-                        <th>Quick Jump</th>
+                        <th>Membership ID</th>
+                        <th>Name</th>
+                        <th>Mobile Number</th>
+                        <th>Expiry Date</th>
+                        <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php 
-                    $p_read = [];
-                    $pr_q = $db->query("SELECT r.*, m.name, m.membership_id, e.title FROM reading_requests r JOIN members m ON m.id = r.member_id JOIN ebooks e ON e.id = r.ebook_id WHERE r.status = 'Pending'");
-                    while($row = $pr_q->fetch_assoc()) {
-                        $p_read[] = [
-                            'mid' => $row['membership_id'],
-                            'name' => $row['name'],
-                            'title' => $row['title'],
-                            'type' => 'Reading',
-                            'details' => 'Online Secure Reader Access',
-                            'time' => $row['requested_at'],
-                            'link' => '?action=admin&tab=requests'
-                        ];
-                    }
-
-                    $p_print = [];
-                    $pp_q = $db->query("SELECT p.*, m.name, m.membership_id, e.title FROM print_requests p JOIN members m ON m.id = p.member_id JOIN ebooks e ON e.id = p.ebook_id WHERE p.status = 'Pending'");
-                    while($row = $pp_q->fetch_assoc()) {
-                        $p_print[] = [
-                            'mid' => $row['membership_id'],
-                            'name' => $row['name'],
-                            'title' => $row['title'],
-                            'type' => 'Print',
-                            'details' => 'Pages requested: ' . $row['pages'],
-                            'time' => $row['requested_at'],
-                            'link' => '?action=admin&tab=prints'
-                        ];
-                    }
-
-                    $all_pending = array_merge($p_read, $p_print);
-                    usort($all_pending, function($a, $b) {
-                        return strcmp($b['time'], $a['time']);
-                    });
-
-                    if (empty($all_pending)) {
-                        echo '<tr><td colspan="7" style="text-align:center; color:var(--text-muted)"><i class="fa-solid fa-circle-check" style="color:var(--accent-green);"></i> All member inbox queues are empty! Excellent work.</td></tr>';
-                    } else {
-                        foreach ($all_pending as $item) {
-                            $badge = $item['type'] === 'Reading' 
-                                ? '<span class="badge badge-blue"><i class="fa-solid fa-book-open"></i> Reading Request</span>' 
-                                : '<span class="badge badge-orange"><i class="fa-solid fa-print"></i> Print Request</span>';
-                            echo '
-                            <tr>
-                                <td><code>' . e($item['mid']) . '</code></td>
-                                <td><strong style="color:var(--navy-dark);">' . e($item['name']) . '</strong></td>
-                                <td>' . e($item['title']) . '</td>
-                                <td>' . $badge . '</td>
-                                <td><strong style="font-size:12px;">' . e($item['details']) . '</strong></td>
-                                <td>' . date('d-m-Y h:i A', strtotime($item['time'])) . '</td>
-                                <td><a class="btn" style="padding:4px 8px; font-size:12px;" href="' . $item['link'] . '"><i class="fa-solid fa-arrow-up-right-from-square"></i> Process</a></td>
-                            </tr>';
-                        }
-                    }
-                    ?>
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Feature 4: Expiring Members Alert Panel -->
-    <?php if ($expiring_7_days_count > 0): ?>
-        <div class="card" style="margin-bottom: 25px; border-left: 5px solid var(--accent-orange);">
-            <h3 style="color: var(--accent-orange);"><i class="fa-solid fa-triangle-exclamation"></i> Memberships Expiring within 7 Days</h3>
-            <div class="table-responsive">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Membership ID</th>
-                            <th>Name</th>
-                            <th>Mobile Number</th>
-                            <th>Expiry Date</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php
-                        $exp_list = $db->query("SELECT id, membership_id, name, mobile, end_date FROM members WHERE is_active = 1 AND end_date >= DATE(NOW()) AND end_date <= DATE_ADD(NOW(), INTERVAL 7 DAY) ORDER BY end_date ASC");
+                    <?php
+                    $exp_list = $db->query("SELECT id, membership_id, name, mobile, end_date FROM members WHERE is_active = 1 AND end_date >= DATE(NOW()) AND end_date <= DATE_ADD(NOW(), INTERVAL 7 DAY) ORDER BY end_date ASC");
+                    if ($exp_list && $exp_list->num_rows > 0) {
                         while ($el = $exp_list->fetch_assoc()) {
                             echo '
                             <tr>
@@ -387,32 +316,12 @@ while ($r_row = $rl_query->fetch_assoc()) {
                                 <td><a class="btn" style="padding: 4px 10px; font-size: 11px; background: var(--accent-orange);" href="?action=admin&tab=view_members&view=' . $el['id'] . '#renew"><i class="fa-solid fa-rotate"></i> Renew Plan</a></td>
                             </tr>';
                         }
-                        ?>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    <?php endif; ?>
-
-    <!-- Operations Quick-Jumps Grid -->
-    <div class="grid" style="gap: 20px;">
-        <div class="card" style="margin-bottom:0;">
-            <h3><i class="fa-solid fa-envelope-open-text" style="color:var(--primary);"></i> Inbound Member Inbox</h3>
-            <p><i class="fa-solid fa-circle-exclamation" style="color:var(--accent-orange);"></i> Pending Reading Requests: <strong><?= $tot_requests ?></strong></p>
-            <p><i class="fa-solid fa-print" style="color:var(--primary);"></i> Pending Print Jobs: <strong><?= $tot_prints ?></strong></p>
-            <div style="margin-top:20px; display:flex; gap:10px; flex-wrap:wrap;">
-                <a href="?action=admin&tab=requests" class="btn"><i class="fa-solid fa-receipt"></i> E-Reading Inbox</a>
-                <a href="?action=admin&tab=prints" class="btn" style="background:var(--navy-light);"><i class="fa-solid fa-print"></i> Print Jobs</a>
-            </div>
-        </div>
-        <div class="card" style="margin-bottom:0;">
-            <h3><i class="fa-solid fa-hand-holding-hand" style="color:var(--accent-green);"></i> Circulation & Lending Control</h3>
-            <p><i class="fa-solid fa-book" style="color:var(--primary);"></i> Currently Issued Books: <strong><?= $tot_lent ?></strong></p>
-            <p><i class="fa-solid fa-triangle-exclamation" style="color:var(--accent-red);"></i> Overdue Accounts: <strong><?= $tot_overdue_count ?></strong></p>
-            <div style="margin-top:20px; display:flex; gap:10px; flex-wrap:wrap;">
-                <a href="?action=admin&tab=lending" class="btn" style="background:var(--accent-green);"><i class="fa-solid fa-plus"></i> Issue / Lend Book</a>
-                <a href="?action=admin&tab=view_lending" class="btn" style="background:var(--navy-light);"><i class="fa-solid fa-list"></i> Lending Logs</a>
-            </div>
+                    } else {
+                        echo '<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:20px;"><i class="fa-solid fa-circle-check" style="color:var(--accent-green);"></i> No member accounts are expiring within the next 7 days.</td></tr>';
+                    }
+                    ?>
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
@@ -447,15 +356,17 @@ while ($r_row = $rl_query->fetch_assoc()) {
 </div>
 
 <!-- TAB 4: LENDING LOGS -->
-<div id="pane-lending" class="dashboard-pane" style="display:none;">
+<div id="pane-lending" class="dashboard-pane">
     <div class="card" style="margin-bottom:0;">
-        <h3><i class="fa-solid fa-clock-rotate-left"></i> Recent Book Lending Activity</h3>
+        <h3><i class="fa-solid fa-clock-rotate-left"></i> Overdue & Urgent Lending Physical Books (Due within 3 Days)</h3>
         <div class="table-responsive">
             <table>
                 <thead>
                     <tr>
                         <th>Book Title</th>
+                        <th>Book ID</th>
                         <th>Member Name</th>
+                        <th>Member ID</th>
                         <th>Lending Date</th>
                         <th>Due Date</th>
                         <th>Status</th>
@@ -464,7 +375,7 @@ while ($r_row = $rl_query->fetch_assoc()) {
                 <tbody>
                     <?php 
                     if (empty($recent_lendings)) {
-                        echo '<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">No lending transactions logged yet.</td></tr>';
+                        echo '<tr><td colspan="7" style="text-align:center; color:var(--text-muted);"><i class="fa-solid fa-circle-check" style="color:var(--accent-green);"></i> No overdue books or upcoming due dates within 3 days.</td></tr>';
                     } else {
                         foreach ($recent_lendings as $rl) {
                             $f_info = calculate_fine($rl['due_date'], $rl['returned_at']);
@@ -488,10 +399,15 @@ while ($r_row = $rl_query->fetch_assoc()) {
                                     : ($days_diff <= 3
                                         ? '<span class="badge" style="background:#fffbeb; color:var(--accent-orange); border:1px solid var(--accent-orange); font-weight:600;"><i class="fa-solid fa-hourglass-half"></i> Due Soon (' . ($days_diff == 0 ? 'Today' : $days_diff . 'd') . ')</span>'
                                         : '<span class="badge badge-red"><i class="fa-solid fa-book"></i> Not Returned</span>'));
+                            
+                            $book_code = !empty($rl['book_code']) ? $rl['book_code'] : ('BK-' . $rl['physical_book_id']);
+                            $mem_code = !empty($rl['membership_id']) ? $rl['membership_id'] : ('MID-' . $rl['member_id']);
                             echo '
                             <tr>
-                                <td>' . e($rl['title']) . '</td>
+                                <td><strong style="color:var(--navy-dark);">' . e($rl['title']) . '</strong></td>
+                                <td><code>' . e($book_code) . '</code></td>
                                 <td>' . e($rl['name']) . '</td>
+                                <td><code>' . e($mem_code) . '</code></td>
                                 <td>' . date('d-m-Y', strtotime($rl['lent_at'])) . '</td>
                                 <td>' . $due_col_html . '</td>
                                 <td>' . $l_badge . '</td>

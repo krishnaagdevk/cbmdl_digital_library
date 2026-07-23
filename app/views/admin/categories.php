@@ -4,12 +4,12 @@ if (!defined('BASE_URL')) exit;
 ?>
 <div class="grid">
     <div class="card">
-        <h3><i class="fa-solid fa-circle-plus"></i> Add New Category</h3>
+        <h3><i class="fa-solid fa-circle-plus"></i> Add New e-books Category</h3>
         <form method="post" action="?action=add_category">
             <?= csrf_input() ?>
             <label for="cat_input">Category Name</label>
             <input id="cat_input" name="name" placeholder="e.g. UPSC, Engineering, Novel" required>
-            <button><i class="fa-solid fa-floppy-disk"></i> Register Category</button>
+            <button><i class="fa-solid fa-floppy-disk"></i>Save Category</button>
         </form>
     </div>
 

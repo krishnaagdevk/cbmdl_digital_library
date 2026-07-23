@@ -14,6 +14,9 @@ if ($viewId) {
 
 $pendingCountRes = $db->query("SELECT COUNT(*) c FROM members WHERE approved = 0");
 $pendingCount = $pendingCountRes ? $pendingCountRes->fetch_assoc()['c'] : 0;
+
+$pendingRenewalsRes = $db->query("SELECT r.*, m.name as member_name, m.membership_id, m.mobile, p.name as plan_name, p.duration, p.amount FROM renewal_requests r JOIN members m ON r.member_id = m.id JOIN membership_plans p ON r.membership_plan_id = p.id WHERE r.status = 'Pending' ORDER BY r.id DESC");
+$pendingRenewalCount = $pendingRenewalsRes ? $pendingRenewalsRes->num_rows : 0;
 ?>
 <?php if ($selected): ?>
     <div class="card">
@@ -47,13 +50,14 @@ $pendingCount = $pendingCountRes ? $pendingCountRes->fetch_assoc()['c'] : 0;
                 <div>
                     <div style="background:var(--bg-slate); padding:20px; border-radius:12px; border:1px solid var(--border-color); margin-bottom: 25px;">
                         <h4 style="margin-top:0;"><i class="fa-solid fa-receipt"></i> Settle Plan & Payment</h4>
-                        <label for="m_plan">Membership Plan *</label>
-                        <select id="m_plan" name="plan_id" required onchange="updatePlanFee(this)">
+                        <label for="m_plan_approve">Membership Plan *</label>
+                        <select id="m_plan_approve" name="plan_id" required>
                             <option value="">Choose Membership Plan Class</option>
                             <?php 
                             $plans = $db->query('SELECT * FROM membership_plans ORDER BY amount ASC');
                             while($p = $plans->fetch_assoc()) {
-                                echo '<option value="' . $p['id'] . '" data-amount="' . e($p['amount']) . '" data-duration="' . e($p['duration']) . '">' . e($p['name']) . ' (' . e($p['duration']) . ' - ₹' . e($p['amount']) . ')</option>';
+                                $pSel = (($selected['membership_plan_id'] ?? 0) == $p['id']) ? 'selected' : '';
+                                echo '<option value="' . $p['id'] . '" ' . $pSel . '>' . e($p['name']) . ' (' . e($p['duration']) . ' - ₹' . e($p['amount']) . ')</option>';
                             }
                             ?>
                         </select>
@@ -64,42 +68,16 @@ $pendingCount = $pendingCountRes ? $pendingCountRes->fetch_assoc()['c'] : 0;
                             $shiftsRes = $db->query("SELECT * FROM work_shifts ORDER BY id ASC");
                             while ($s = $shiftsRes->fetch_assoc()) {
                                 $sName = $s['name'];
-                                $sel = (($selected['shift'] ?? 'Both') === $sName) ? 'selected' : '';
+                                $sel = (($selected['shift'] ?? 'Morning') === $sName) ? 'selected' : '';
                                 $sStart = date('h:i A', strtotime($s['start_time']));
                                 $sEnd = date('h:i A', strtotime($s['end_time']));
                                 echo '<option value="' . e($sName) . '" ' . $sel . '>' . e($sName) . ' Shift (' . $sStart . ' - ' . $sEnd . ')</option>';
                             }
                             ?>
                         </select>
-
-                        <label for="m_duration">Membership Term Duration (Auto-set)</label>
-                        <input id="m_duration" name="duration" readonly style="background:var(--bg-slate); font-weight:600;" placeholder="Term will auto-fill" required>
-                        
-                        <label for="m_fee">Collected Membership Fee (INR) (Auto-set)</label>
-                        <input id="m_fee" name="membership_fee" readonly style="background:var(--bg-slate); font-weight:600;" placeholder="Collected fee will auto-fill" required>
-
-                        <script>
-                        function updatePlanFee(selectEl) {
-                            if (!selectEl) return;
-                            const selectedOption = selectEl.options[selectEl.selectedIndex];
-                            const container = selectEl.closest('form') || selectEl.closest('div');
-                            const feeInput = container ? container.querySelector('#m_fee') : null;
-                            const durationInput = container ? container.querySelector('#m_duration') : null;
-                            
-                            if (selectedOption && selectedOption.value !== '') {
-                                const amount = selectedOption.getAttribute('data-amount');
-                                const duration = selectedOption.getAttribute('data-duration');
-                                if (feeInput) feeInput.value = amount;
-                                if (durationInput) durationInput.value = duration;
-                            } else {
-                                if (feeInput) feeInput.value = '';
-                                if (durationInput) durationInput.value = '';
-                            }
-                        }
-                        </script>
                         
                         <label for="m_pay">Reference Transaction / Payment ID *</label>
-                        <input id="m_pay" name="payment_id" placeholder="Challan / UPI / Cash" required>
+                        <input id="m_pay" name="payment_id" value="<?= e($selected['payment_id'] ?? '') ?>" placeholder="Challan / UPI / Cash" required>
                         
                         <button style="width:100%; margin-top:15px; background:var(--primary);"><i class="fa-solid fa-circle-check"></i> Approve & Issue Membership ID</button>
                     </form>
@@ -175,41 +153,31 @@ $pendingCount = $pendingCountRes ? $pendingCountRes->fetch_assoc()['c'] : 0;
                         <form method="post" action="?action=renew_member&tab=<?= $tab ?>">
                             <?= csrf_input() ?>
                             <input type="hidden" name="id" value="<?= $selected['id'] ?>">
-                            <label for="ren_plan">Choose Renewal Plan</label>
-                            <select id="ren_plan" name="plan_id" required onchange="updateRenewPlanDetails(this)">
+                            <label for="ren_plan">Choose Renewal Plan *</label>
+                            <select id="ren_plan" name="plan_id" required>
                                 <option value="">Select Plan Class...</option>
                                 <?php
                                 $plans = $db->query("SELECT * FROM membership_plans ORDER BY amount ASC");
                                 while ($p = $plans->fetch_assoc()) {
-                                    echo '<option value="' . $p['id'] . '" data-amount="' . e($p['amount']) . '" data-duration="' . e($p['duration']) . '">' . e($p['name']) . ' (' . e($p['duration']) . ' - ₹' . e($p['amount']) . ')</option>';
+                                    $pSel = (($selected['membership_plan_id'] ?? 0) == $p['id']) ? 'selected' : '';
+                                    echo '<option value="' . $p['id'] . '" ' . $pSel . '>' . e($p['name']) . ' (' . e($p['duration']) . ' - ₹' . e($p['amount']) . ')</option>';
                                 }
                                 ?>
                             </select>
 
-                            <label for="ren_duration">Renewal Term Duration (Auto-set)</label>
-                            <input id="ren_duration" name="duration" readonly style="background:var(--bg-slate); font-weight:600;" placeholder="Term will auto-fill" required>
-
-                            <label for="ren_fee">Plan Due Amount (INR) (Auto-set)</label>
-                            <input id="ren_fee" readonly style="background:var(--bg-slate); font-weight:600;" placeholder="Amount will auto-fill">
-
-                            <script>
-                            function updateRenewPlanDetails(selectEl) {
-                                const selectedOption = selectEl.options[selectEl.selectedIndex];
-                                const container = selectEl.closest('form');
-                                const durationInput = container ? container.querySelector('#ren_duration') : null;
-                                const feeInput = container ? container.querySelector('#ren_fee') : null;
-                                
-                                if (selectedOption && selectedOption.value !== '') {
-                                    const amount = selectedOption.getAttribute('data-amount');
-                                    const duration = selectedOption.getAttribute('data-duration');
-                                    if (durationInput) durationInput.value = duration;
-                                    if (feeInput) feeInput.value = amount;
-                                } else {
-                                    if (durationInput) durationInput.value = '';
-                                    if (feeInput) feeInput.value = '';
+                            <label for="ren_shift">Library Work Shift / Timing *</label>
+                            <select id="ren_shift" name="shift" required>
+                                <?php 
+                                $shiftsRes = $db->query("SELECT * FROM work_shifts ORDER BY id ASC");
+                                while ($s = $shiftsRes->fetch_assoc()) {
+                                    $sName = $s['name'];
+                                    $sel = (($selected['shift'] ?? 'Morning') === $sName) ? 'selected' : '';
+                                    $sStart = date('h:i A', strtotime($s['start_time']));
+                                    $sEnd = date('h:i A', strtotime($s['end_time']));
+                                    echo '<option value="' . e($sName) . '" ' . $sel . '>' . e($sName) . ' Shift (' . $sStart . ' - ' . $sEnd . ')</option>';
                                 }
-                            }
-                            </script>
+                                ?>
+                            </select>
                             <label for="ren_pay">Reference Transaction / Payment ID</label>
                             <input id="ren_pay" name="payment_id" placeholder="Transaction Reference" required>
                             <button style="width:100%;"><i class="fa-solid fa-circle-check"></i> Process Renewal</button>
@@ -231,6 +199,73 @@ $pendingCount = $pendingCountRes ? $pendingCountRes->fetch_assoc()['c'] : 0;
         <p style="margin-top:20px;"><a class="btn" href="?action=admin&tab=<?= $tab ?>" style="background:var(--navy-light);"><i class="fa-solid fa-arrow-left"></i> Back to Members Dashboard</a></p>
     </div>
 <?php else: ?>
+    <?php if ($pendingRenewalCount > 0): ?>
+        <!-- Pending Online Renewal Requests Queue -->
+        <div class="card" style="margin-bottom:25px; border-left:5px solid var(--accent-orange); background:#fffbeb;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
+                <h3 style="margin:0; color:#b45309;">
+                    <i class="fa-solid fa-clock-rotate-left"></i> Pending Online Pass Renewal Requests
+                    <span class="badge badge-orange" style="font-size:12px; margin-left:8px;"><?= $pendingRenewalCount ?> Pending</span>
+                </h3>
+            </div>
+            <div class="table-responsive" style="overflow-x:auto;">
+                <table style="width:100%; border-collapse:collapse; background:white; border-radius:8px; overflow:hidden;">
+                    <thead>
+                        <tr style="background:#fef3c7; text-align:left; font-size:12px; color:#92400e;">
+                            <th style="padding:10px;">Member Info</th>
+                            <th style="padding:10px;">Requested Plan</th>
+                            <th style="padding:10px;">Shift</th>
+                            <th style="padding:10px;">Fee</th>
+                            <th style="padding:10px;">Payment UTR / ID</th>
+                            <th style="padding:10px;">Date Requested</th>
+                            <th style="padding:10px; text-align:right;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php while ($req = $pendingRenewalsRes->fetch_assoc()): ?>
+                            <tr style="border-bottom:1px solid #fde68a; font-size:13px;">
+                                <td style="padding:10px;">
+                                    <strong style="color:var(--navy-dark);"><?= e($req['member_name']) ?></strong>
+                                    <span style="font-size:11px; color:var(--text-muted); display:block;"><?= e($req['membership_id']) ?> | <?= e($req['mobile']) ?></span>
+                                </td>
+                                <td style="padding:10px;">
+                                    <strong><?= e($req['plan_name']) ?></strong>
+                                    <span style="font-size:11px; color:var(--text-muted); display:block;"><?= e($req['duration']) ?> Term</span>
+                                </td>
+                                <td style="padding:10px; font-size:12px;"><?= e($req['shift']) ?> Shift</td>
+                                <td style="padding:10px;"><strong style="color:#16a34a;">₹<?= number_format($req['amount'], 2) ?></strong></td>
+                                <td style="padding:10px; font-family:monospace; font-size:12px; color:var(--navy-dark); font-weight:700;">
+                                    <?= e($req['payment_id']) ?>
+                                </td>
+                                <td style="padding:10px; color:var(--text-muted); font-size:12px;">
+                                    <?= date('d M Y, h:i A', strtotime($req['requested_at'])) ?>
+                                </td>
+                                <td style="padding:10px; text-align:right;">
+                                    <div style="display:inline-flex; gap:6px;">
+                                        <form method="post" action="?action=approve_renewal_request" style="display:inline;">
+                                            <?= csrf_input() ?>
+                                            <input type="hidden" name="id" value="<?= $req['id'] ?>">
+                                            <button class="btn btn-green" style="padding:5px 10px; font-size:11px; background:#16a34a;">
+                                                <i class="fa-solid fa-check"></i> Approve
+                                            </button>
+                                        </form>
+                                        <form method="post" action="?action=reject_renewal_request" style="display:inline;" onsubmit="return confirm('Reject this online renewal request?')">
+                                            <?= csrf_input() ?>
+                                            <input type="hidden" name="id" value="<?= $req['id'] ?>">
+                                            <button class="btn btn-danger" style="padding:5px 10px; font-size:11px; background:#dc2626;">
+                                                <i class="fa-solid fa-xmark"></i> Reject
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endwhile; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    <?php endif; ?>
+
     <div class="grid">
         <div class="card">
             <h3><i class="fa-solid fa-address-card"></i> Register New Member Account</h3>
@@ -253,27 +288,39 @@ $pendingCount = $pendingCountRes ? $pendingCountRes->fetch_assoc()['c'] : 0;
                 <input id="m_guardian" name="guardian_name" value="<?= e($draft['guardian_name'] ?? '') ?>" placeholder="Guardian Name" required>
                 
                 <label for="m_mobile">Mobile Number *</label>
-                <input id="m_mobile" name="mobile" value="<?= e($draft['mobile'] ?? '') ?>" placeholder="Contact Mobile No" required>
+                <input id="m_mobile" name="mobile" value="<?= e($draft['mobile'] ?? '') ?>" placeholder="10 Digit Mobile Number" required>
                 
-                <label for="m_password">Secure Login Password *</label>
-                <input id="m_password" type="password" name="password" value="<?= e($draft['password'] ?? '') ?>" placeholder="Create password" required maxlength="15">
+                <label for="m_email">Email Address</label>
+                <input id="m_email" type="email" name="email" value="<?= e($draft['email'] ?? '') ?>" placeholder="email@domain.com">
                 
-                <label for="m_email">Email ID</label>
-                <input id="m_email" name="email" type="email" value="<?= e($draft['email'] ?? '') ?>" placeholder="e.g. member@meerut.com">
+                <label for="m_pass">Account Password *</label>
+                <input id="m_pass" type="password" name="password" placeholder="Passcode for member portal login" required>
                 
                 <label for="m_address">Residential Address *</label>
-                <textarea id="m_address" name="address" placeholder="Address information" required style="width:100%; min-height:80px;"><?= e($draft['address'] ?? '') ?></textarea>
+                <textarea id="m_address" name="address" placeholder="Full Postal Address" required style="width:100%; min-height:80px;"><?= e($draft['address'] ?? '') ?></textarea>
                 
                 <label for="m_aadhar">Aadhar ID No. *</label>
-                <input id="m_aadhar" name="aadhar_no" value="<?= e($draft['aadhar_no'] ?? '') ?>" placeholder="12 Digit ID" required maxlength="12" pattern="\d{12}" inputmode="numeric" title="Aadhar ID must be exactly 12 digits (numbers only)">
+                <input id="m_aadhar" name="aadhar_no" value="<?= e($draft['aadhar_no'] ?? '') ?>" placeholder="12 Digit Unique Aadhar" required maxlength="12" pattern="\d{12}" inputmode="numeric" title="Aadhar ID must be exactly 12 digits (numbers only)">
                 
-                <label for="m_shift">Library Work Shift *</label>
+                <label for="m_plan">Membership Plan Class *</label>
+                <select id="m_plan" name="plan_id" required>
+                    <option value="">Choose Membership Tier...</option>
+                    <?php 
+                    $plans = $db->query('SELECT * FROM membership_plans ORDER BY amount ASC');
+                    while($p = $plans->fetch_assoc()) {
+                        $pSel = (($draft['plan_id'] ?? 0) == $p['id']) ? 'selected' : '';
+                        echo '<option value="' . $p['id'] . '" ' . $pSel . '>' . e($p['name']) . ' (' . e($p['duration']) . ' - ₹' . e($p['amount']) . ')</option>';
+                    }
+                    ?>
+                </select>
+
+                <label for="m_shift">Library Work Shift / Timing *</label>
                 <select id="m_shift" name="shift" required>
                     <?php 
                     $shiftsRes = $db->query("SELECT * FROM work_shifts ORDER BY id ASC");
                     while ($s = $shiftsRes->fetch_assoc()) {
                         $sName = $s['name'];
-                        $sel = (($draft['shift'] ?? 'Both') === $sName) ? 'selected' : '';
+                        $sel = (($draft['shift'] ?? 'Morning') === $sName) ? 'selected' : '';
                         $sStart = date('h:i A', strtotime($s['start_time']));
                         $sEnd = date('h:i A', strtotime($s['end_time']));
                         echo '<option value="' . e($sName) . '" ' . $sel . '>' . e($sName) . ' Shift (' . $sStart . ' - ' . $sEnd . ')</option>';
@@ -281,70 +328,17 @@ $pendingCount = $pendingCountRes ? $pendingCountRes->fetch_assoc()['c'] : 0;
                     ?>
                 </select>
                 
-                <label for="m_plan">Membership Plan *</label>
-                 <select id="m_plan" name="plan_id" required onchange="updatePlanFeeMain(this)">
-                     <option value="">Choose Membership Plan Class</option>
-                     <?php 
-                     $plans = $db->query('SELECT * FROM membership_plans ORDER BY amount ASC');
-                     $draftPlanId = (int)($draft['plan_id'] ?? 0);
-                     while($p = $plans->fetch_assoc()) {
-                         $pSel = ($draftPlanId === (int)$p['id']) ? 'selected' : '';
-                         echo '<option value="' . $p['id'] . '" ' . $pSel . ' data-amount="' . e($p['amount']) . '" data-duration="' . e($p['duration']) . '">' . e($p['name']) . ' (' . e($p['duration']) . ' - ₹' . e($p['amount']) . ')</option>';
-                     }
-                     ?>
-                 </select>
-
-                 <label for="m_duration_main">Membership Term Duration (Auto-set)</label>
-                 <div id="m_duration_display" style="background:var(--bg-slate); font-weight:600; padding:10px 14px; border-radius:8px; border:1px solid var(--border-color); color:var(--text-dark); min-height:42px;"><?= e($draft['duration'] ?? '') ?></div>
-                 <input type="hidden" id="m_duration_main" name="duration" value="<?= e($draft['duration'] ?? '') ?>">
-                 
-                 <label for="m_fee_main">Collected Membership Fee (INR) (Auto-set)</label>
-                 <div id="m_fee_display" style="background:var(--bg-slate); font-weight:600; padding:10px 14px; border-radius:8px; border:1px solid var(--border-color); color:var(--text-dark); min-height:42px;"><?= e($draft['membership_fee'] ?? '') ?></div>
-                 <input type="hidden" id="m_fee_main" name="membership_fee" value="<?= e($draft['membership_fee'] ?? '') ?>">
-
-                 <script>
-                 function updatePlanFeeMain(selectEl) {
-                     if (!selectEl) return;
-                     const selectedOption = selectEl.options[selectEl.selectedIndex];
-                     
-                     const feeInput = document.getElementById('m_fee_main');
-                     const feeDisplay = document.getElementById('m_fee_display');
-                     const durationInput = document.getElementById('m_duration_main');
-                     const durationDisplay = document.getElementById('m_duration_display');
-                     
-                     if (selectedOption && selectedOption.value !== '') {
-                         const amount = selectedOption.getAttribute('data-amount');
-                         const duration = selectedOption.getAttribute('data-duration');
-                         if (feeInput) feeInput.value = amount;
-                         if (feeDisplay) feeDisplay.textContent = '₹' + amount;
-                         if (durationInput) durationInput.value = duration;
-                         if (durationDisplay) durationDisplay.textContent = duration;
-                     } else {
-                         if (feeInput) feeInput.value = '';
-                         if (feeDisplay) feeDisplay.textContent = '';
-                         if (durationInput) durationInput.value = '';
-                         if (durationDisplay) durationDisplay.textContent = '';
-                     }
-                 }
-                 document.addEventListener('DOMContentLoaded', function() {
-                     const planSelect = document.getElementById('m_plan');
-                     if (planSelect) updatePlanFeeMain(planSelect);
-                 });
-                 </script>
-                
                 <label for="m_pay">Reference Transaction / Payment ID *</label>
-                <input id="m_pay" name="payment_id" value="<?= e($draft['payment_id'] ?? '') ?>" placeholder="Challan / UPI / Cache Ref" required>
+                <input id="m_pay" name="payment_id" value="<?= e($draft['payment_id'] ?? '') ?>" placeholder="Challan / UPI / Cash Ref" required>
                 
                 <button><i class="fa-solid fa-user-plus"></i> Save Member Profile</button>
             </form>
         </div><?php unset($_SESSION['reg_member_draft']); ?>
 
         <div>
-
-
             <div class="card">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                    <h3 style="margin:0;"><i class="fa-solid fa-users-viewfinder"></i> New Membership</h3>
+                    <h3 style="margin:0;"><i class="fa-solid fa-users-viewfinder"></i> Member Catalog</h3>
                 </div>
                 <div class="table-responsive">
                     <table id="membersTable">
@@ -360,7 +354,7 @@ $pendingCount = $pendingCountRes ? $pendingCountRes->fetch_assoc()['c'] : 0;
                         </thead>
                         <tbody>
                             <?php 
-                            $x = $db->query('SELECT * FROM members WHERE approved = 1 ORDER BY id DESC LIMIT 5');
+                            $x = $db->query('SELECT * FROM members WHERE approved = 1 ORDER BY id DESC LIMIT 10');
                             while($r = $x->fetch_assoc()) {
                                 $isExpired = strtotime($r['end_date']) < time();
                                 if ($r['is_active'] == 0) {
@@ -372,7 +366,7 @@ $pendingCount = $pendingCountRes ? $pendingCountRes->fetch_assoc()['c'] : 0;
                                 }
                                 echo '
                                 <tr>
-                                    <td><strong>' . $r['membership_id'] . '</strong></td>
+                                    <td><strong>' . e($r['membership_id']) . '</strong></td>
                                     <td>' . e($r['name']) . '</td>
                                     <td>' . e($r['mobile']) . '</td>
                                     <td><span style="font-size:12px; font-weight:500;">' . date('d-m-Y', strtotime($r['start_date'])) . ' to ' . date('d-m-Y', strtotime($r['end_date'])) . '</span></td>
@@ -389,134 +383,131 @@ $pendingCount = $pendingCountRes ? $pendingCountRes->fetch_assoc()['c'] : 0;
     </div>
 <?php endif; ?>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Restrict Aadhar ID input fields to numbers only, maximum of 12 digits
-    const aadharInputs = document.querySelectorAll('#upd_aadhar, #m_aadhar');
-    aadharInputs.forEach(input => {
-        input.addEventListener('input', function() {
-            // Strip any character that is not a number
-            let cleanVal = this.value.replace(/\D/g, '');
-            // Bound to maximum length of 12 digits
-            if (cleanVal.length > 12) {
-                cleanVal = cleanVal.substring(0, 12);
-            }
-            this.value = cleanVal;
-        });
-        
-        // Block non-numeric characters on keypress before they render
-        input.addEventListener('keypress', function(e) {
-            if (e.key < '0' || e.key > '9') {
-                e.preventDefault();
-            }
-        });
-    });
-
-    const table = document.getElementById('membersTable');
-    if (!table) return;
-
-    const tbody = table.querySelector('tbody');
-    const originalRows = Array.from(tbody.querySelectorAll('tr'));
-    const filterInput = document.getElementById('memberFilterInput');
-    
-    let filteredRows = [...originalRows];
-    let currentPage = 1;
-    const rowsPerPage = 10;
-
-    // Create pagination container below table-responsive
-    const tableResponsive = table.parentElement;
-    const paginationContainer = document.createElement('div');
-    paginationContainer.style.cssText = `
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-top: 15px;
-        padding-top: 10px;
-        border-top: 1px solid var(--border-color, #e2e8f0);
-    `;
-    
-    paginationContainer.innerHTML = `
-        <span id="memberPageInfo" style="font-size:12px; color:var(--text-muted, #64748b); font-weight:500;">Showing 1-10 of 10</span>
-        <div style="display:flex; gap:8px;">
-            <button id="memberPrevBtn" class="btn btn-secondary" style="padding:6px 12px; font-size:12px; background:var(--bg-slate, #f8fafc); border:1px solid var(--border-color, #e2e8f0); color:var(--text-color, #1e293b); cursor:pointer;"><i class="fa-solid fa-chevron-left"></i> Previous</button>
-            <button id="memberNextBtn" class="btn btn-secondary" style="padding:6px 12px; font-size:12px; background:var(--bg-slate, #f8fafc); border:1px solid var(--border-color, #e2e8f0); color:var(--text-color, #1e293b); cursor:pointer;">Next <i class="fa-solid fa-chevron-right"></i></button>
-        </div>
-    `;
-    tableResponsive.parentNode.appendChild(paginationContainer);
-
-    const prevBtn = document.getElementById('memberPrevBtn');
-    const nextBtn = document.getElementById('memberNextBtn');
-    const pageInfo = document.getElementById('memberPageInfo');
-
-    function renderTable() {
-        const totalRows = filteredRows.length;
-        const totalPages = Math.ceil(totalRows / rowsPerPage) || 1;
-        
-        // Boundaries
-        if (currentPage < 1) currentPage = 1;
-        if (currentPage > totalPages) currentPage = totalPages;
-
-        const startIdx = (currentPage - 1) * rowsPerPage;
-        const endIdx = startIdx + rowsPerPage;
-
-        // Clear and append
-        tbody.innerHTML = '';
-        const pageRows = filteredRows.slice(startIdx, endIdx);
-        
-        if (pageRows.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:20px; color:var(--text-muted);"><i class="fa-solid fa-face-frown" style="font-size:18px; margin-bottom:5px; display:block;"></i> No matching members found</td></tr>`;
-        } else {
-            pageRows.forEach(row => tbody.appendChild(row));
-        }
-
-        // Update button states
-        prevBtn.disabled = (currentPage === 1);
-        nextBtn.disabled = (currentPage === totalPages);
-        
-        // CSS tweaks for disabled state
-        prevBtn.style.opacity = (currentPage === 1) ? '0.5' : '1';
-        prevBtn.style.cursor = (currentPage === 1) ? 'not-allowed' : 'pointer';
-        nextBtn.style.opacity = (currentPage === totalPages) ? '0.5' : '1';
-        nextBtn.style.cursor = (currentPage === totalPages) ? 'not-allowed' : 'pointer';
-
-        // Update text
-        const showingStart = totalRows === 0 ? 0 : startIdx + 1;
-        const showingEnd = Math.min(endIdx, totalRows);
-        pageInfo.textContent = `Showing ${showingStart}-${showingEnd} of ${totalRows}`;
-    }
-
-    // Button actions
-    prevBtn.addEventListener('click', function() {
-        if (currentPage > 1) {
-            currentPage--;
-            renderTable();
-        }
-    });
-
-    nextBtn.addEventListener('click', function() {
-        const totalPages = Math.ceil(filteredRows.length / rowsPerPage);
-        if (currentPage < totalPages) {
-            currentPage++;
-            renderTable();
-        }
-    });
-
-    // Custom reactive search filter
-    if (filterInput) {
-        filterInput.addEventListener('input', function() {
-            const query = filterInput.value.toLowerCase().trim();
-            
-            filteredRows = originalRows.filter(row => {
-                const text = row.textContent.toLowerCase();
-                return text.includes(query);
+<script class="dynamic-script">
+(function() {
+    function initMembersScript() {
+        // Restrict Aadhar ID input fields to numbers only, maximum of 12 digits
+        const aadharInputs = document.querySelectorAll('#upd_aadhar, #m_aadhar');
+        aadharInputs.forEach(input => {
+            input.addEventListener('input', function() {
+                let cleanVal = this.value.replace(/\D/g, '');
+                if (cleanVal.length > 12) {
+                    cleanVal = cleanVal.substring(0, 12);
+                }
+                this.value = cleanVal;
             });
             
-            currentPage = 1;
-            renderTable();
+            input.addEventListener('keypress', function(e) {
+                if (e.key < '0' || e.key > '9') {
+                    e.preventDefault();
+                }
+            });
         });
+
+        const table = document.getElementById('membersTable');
+        if (!table) return;
+
+        const tbody = table.querySelector('tbody');
+        const originalRows = Array.from(tbody.querySelectorAll('tr'));
+        const filterInput = document.getElementById('memberFilterInput');
+        
+        let filteredRows = [...originalRows];
+        let currentPage = 1;
+        const rowsPerPage = 10;
+
+        const tableResponsive = table.parentElement;
+        if (!tableResponsive) return;
+        
+        // Remove existing pagination container if re-initializing
+        const oldPag = tableResponsive.parentNode.querySelector('#memberPaginationContainer');
+        if (oldPag) oldPag.remove();
+
+        const paginationContainer = document.createElement('div');
+        paginationContainer.id = 'memberPaginationContainer';
+        paginationContainer.style.cssText = `
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px solid var(--border-color, #e2e8f0);
+        `;
+        
+        paginationContainer.innerHTML = `
+            <span id="memberPageInfo" style="font-size:12px; color:var(--text-muted, #64748b); font-weight:500;">Showing 1-10 of 10</span>
+            <div style="display:flex; gap:8px;">
+                <button id="memberPrevBtn" class="btn btn-secondary" style="padding:6px 12px; font-size:12px; background:var(--bg-slate, #f8fafc); border:1px solid var(--border-color, #e2e8f0); color:var(--text-color, #1e293b); cursor:pointer;"><i class="fa-solid fa-chevron-left"></i> Previous</button>
+                <button id="memberNextBtn" class="btn btn-secondary" style="padding:6px 12px; font-size:12px; background:var(--bg-slate, #f8fafc); border:1px solid var(--border-color, #e2e8f0); color:var(--text-color, #1e293b); cursor:pointer;">Next <i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+        `;
+        tableResponsive.parentNode.appendChild(paginationContainer);
+
+        const prevBtn = document.getElementById('memberPrevBtn');
+        const nextBtn = document.getElementById('memberNextBtn');
+        const pageInfo = document.getElementById('memberPageInfo');
+
+        function renderPage(page) {
+            currentPage = page;
+            const totalRows = filteredRows.length;
+            const totalPages = Math.ceil(totalRows / rowsPerPage) || 1;
+
+            if (currentPage < 1) currentPage = 1;
+            if (currentPage > totalPages) currentPage = totalPages;
+
+            const startIdx = (currentPage - 1) * rowsPerPage;
+            const endIdx = Math.min(startIdx + rowsPerPage, totalRows);
+
+            originalRows.forEach(row => row.style.display = 'none');
+
+            for (let i = startIdx; i < endIdx; i++) {
+                if (filteredRows[i]) {
+                    filteredRows[i].style.display = '';
+                }
+            }
+
+            if (totalRows === 0) {
+                pageInfo.textContent = 'No records found';
+            } else {
+                pageInfo.textContent = `Showing ${startIdx + 1}-${endIdx} of ${totalRows}`;
+            }
+
+            prevBtn.disabled = currentPage === 1;
+            nextBtn.disabled = currentPage === totalPages || totalPages === 0;
+
+            prevBtn.style.opacity = prevBtn.disabled ? '0.5' : '1';
+            prevBtn.style.cursor = prevBtn.disabled ? 'not-allowed' : 'pointer';
+            nextBtn.style.opacity = nextBtn.disabled ? '0.5' : '1';
+            nextBtn.style.cursor = nextBtn.disabled ? 'not-allowed' : 'pointer';
+        }
+
+        if (filterInput) {
+            filterInput.addEventListener('input', function() {
+                const query = this.value.toLowerCase().trim();
+                filteredRows = originalRows.filter(row => {
+                    return row.textContent.toLowerCase().includes(query);
+                });
+                renderPage(1);
+            });
+        }
+
+        prevBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (currentPage > 1) renderPage(currentPage - 1);
+        });
+
+        nextBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const totalPages = Math.ceil(filteredRows.length / rowsPerPage) || 1;
+            if (currentPage < totalPages) renderPage(currentPage + 1);
+        });
+
+        renderPage(1);
     }
 
-    // Init
-    renderTable();
-});
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initMembersScript);
+    } else {
+        initMembersScript();
+    }
+})();
 </script>

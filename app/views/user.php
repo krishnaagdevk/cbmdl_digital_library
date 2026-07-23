@@ -87,6 +87,7 @@ $actStmt->close();
         <a href="?action=user&tab=print_requests" class="<?= $tab === 'print_requests' ? 'active' : '' ?>"><i class="fa-solid fa-print"></i> e-book Print History</a>
         <a href="?action=user&tab=physical_books" class="<?= $tab === 'physical_books' ? 'active' : '' ?>"><i class="fa-solid fa-book"></i> Explore Physical Books</a>
         <a href="?action=user&tab=lending" class="<?= $tab === 'lending' ? 'active' : '' ?>"><i class="fa-solid fa-clipboard-list"></i> Physical Book Lending History</a>
+        <a href="?action=user&tab=membership_history" class="<?= $tab === 'membership_history' ? 'active' : '' ?>"><i class="fa-solid fa-id-card-clip"></i> My Membership History</a>
         <a href="?action=user&tab=profile" class="<?= $tab === 'profile' ? 'active' : '' ?>"><i class="fa-solid fa-user-gear"></i> My Profile</a>
 
         <?php if (!empty($active_reading_requests)): ?>
@@ -132,12 +133,10 @@ $actStmt->close();
                 <div>
                     <h2 style="margin: 0; font-size: 20px; font-weight: 700; color: #ffffff; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                         Welcome, <?= e($me['name']) ?>
-                        <span style="font-size: 11px; font-weight: 600; background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 3px 10px; border-radius: 20px;">
-                            <i class="fa-solid fa-circle" style="font-size: 7px; vertical-align: middle;"></i> Active Member
-                        </span>
+                      
                     </h2>
                     <p style="margin: 4px 0 0 0; font-size: 13px; color: #94a3b8; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-                        <span><i class="fa-solid fa-id-card" style="color: var(--primary);"></i> Member ID: <strong style="color: #f1f5f9; font-weight: 600;"><?= e($me['membership_id']) ?></strong></span>
+                        <span><i class="fa-solid fa-id-card" style="color: var(--primary);"></i> Membership ID: <strong style="color: #f1f5f9; font-weight: 600;"><?= e($me['membership_id']) ?></strong></span>
                         <span style="color: rgba(255,255,255,0.2);">•</span>
                         <span><i class="fa-solid fa-calendar-check" style="color: #34d399;"></i> Valid Until: <strong style="color: #f1f5f9; font-weight: 600;"><?= date('d-m-Y', strtotime($me['end_date'])) ?></strong></span>
                     </p>
@@ -153,14 +152,16 @@ $actStmt->close();
             </div>
         </div>
         <?php if ($expiringSoon): ?>
-            <div class="notice" style="background:#fffbeb; color:var(--accent-orange); border-left:5px solid var(--accent-orange); box-shadow:0 4px 12px rgba(245, 158, 11, 0.08); margin-bottom:20px;">
-                <i class="fa-solid fa-triangle-exclamation"></i>
-                <span>⚠️ Your membership is expiring in <?= $daysLeft ?> day(s). Please contact the librarian to renew your membership.</span>
+            <div class="notice" style="background:#fffbeb; color:var(--accent-orange); border-left:5px solid var(--accent-orange); box-shadow:0 4px 12px rgba(245, 158, 11, 0.08); margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <span>⚠️ Your e-Library pass is expiring in <strong><?= $daysLeft ?> day(s)</strong>. Kindly contact Librarian if you want to renew your membership</span>
+                </div>
             </div>
         <?php endif; ?>
 
         <?php
-        $allowed_tabs = ['dashboard', 'books', 'physical_books', 'lending', 'reading_history', 'print_requests', 'profile'];
+        $allowed_tabs = ['dashboard', 'books', 'physical_books', 'lending', 'reading_history', 'print_requests', 'membership_history', 'profile'];
         if (in_array($tab, $allowed_tabs)) {
             require __DIR__ . "/user/{$tab}.php";
         } else {
@@ -175,86 +176,9 @@ document.addEventListener('DOMContentLoaded', function() {
     let isInitialMemberPoll = true;
 
     function showToastNotification(message, type = 'info') {
-        // Create container if not exists
-        let container = document.getElementById('toastNotificationContainer');
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'toastNotificationContainer';
-            container.style.cssText = `
-                position: fixed;
-                top: 24px;
-                right: 24px;
-                display: flex;
-                flex-direction: column;
-                gap: 12px;
-                z-index: 10000;
-                pointer-events: none;
-                max-width: 380px;
-                width: calc(100% - 48px);
-            `;
-            document.body.appendChild(container);
+        if (window.showToast) {
+            window.showToast(message, type);
         }
-        
-        // Create toast
-        const toast = document.createElement('div');
-        toast.style.cssText = `
-            background: var(--card-bg, #ffffff);
-            color: var(--text-color, #1e293b);
-            border-radius: 12px;
-            padding: 16px;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-            border: 1px solid var(--border-color, #e2e8f0);
-            border-left: 5px solid var(--primary, #3b82f6);
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-            pointer-events: auto;
-            transform: translateX(120%);
-            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s, margin 0.4s;
-            opacity: 0;
-        `;
-        
-        if (type === 'success') {
-            toast.style.borderLeftColor = 'var(--accent-green, #10b981)';
-        } else if (type === 'danger') {
-            toast.style.borderLeftColor = 'var(--accent-red, #ef4444)';
-        } else if (type === 'warning') {
-            toast.style.borderLeftColor = 'var(--accent-orange, #f59e0b)';
-        }
-        
-        // Icon
-        let iconHtml = '<i class="fa-solid fa-circle-info" style="color:var(--primary); font-size:18px;"></i>';
-        if (type === 'success') {
-            iconHtml = '<i class="fa-solid fa-circle-check" style="color:var(--accent-green); font-size:18px;"></i>';
-        } else if (type === 'danger') {
-            iconHtml = '<i class="fa-solid fa-circle-xmark" style="color:var(--accent-red); font-size:18px;"></i>';
-        } else if (type === 'warning') {
-            iconHtml = '<i class="fa-solid fa-bell" style="color:var(--accent-orange); font-size:18px;"></i>';
-        }
-        
-        toast.innerHTML = `
-            <div style="flex-shrink:0;">${iconHtml}</div>
-            <div style="flex:1; font-size:13px; line-height:1.5;">
-                <div style="font-weight:700; margin-bottom:2px; color:var(--navy-dark);">${type === 'success' ? 'Request Approved!' : type === 'danger' ? 'Request Rejected' : 'Update Notification'}</div>
-                <div>${message}</div>
-            </div>
-            <button onclick="this.parentElement.remove()" style="background:none; border:none; padding:0; cursor:pointer; color:var(--text-muted); font-size:14px;"><i class="fa-solid fa-xmark"></i></button>
-        `;
-        
-        container.appendChild(toast);
-        
-        // Trigger entry animation
-        requestAnimationFrame(() => {
-            toast.style.transform = 'translateX(0)';
-            toast.style.opacity = '1';
-        });
-        
-        // Auto remove
-        setTimeout(() => {
-            toast.style.transform = 'translateX(120%)';
-            toast.style.opacity = '0';
-            setTimeout(() => toast.remove(), 400);
-        }, 6000);
     }
 
     function showNotificationModal(heading, message, type = 'info', actionUrl = null, actionText = null, onDismiss = null) {

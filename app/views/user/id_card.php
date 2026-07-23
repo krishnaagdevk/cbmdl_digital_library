@@ -38,11 +38,12 @@ if (!defined('BASE_URL')) exit;
             <!-- CARD FRONT -->
             <div class="cr80-card" style="width: 340px; height: 215px; border: 2px solid var(--primary); border-radius: 12px; background: white; box-shadow: 0 10px 25px rgba(0,0,0,0.05); overflow:hidden; font-family:\'Inter\', sans-serif; display:flex; flex-direction:column; justify-content:space-between; position:relative;">
                 <!-- Header Banner -->
-                <div style="background: linear-gradient(135deg, var(--navy-dark), var(--navy-light)); color: white; padding: 10px 15px; text-align: center; border-bottom: 2px solid var(--primary); display:flex; align-items:center; gap:10px; justify-content:center;">
-                    <div style="font-size:18px;">🏛️</div>
-                    <div>
-                        <h4 style="margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-weight:700;">Meerut Cantonment Board</h4>
-                        <p style="margin: 2px 0 0 0; font-size: 9px; opacity: 0.9; font-weight: 500;">P.L.C.L. Digital e-Library</p>
+                <div style="background: linear-gradient(135deg, var(--navy-dark), var(--navy-light)); color: white; padding: 8px 12px; text-align: center; border-bottom: 2px solid var(--primary); display:flex; align-items:center; gap:10px; justify-content:center;">
+                    <div style="font-size:22px;">🏛️</div>
+                    <div style="text-align:center;">
+                        <h4 style="margin: 0; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; font-weight:700; opacity:0.85;">Meerut Cantonment Board</h4>
+                        <div style="margin: 2px 0; font-size: 16px; font-weight: 800; letter-spacing: 0.5px; line-height: 1.1;">CBMDL Digital Library</div>
+                        <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; color: #fbbf24; margin-top: 2px;">Membership Card</div>
                     </div>
                 </div>
                 

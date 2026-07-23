@@ -84,7 +84,7 @@ $stmtR->close();
         </div>
         <div>
             <span style="font-size:12px; font-weight:600; color:var(--text-muted); text-transform:uppercase;">E-Books Read</span>
-            <h3 style="margin:2px 0 0 0; font-size:22px; font-weight:700; color:var(--navy-dark);"><?= $totalEbooksRead ?> <span style="font-size:12px; font-weight:500; color:var(--text-muted);">titles</span></h3>
+            <h3 style="margin:2px 0 0 0; font-size:22px; font-weight:700; color:var(--navy-dark);"><?= $totalEbooksRead ?></h3>
         </div>
     </div>
 
@@ -94,7 +94,7 @@ $stmtR->close();
         </div>
         <div>
             <span style="font-size:12px; font-weight:600; color:var(--text-muted); text-transform:uppercase;">Print Requests</span>
-            <h3 style="margin:2px 0 0 0; font-size:22px; font-weight:700; color:var(--navy-dark);"><?= $totalPrints ?> <span style="font-size:12px; font-weight:500; color:var(--text-muted);">jobs</span></h3>
+            <h3 style="margin:2px 0 0 0; font-size:22px; font-weight:700; color:var(--navy-dark);"><?= $totalPrints ?></h3>
         </div>
     </div>
 
@@ -104,7 +104,7 @@ $stmtR->close();
         </div>
         <div>
             <span style="font-size:12px; font-weight:600; color:var(--text-muted); text-transform:uppercase;">Total Borrowed</span>
-            <h3 style="margin:2px 0 0 0; font-size:22px; font-weight:700; color:var(--navy-dark);"><?= $totalPhysBorrowed ?> <span style="font-size:12px; font-weight:500; color:var(--text-muted);">times</span></h3>
+            <h3 style="margin:2px 0 0 0; font-size:22px; font-weight:700; color:var(--navy-dark);"><?= $totalPhysBorrowed ?></h3>
         </div>
     </div>
 
@@ -181,10 +181,10 @@ $stmtR->close();
             <table>
                 <thead>
                     <tr>
-                        <th>E-Book Details</th>
+                        <th>E-Book Title</th>
                         <th>Requested On</th>
-                        <th>Approval Status</th>
                         <th>Access Expiry</th>
+                        <th>Approval Status</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -200,20 +200,21 @@ $stmtR->close();
                                     <span style="font-size:11px; color:var(--text-muted); display:block;"><?= e($rh['category_name'] ?? 'General') ?></span>
                                 </td>
                                 <td><?= date('d-m-Y h:i A', strtotime($rh['requested_at'])) ?></td>
+                               
                                 <td>
+                                    <?php if ($rh['status'] === 'Approved' && $rh['expires_at']): ?>
+                                        <span style="font-size:12px; font-weight:600; color:var(--navy-dark);"><?= date('d-m-Y h:i A', strtotime($rh['expires_at'])) ?></span>
+                                    <?php else: ?>
+                                        <span style="color:var(--text-muted);">-</span>
+                                    <?php endif; ?>
+                                </td>
+                                 <td>
                                     <?php if ($rh['status'] === 'Approved'): ?>
                                         <span class="badge badge-green"><i class="fa-solid fa-circle-check"></i> Approved</span>
                                     <?php elseif ($rh['status'] === 'Rejected'): ?>
                                         <span class="badge badge-red"><i class="fa-solid fa-circle-xmark"></i> Rejected</span>
                                     <?php else: ?>
                                         <span class="badge badge-orange"><i class="fa-solid fa-clock"></i> Pending</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <?php if ($rh['status'] === 'Approved' && $rh['expires_at']): ?>
-                                        <span style="font-size:12px; font-weight:600; color:var(--navy-dark);"><?= date('d-m-Y h:i A', strtotime($rh['expires_at'])) ?></span>
-                                    <?php else: ?>
-                                        <span style="color:var(--text-muted);">-</span>
                                     <?php endif; ?>
                                 </td>
                             </tr>

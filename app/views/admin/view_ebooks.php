@@ -87,7 +87,7 @@ $stmt->close();
                             <td style="font-size:12px; color:var(--text-secondary);"><?= e($r['keywords'] ?: '—') ?></td>
                             <td>
                                 <div style="display:flex; gap:5px;">
-                                    <a class="btn" style="background:var(--navy-light); padding:6px 12px; font-size:12px; display:inline-flex; align-items:center; gap:4px;" onclick="openPdfModal(<?= $r['id'] ?>, null, '<?= e(addslashes($r['title'])) ?>', true)"><i class="fa-solid fa-eye"></i> View PDF</a> 
+                                    <a class="btn" style="background:var(--navy-light); padding:6px 12px; font-size:12px; display:inline-flex; align-items:center; gap:4px;" href="?action=view_pdf_content&id=<?= $r['id'] ?>" target="_blank"><i class="fa-solid fa-eye"></i> View PDF</a> 
                                     <a class="btn" style="background:var(--primary); padding:6px 12px; font-size:12px; display:inline-flex; align-items:center; gap:4px;" href="?action=admin&tab=ebooks&edit=<?= $r['id'] ?>"><i class="fa-solid fa-pen-to-square"></i> Edit</a>
                                     <form method="post" action="?action=delete_ebook" class="delete-form" style="display:inline; margin:0;">
                                         <?= csrf_input() ?>

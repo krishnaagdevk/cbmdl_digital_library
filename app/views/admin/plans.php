@@ -189,28 +189,37 @@ if ($editId) {
     </form>
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const durationSelect = document.getElementById('p_duration');
-    const customDurationInput = document.getElementById('p_custom_duration');
-    
-    if (durationSelect && customDurationInput) {
-        function handleDurationChange() {
-            if (durationSelect.value === 'Custom') {
-                durationSelect.removeAttribute('name');
-                customDurationInput.setAttribute('name', 'duration');
-                customDurationInput.setAttribute('required', 'required');
-                customDurationInput.style.display = 'block';
-                customDurationInput.focus();
-            } else {
-                durationSelect.setAttribute('name', 'duration');
-                customDurationInput.removeAttribute('name');
-                customDurationInput.removeAttribute('required');
-                customDurationInput.style.display = 'none';
-            }
-        }
+<script class="dynamic-script">
+(function() {
+    function initPlansScript() {
+        const durationSelect = document.getElementById('p_duration');
+        const customDurationInput = document.getElementById('p_custom_duration');
         
-        durationSelect.addEventListener('change', handleDurationChange);
+        if (durationSelect && customDurationInput) {
+            function handleDurationChange() {
+                if (durationSelect.value === 'Custom') {
+                    durationSelect.removeAttribute('name');
+                    customDurationInput.setAttribute('name', 'duration');
+                    customDurationInput.setAttribute('required', 'required');
+                    customDurationInput.style.display = 'block';
+                    customDurationInput.focus();
+                } else {
+                    durationSelect.setAttribute('name', 'duration');
+                    customDurationInput.removeAttribute('name');
+                    customDurationInput.removeAttribute('required');
+                    customDurationInput.style.display = 'none';
+                }
+            }
+
+            durationSelect.addEventListener('change', handleDurationChange);
+            handleDurationChange();
+        }
     }
-});
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initPlansScript);
+    } else {
+        initPlansScript();
+    }
+})();
 </script>

@@ -137,18 +137,26 @@ if ($lookup !== '') {
     </div>
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const lkInput = document.getElementById('lk_input');
-    const ldBook = document.getElementById('ld_book');
-    const looked = <?= $looked ? 'true' : 'false' ?>;
-    
-    if (looked && ldBook) {
-        ldBook.focus();
-        ldBook.select();
-    } else if (lkInput) {
-        lkInput.focus();
-        lkInput.select();
+<script class="dynamic-script">
+(function() {
+    function initLendingScript() {
+        const lkInput = document.getElementById('lk_input');
+        const ldBook = document.getElementById('ld_book');
+        const looked = <?= $looked ? 'true' : 'false' ?>;
+        
+        if (looked && ldBook) {
+            ldBook.focus();
+            ldBook.select();
+        } else if (lkInput) {
+            lkInput.focus();
+            lkInput.select();
+        }
     }
-});
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initLendingScript);
+    } else {
+        initLendingScript();
+    }
+})();
 </script>
