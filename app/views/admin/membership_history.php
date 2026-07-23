@@ -29,15 +29,39 @@ if ($action_filter !== '') {
 
 $whereClause = !empty($where) ? "WHERE " . implode(" AND ", $where) : "";
 
+// Pagination setup
+$p_limit = 10;
+$p_page = max(1, (int)($_GET['p'] ?? 1));
+
+// Count total matching items
+$cntSql = "SELECT COUNT(*) c FROM membership_history h LEFT JOIN members m ON h.member_id = m.id {$whereClause}";
+$cntStmt = $db->prepare($cntSql);
+if (!empty($params)) {
+    $cntStmt->bind_param($types, ...$params);
+}
+$cntStmt->execute();
+$total_items = (int)($cntStmt->get_result()->fetch_assoc()['c'] ?? 0);
+$cntStmt->close();
+
+$total_pages = max(1, ceil($total_items / $p_limit));
+$p_offset = ($p_page - 1) * $p_limit;
+
+// Fetch paginated history logs
 $sql = "SELECT h.*, m.name as member_name, m.mobile, m.email 
         FROM membership_history h 
         LEFT JOIN members m ON h.member_id = m.id 
         {$whereClause} 
-        ORDER BY h.id DESC";
+        ORDER BY h.id DESC 
+        LIMIT ? OFFSET ?";
+
+$paramsWithLimit = $params;
+$typesWithLimit = $types . "ii";
+$paramsWithLimit[] = $p_limit;
+$paramsWithLimit[] = $p_offset;
 
 $stmt = $db->prepare($sql);
-if (!empty($params)) {
-    $stmt->bind_param($types, ...$params);
+if (!empty($paramsWithLimit)) {
+    $stmt->bind_param($typesWithLimit, ...$paramsWithLimit);
 }
 $stmt->execute();
 $historyRes = $stmt->get_result();
@@ -49,21 +73,20 @@ $totalRenewals = (int)$db->query("SELECT COUNT(*) c FROM membership_history WHER
 $totalJoins = (int)$db->query("SELECT COUNT(*) c FROM membership_history WHERE action_type = 'Initial Joining'")->fetch_assoc()['c'];
 ?>
 
-<div class="card">
+<div class="card" style="margin-bottom:25px;">
     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:15px; margin-bottom:20px;">
-        <h3 style="margin:0;"><i class="fa-solid fa-clock-rotate-left"></i> Comprehensive Membership History Log</h3>
-        <button class="btn btn-secondary" onclick="window.print()"><i class="fa-solid fa-print"></i> Print Report</button>
+        <h3 style="margin:0; font-family:inherit;"><i class="fa-solid fa-clock-rotate-left"></i> Comprehensive Membership History Log</h3>
     </div>
 
     <!-- Quick Metric Cards -->
-    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px; margin-bottom:25px;">
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px;">
         <div style="background:var(--bg-slate); border:1px solid var(--border-color); border-radius:12px; padding:15px; display:flex; align-items:center; gap:12px;">
             <div style="width:42px; height:42px; border-radius:10px; background:#eff6ff; color:#2563eb; display:flex; align-items:center; justify-content:center; font-size:18px;">
                 <i class="fa-solid fa-receipt"></i>
             </div>
             <div>
                 <span style="font-size:12px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Total Logs</span>
-                <strong style="display:block; font-size:18px; color:var(--navy-dark);"><?= number_format($totalCount) ?></strong>
+                <strong style="display:block; font-size:18px; color:var(--navy-dark); font-family:inherit;"><?= number_format($totalCount) ?></strong>
             </div>
         </div>
 
@@ -73,7 +96,7 @@ $totalJoins = (int)$db->query("SELECT COUNT(*) c FROM membership_history WHERE a
             </div>
             <div>
                 <span style="font-size:12px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Fees Collected</span>
-                <strong style="display:block; font-size:18px; color:#16a34a;">₹<?= number_format($totalRevenue, 2) ?></strong>
+                <strong style="display:block; font-size:18px; color:#16a34a; font-family:inherit;">₹<?= number_format($totalRevenue, 2) ?></strong>
             </div>
         </div>
 
@@ -83,7 +106,7 @@ $totalJoins = (int)$db->query("SELECT COUNT(*) c FROM membership_history WHERE a
             </div>
             <div>
                 <span style="font-size:12px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">New Registrations</span>
-                <strong style="display:block; font-size:18px; color:var(--navy-dark);"><?= number_format($totalJoins) ?></strong>
+                <strong style="display:block; font-size:18px; color:var(--navy-dark); font-family:inherit;"><?= number_format($totalJoins) ?></strong>
             </div>
         </div>
 
@@ -93,23 +116,30 @@ $totalJoins = (int)$db->query("SELECT COUNT(*) c FROM membership_history WHERE a
             </div>
             <div>
                 <span style="font-size:12px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Renewals Recorded</span>
-                <strong style="display:block; font-size:18px; color:var(--navy-dark);"><?= number_format($totalRenewals) ?></strong>
+                <strong style="display:block; font-size:18px; color:var(--navy-dark); font-family:inherit;"><?= number_format($totalRenewals) ?></strong>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Search & Filter Controls -->
-    <form method="get" action="" style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:20px;">
+<!-- Search & Filter Controls -->
+<div class="card" style="margin-bottom:25px;">
+    <h3 style="margin-top:0; margin-bottom:15px; font-family:inherit; font-size:16px;"><i class="fa-solid fa-filter"></i> Filter Membership History</h3>
+    <form method="get" action="" class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px; align-items:end;">
         <input type="hidden" name="action" value="admin">
         <input type="hidden" name="tab" value="membership_history">
         
-        <div style="flex:1; min-width:220px; position:relative;">
-            <input type="text" name="q" value="<?= e($search) ?>" placeholder="Search member name, ID, Payment ID..." style="width:100%; padding-left:35px;">
-            <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted);"></i>
+        <div>
+            <label for="hist_search" style="font-size:12px; font-weight:600; color:var(--text-muted); margin-bottom:6px; display:block; font-family:inherit;">Search Member / ID / Payment UTR</label>
+            <div style="position:relative;">
+                <input id="hist_search" type="text" name="q" value="<?= e($search) ?>" placeholder="Search member name, ID, Payment ID..." style="width:100%; padding-left:35px; height:42px; border-radius:8px; font-family:inherit; font-size:13px; border:1px solid var(--border-color);">
+                <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted);"></i>
+            </div>
         </div>
 
-        <div style="width:200px;">
-            <select name="type" onchange="this.form.submit()" style="width:100%;">
+        <div>
+            <label for="hist_type" style="font-size:12px; font-weight:600; color:var(--text-muted); margin-bottom:6px; display:block; font-family:inherit;">Action Type</label>
+            <select id="hist_type" name="type" style="width:100%; height:42px; border-radius:8px; font-family:inherit; font-size:13px; border:1px solid var(--border-color);">
                 <option value="">All Action Types</option>
                 <option value="Initial Joining" <?= $action_filter === 'Initial Joining' ? 'selected' : '' ?>>Initial Joining</option>
                 <option value="Renewal" <?= $action_filter === 'Renewal' ? 'selected' : '' ?>>Renewal</option>
@@ -118,15 +148,20 @@ $totalJoins = (int)$db->query("SELECT COUNT(*) c FROM membership_history WHERE a
             </select>
         </div>
 
-        <button type="submit" class="btn"><i class="fa-solid fa-filter"></i> Filter</button>
-        <?php if ($search !== '' || $action_filter !== ''): ?>
-            <a href="?action=admin&tab=membership_history" class="btn btn-secondary" style="display:inline-flex; align-items:center; justify-content:center;"><i class="fa-solid fa-xmark"></i> Clear</a>
-        <?php endif; ?>
+        <div>
+            <label style="visibility:hidden; margin-bottom:6px; display:block;">Action</label>
+            <div style="display:flex; gap:8px;">
+                <button type="submit" class="btn" style="flex:1; height:42px; font-family:inherit; font-size:13px; font-weight:600; display:inline-flex; align-items:center; justify-content:center; gap:6px; border-radius:8px; cursor:pointer;"><i class="fa-solid fa-magnifying-glass"></i> Filter</button>
+                <a href="?action=admin&tab=membership_history" class="btn btn-secondary" style="height:42px; padding:0 16px; font-family:inherit; font-size:13px; font-weight:600; display:inline-flex; align-items:center; justify-content:center; gap:6px; background:var(--bg-slate); color:var(--text-color); border:1px solid var(--border-color); text-decoration:none; border-radius:8px;"><i class="fa-solid fa-rotate-left"></i> Reset</a>
+            </div>
+        </div>
     </form>
+</div>
 
-    <!-- Table -->
+<!-- History Log Table -->
+<div class="card">
     <div style="overflow-x:auto;">
-        <table class="table" style="width:100%; border-collapse:collapse;">
+        <table class="table" style="width:100%; border-collapse:collapse; font-family:inherit;">
             <thead>
                 <tr style="background:var(--bg-slate); text-align:left; font-size:12px; color:var(--text-muted);">
                     <th style="padding:12px;">#</th>
@@ -141,20 +176,20 @@ $totalJoins = (int)$db->query("SELECT COUNT(*) c FROM membership_history WHERE a
             <tbody>
                 <?php if ($historyRes->num_rows === 0): ?>
                     <tr>
-                        <td colspan="7" style="text-align:center; padding:30px; color:var(--text-muted);">
+                        <td colspan="7" style="text-align:center; padding:30px; color:var(--text-muted); font-family:inherit;">
                             <i class="fa-solid fa-clock-rotate-left" style="font-size:32px; margin-bottom:10px; display:block; opacity:0.5;"></i>
                             No membership history logs found matching your criteria.
                         </td>
                     </tr>
                 <?php else: ?>
-                    <?php $count = 1; while ($row = $historyRes->fetch_assoc()): ?>
+                    <?php $count = $p_offset + 1; while ($row = $historyRes->fetch_assoc()): ?>
                         <?php 
                         $isCurrent = (strtotime($row['start_date']) <= time() && strtotime($row['end_date']) >= time());
                         ?>
-                        <tr style="border-bottom:1px solid var(--border-color); font-size:13px;">
+                        <tr style="border-bottom:1px solid var(--border-color); font-size:13px; font-family:inherit;">
                             <td style="padding:12px; color:var(--text-muted); font-weight:600;"><?= $count++ ?></td>
                             <td style="padding:12px;">
-                                <a href="?action=admin&tab=view_members&view=<?= $row['member_id'] ?>" style="font-weight:700; color:var(--primary); text-decoration:none; display:inline-flex; align-items:center; gap:5px;">
+                                <a href="?action=admin&tab=view_members&view=<?= $row['member_id'] ?>" style="font-weight:700; color:var(--primary); text-decoration:none; display:inline-flex; align-items:center; gap:5px; font-family:inherit;">
                                     <i class="fa-solid fa-user"></i> <?= e($row['member_name'] ?? 'Member #' . $row['member_id']) ?>
                                 </a>
                                 <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">
@@ -165,14 +200,14 @@ $totalJoins = (int)$db->query("SELECT COUNT(*) c FROM membership_history WHERE a
                                 </div>
                             </td>
                             <td style="padding:12px;">
-                                <strong style="color:var(--navy-dark);"><?= e($row['plan_name'] ?? $row['duration']) ?></strong>
+                                <strong style="color:var(--navy-dark); font-family:inherit;"><?= e($row['plan_name'] ?? $row['duration']) ?></strong>
                                 <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">
                                     <span><i class="fa-solid fa-hourglass-half"></i> <?= e($row['duration']) ?></span>
                                     <span style="margin-left:6px;"><i class="fa-solid fa-sun"></i> <?= e($row['shift']) ?> Shift</span>
                                 </div>
                             </td>
                             <td style="padding:12px;">
-                                <div style="font-size:12px; font-weight:600;">
+                                <div style="font-size:12px; font-weight:600; font-family:inherit;">
                                     <?= date('d M Y', strtotime($row['start_date'])) ?> &rarr; <?= date('d M Y', strtotime($row['end_date'])) ?>
                                 </div>
                                 <div style="margin-top:3px;">
@@ -184,7 +219,7 @@ $totalJoins = (int)$db->query("SELECT COUNT(*) c FROM membership_history WHERE a
                                 </div>
                             </td>
                             <td style="padding:12px;">
-                                <strong style="color:#16a34a; font-size:14px;">₹<?= number_format($row['membership_fee'], 2) ?></strong>
+                                <strong style="color:#16a34a; font-size:14px; font-family:inherit;">₹<?= number_format($row['membership_fee'], 2) ?></strong>
                                 <div style="font-size:11px; color:var(--text-muted); margin-top:2px;" title="Transaction ID">
                                     <i class="fa-solid fa-hashtag"></i> <?= e($row['payment_id'] ?? 'N/A') ?>
                                 </div>
@@ -209,4 +244,32 @@ $totalJoins = (int)$db->query("SELECT COUNT(*) c FROM membership_history WHERE a
             </tbody>
         </table>
     </div>
+
+    <!-- Pagination Controls -->
+    <?php if ($total_pages > 1): ?>
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:15px; margin-top:25px; padding-top:15px; border-top:1px solid var(--border-color); font-family:inherit;">
+        <div style="font-size:13px; color:var(--text-muted);">
+            Showing <strong><?= $total_items > 0 ? $p_offset + 1 : 0 ?></strong> to <strong><?= min($total_items, $p_offset + $p_limit) ?></strong> of <strong><?= number_format($total_items) ?></strong> history logs
+        </div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <?php if ($p_page > 1): ?>
+                <a href="?<?= http_build_query(array_merge($_GET, ['p' => 1])) ?>" class="btn btn-secondary" style="padding:6px 12px; font-size:12px; font-family:inherit;"><i class="fa-solid fa-angles-left"></i> First</a>
+                <a href="?<?= http_build_query(array_merge($_GET, ['p' => $p_page - 1])) ?>" class="btn btn-secondary" style="padding:6px 12px; font-size:12px; font-family:inherit;"><i class="fa-solid fa-chevron-left"></i> Prev</a>
+            <?php endif; ?>
+
+            <?php
+            $start_p = max(1, $p_page - 2);
+            $end_p = min($total_pages, $p_page + 2);
+            for ($i = $start_p; $i <= $end_p; $i++):
+            ?>
+                <a href="?<?= http_build_query(array_merge($_GET, ['p' => $i])) ?>" class="btn <?= $i === $p_page ? '' : 'btn-secondary' ?>" style="padding:6px 12px; font-size:12px; font-family:inherit; <?= $i === $p_page ? 'font-weight:700;' : '' ?>"><?= $i ?></a>
+            <?php endfor; ?>
+
+            <?php if ($p_page < $total_pages): ?>
+                <a href="?<?= http_build_query(array_merge($_GET, ['p' => $p_page + 1])) ?>" class="btn btn-secondary" style="padding:6px 12px; font-size:12px; font-family:inherit;">Next <i class="fa-solid fa-chevron-right"></i></a>
+                <a href="?<?= http_build_query(array_merge($_GET, ['p' => $total_pages])) ?>" class="btn btn-secondary" style="padding:6px 12px; font-size:12px; font-family:inherit;">Last <i class="fa-solid fa-angles-right"></i></a>
+            <?php endif; ?>
+        </div>
+    </div>
+    <?php endif; ?>
 </div>

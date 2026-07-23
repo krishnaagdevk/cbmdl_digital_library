@@ -46,7 +46,7 @@ if (!defined('BASE_URL')) exit;
     <?php 
     // Pre-fetch latest reading request per ebook for the active member to avoid N+1 queries
     $all_reading_reqs = [];
-    $reqQuery = $db->prepare("SELECT r.ebook_id, r.id, r.status, r.expires_at FROM reading_requests r WHERE r.member_id = ? ORDER BY r.id ASC");
+    $reqQuery = $db->prepare("SELECT r.ebook_id, r.id, r.status, r.duration_minutes, r.started_reading_at, r.expires_at FROM reading_requests r WHERE r.member_id = ? ORDER BY r.id ASC");
     $reqQuery->bind_param("i", $mid);
     $reqQuery->execute();
     $res = $reqQuery->get_result();
@@ -103,8 +103,12 @@ if (!defined('BASE_URL')) exit;
         
         $cardAction = '';
         if ($req) {
-            if ($req['status'] === 'Approved' && strtotime($req['expires_at']) > time()) {
-                $cardAction = '<button class="btn" style="width:100%; background:var(--accent-green);" onclick="openPdfModal(' . $req['id'] . ', ' . strtotime($req['expires_at']) . ', \'' . addslashes(e($r['title'])) . '\')"><i class="fa-solid fa-book-open"></i> Read Now (Granted)</button>';
+            $isStarted = !empty($req['started_reading_at']);
+            $isExpired = ($req['status'] === 'Expired') || (!empty($req['expires_at']) && strtotime($req['expires_at']) <= time());
+            if ($req['status'] === 'Approved' && !$isExpired) {
+                $btnText = $isStarted ? 'Continue Reading' : 'Read Now (Granted)';
+                $expUnix = ($isStarted && !empty($req['expires_at'])) ? strtotime($req['expires_at']) : 0;
+                $cardAction = '<button class="btn" style="width:100%; background:var(--accent-green);" onclick="openPdfModal(' . $req['id'] . ', ' . $expUnix . ', \'' . addslashes(e($r['title'])) . '\')"><i class="fa-solid fa-book-open"></i> ' . $btnText . '</button>';
             } elseif ($req['status'] === 'Pending') {
                 $cardAction = '<button class="btn" style="width:100%; background:var(--text-muted); cursor:not-allowed;" disabled><i class="fa-solid fa-clock"></i> Request Sent (Pending Approval)</button>';
             } else {

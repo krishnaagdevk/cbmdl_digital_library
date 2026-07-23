@@ -10,6 +10,8 @@ if ($status_filter === 'Pending') {
     $where_clauses[] = "p.status = 'Pending'";
 } elseif ($status_filter === 'Completed') {
     $where_clauses[] = "p.status = 'Completed'";
+} elseif ($status_filter === 'Rejected') {
+    $where_clauses[] = "p.status = 'Rejected'";
 }
 
 if ($search !== '') {
@@ -50,6 +52,7 @@ $query_str = "SELECT p.*, m.name, m.membership_id, e.title FROM print_requests p
                 <option value="All" <?= $status_filter === 'All' ? 'selected' : '' ?>>All Jobs</option>
                 <option value="Pending" <?= $status_filter === 'Pending' ? 'selected' : '' ?>>Pending Jobs Only</option>
                 <option value="Completed" <?= $status_filter === 'Completed' ? 'selected' : '' ?>>Completed Jobs Only</option>
+                <option value="Rejected" <?= $status_filter === 'Rejected' ? 'selected' : '' ?>>Rejected Jobs Only</option>
             </select>
         </div>
         
@@ -84,10 +87,12 @@ $query_str = "SELECT p.*, m.name, m.membership_id, e.title FROM print_requests p
                     echo '<tr><td colspan="6" style="text-align:center; padding:30px; color:var(--text-muted);"><i class="fa-solid fa-circle-info" style="font-size:20px; margin-bottom:10px; display:block; color:var(--primary);"></i> No print requests match the selected filters.</td></tr>';
                 } else {
                     while($r = $x->fetch_assoc()) {
-                        $badgeClass = $r['status'] === 'Pending' ? 'badge-orange' : 'badge-green';
-                        $actionBtn = $r['status'] === 'Pending' 
-                            ? ' &nbsp; <form method="post" action="?action=complete_print" style="display:inline; margin:0;"><input type="hidden" name="id" value="' . $r['id'] . '">' . csrf_input() . '<button class="btn" type="submit" style="padding:6px 12px;"><i class="fa-solid fa-check"></i> Complete Job</button></form>' 
-                            : '';
+                        $badgeClass = $r['status'] === 'Pending' ? 'badge-orange' : ($r['status'] === 'Completed' ? 'badge-green' : 'badge-red');
+                        $actionBtn = '';
+                        if ($r['status'] === 'Pending') {
+                            $actionBtn = ' &nbsp; <form method="post" action="?action=complete_print" style="display:inline; margin:0;"><input type="hidden" name="id" value="' . $r['id'] . '">' . csrf_input() . '<button class="btn" type="submit" style="padding:6px 12px; background:var(--accent-green, #10b981); color:#fff; border:none; border-radius:6px; cursor:pointer;"><i class="fa-solid fa-check"></i> Complete</button></form>'
+                                      . ' &nbsp; <form method="post" action="?action=reject_print" style="display:inline; margin:0;"><input type="hidden" name="id" value="' . $r['id'] . '">' . csrf_input() . '<button class="btn" type="submit" style="padding:6px 12px; background:var(--accent-red, #ef4444); color:#fff; border:none; border-radius:6px; cursor:pointer;" onclick="return confirm(\'Are you sure you want to reject this print request?\');"><i class="fa-solid fa-xmark"></i> Reject</button></form>';
+                        }
                         echo '
                         <tr>
                             <td><code>' . e($r['membership_id']) . '</code></td>

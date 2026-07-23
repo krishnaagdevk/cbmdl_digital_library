@@ -28,8 +28,8 @@ final class Database {
         // 2. Fallbacks for standard local configurations if env connection failed or DB was empty
         if (!$connected) {
             $fallbacks = [
-                ['localhost', 'root', '', 'mrt_library'],
                 ['localhost', 'root', '', 'cbmdl'],
+                ['localhost', 'root', '', 'mrt_library'],
                 ['localhost', 'root', '', 'svpsm27m_cbmdl']
             ];
 
@@ -47,7 +47,7 @@ final class Database {
         }
 
         if (!$connected || $this->connection->connect_error) {
-            die('Database connection failed. Please create the database (e.g., mrt_library) in phpMyAdmin, import schema.sql, or configure .env.');
+            die('Database connection failed. Please create the database (e.g., cbmdl) in phpMyAdmin, import schema.sql, or configure .env.');
         }
         $this->connection->set_charset('utf8mb4');
         $this->connection->query("SET time_zone = '+05:30'");

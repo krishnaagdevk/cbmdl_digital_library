@@ -8,30 +8,34 @@ final class AuthController {
     public function __construct(mysqli $db) { $this->db = $db; }
     public function adminLogin() {
         if (check_login_lockout()) {
-            header('Location: admin-login');
-            exit;
+            session_write_close();
+            go('admin-login');
         }
-        $admin = (new Admin($this->db))->authenticate($_POST['username']??'', $_POST['password']??'');
+        $username = trim($_POST['username'] ?? '');
+        $password = $_POST['password'] ?? '';
+
+        $admin = (new Admin($this->db))->authenticate($username, $password);
         if ($admin) {
             clear_failed_attempts();
             session_regenerate_id(true);
             $_SESSION['admin'] = $admin['id'];
             flash('Welcome back! Logged in as Admin.');
-            header('Location: index.php?action=admin');
-            exit;
+            session_write_close();
+            go('?action=admin');
         }
         register_failed_attempt();
         flash('⚠️ Invalid admin credentials.');
-        header('Location: admin-login');
-        exit;
+        session_write_close();
+        go('admin-login');
     }
+
     public function memberLogin() {
         if (check_login_lockout()) {
-            header('Location: member-login');
-            exit;
+            session_write_close();
+            go('member-login');
         }
         
-        $mobile = $_POST['mobile'] ?? '';
+        $mobile = trim($_POST['mobile'] ?? '');
         $password = $_POST['password'] ?? '';
         
         $stmt = $this->db->prepare("SELECT * FROM members WHERE mobile = ? LIMIT 1");
@@ -63,18 +67,18 @@ final class AuthController {
                     // Check approval / active status / expiry
                     if ($member['approved'] == 0) {
                         flash('⚠️ Your membership registration is pending approval from the librarian.');
-                        header('Location: member-login');
-                        exit;
+                        session_write_close();
+                        go('member-login');
                     }
                     if ($member['is_active'] == 0) {
                         flash('⚠️ Your membership is inactive. Kindly contact the librarian.');
-                        header('Location: member-login');
-                        exit;
+                        session_write_close();
+                        go('member-login');
                     }
                     if ($member['end_date'] < date('Y-m-d')) {
                         flash('⚠️ Your membership has expired. Kindly contact the librarian.');
-                        header('Location: member-login');
-                        exit;
+                        session_write_close();
+                        go('member-login');
                     }
                     
                     // Check shift
@@ -84,23 +88,24 @@ final class AuthController {
                         $fmt_start = date('h:i A', strtotime($time_win['start_time']));
                         $fmt_end = date('h:i A', strtotime($time_win['end_time']));
                         flash("🔒 Shift Access Restricted: Your account is assigned to the '" . $shift . "' shift (" . $fmt_start . " - " . $fmt_end . "). You cannot log in outside your assigned shift timings.");
-                        header('Location: member-login');
-                        exit;
+                        session_write_close();
+                        go('member-login');
                     }
                     
                     clear_failed_attempts();
                     session_regenerate_id(true);
                     $_SESSION['member'] = $member['id'];
+                    expire_member_reading_requests($member['id'], $this->db);
                     flash('Welcome back! Logged in successfully.');
-                    header('Location: index.php?action=user');
-                    exit;
+                    session_write_close();
+                    go('?action=user');
                 }
             }
         }
         
         register_failed_attempt();
         flash('⚠️ Invalid login credentials.');
-        header('Location: member-login');
-        exit;
+        session_write_close();
+        go('member-login');
     }
 }

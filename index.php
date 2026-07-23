@@ -44,21 +44,23 @@ if (in_array($action, ['admin_login', 'member_login']) && $_SERVER['REQUEST_METH
 // 1. Authentication Handlers with Session Fixation Defense
 if ($action === 'logout') {
     $was_admin = admin();
+    if (member()) {
+        expire_member_reading_requests($_SESSION['member'], $db);
+    }
     session_destroy();
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
+    csrf_token(); // Re-initialize valid CSRF token in new session
     flash('Logged out successfully.');
     go($was_admin ? 'admin-login' : 'member-login');
 }
 
 if ($action === 'admin_login' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    session_regenerate_id(true); // Mitigate Session Fixation
     (new App\Controllers\AuthController($db))->adminLogin();
 }
 
 if ($action === 'member_login' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    session_regenerate_id(true); // Mitigate Session Fixation
     (new App\Controllers\AuthController($db))->memberLogin();
 }
 
@@ -144,12 +146,7 @@ if ($action === 'read_pdf') {
     if (!$r) exit('No active permission for this book.');
     $file = __DIR__ . '/uploads/' . basename($r['pdf_file']);
     if (is_file($file)) {
-        header('Content-Type: application/pdf');
-        header('Content-Disposition: inline');
-        header('X-Content-Type-Options: nosniff');
-        header('Cache-Control: no-cache, no-store, must-revalidate');
-        readfile($file);
-        exit;
+        stream_file_ranged($file, 'application/pdf', true, 300);
     }
     exit('File not found.');
 }
@@ -165,6 +162,7 @@ if ($action === 'secure_pdf_viewer') {
     
     $pdfTitle = 'Secure Interactive Reader';
     $streamUrl = '';
+    $expiresAtUnix = 0;
     
     if ($source === 'admin' || admin()) {
         if (!admin()) exit('Unauthorized');
@@ -172,7 +170,7 @@ if ($action === 'secure_pdf_viewer') {
     } elseif ($source === 'member') {
         if (!member()) exit('Unauthorized');
         $mid = (int)$_SESSION['member'];
-        $stmt = $db->prepare("SELECT r.id, e.title, e.pdf_file FROM reading_requests r JOIN ebooks e ON e.id = r.ebook_id WHERE (r.id = ? OR r.ebook_id = ?) AND r.member_id = ? AND r.status = 'Approved' AND r.expires_at > NOW() ORDER BY r.id DESC LIMIT 1");
+        $stmt = $db->prepare("SELECT r.id, r.duration_minutes, r.started_reading_at, r.expires_at, e.title, e.pdf_file FROM reading_requests r JOIN ebooks e ON e.id = r.ebook_id WHERE (r.id = ? OR r.ebook_id = ?) AND r.member_id = ? AND r.status = 'Approved' AND (r.started_reading_at IS NULL OR r.expires_at > NOW()) ORDER BY r.id DESC LIMIT 1");
         $stmt->bind_param("iii", $id, $id, $mid);
         $stmt->execute();
         $r = $stmt->get_result()->fetch_assoc();
@@ -181,8 +179,20 @@ if ($action === 'secure_pdf_viewer') {
         if (!$r || empty($r['pdf_file'])) {
             exit('<div style="font-family:system-ui, sans-serif; text-align:center; padding:60px 20px; color:#ef4444; background:#0b0f19; height:100vh; box-sizing:border-box;"><h2 style="font-size:24px; margin-bottom:12px;">⚠️ Permission Expired or Book Not Found</h2><p style="color:#9ca3af; font-size:15px; max-width:500px; margin:0 auto 20px;">Your e-reading request for this book is either not approved or your active reading session has expired.</p><a href="' . BASE_URL . '?action=user&tab=books" style="display:inline-block; padding:10px 20px; background:#3b82f6; color:#fff; text-decoration:none; border-radius:8px; font-weight:600;">Return to Dashboard</a></div>');
         }
+
+        // Start session timer on first read click if not already started
+        if (empty($r['started_reading_at'])) {
+            $duration = !empty($r['duration_minutes']) ? (int)$r['duration_minutes'] : 15;
+            $upStmt = $db->prepare("UPDATE reading_requests SET started_reading_at = NOW(), expires_at = DATE_ADD(NOW(), INTERVAL ? MINUTE) WHERE id = ?");
+            $upStmt->bind_param("ii", $duration, $r['id']);
+            $upStmt->execute();
+            $upStmt->close();
+            $r['expires_at'] = date('Y-m-d H:i:s', time() + ($duration * 60));
+        }
+
         $pdfTitle = $r['title'];
         $streamUrl = BASE_URL . '?action=read_member_pdf_content&id=' . (int)$r['id'];
+        $expiresAtUnix = !empty($r['expires_at']) ? strtotime($r['expires_at']) : 0;
     } else {
         exit('Invalid source specifier.');
     }
@@ -574,6 +584,15 @@ if ($action === 'secure_pdf_viewer') {
                 <div id="docTitle" class="doc-title" title="<?= e($pdfTitle) ?>"><?= e($pdfTitle) ?></div>
             </div>
 
+            <?php if ($expiresAtUnix > 0): ?>
+            <div class="toolbar-group">
+                <div id="pdfTimerBadge" style="display: inline-flex; align-items: center; gap: 8px; background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.4); color: #60a5fa; padding: 5px 14px; border-radius: 20px; font-size: 13px; font-weight: 700; letter-spacing: 0.5px; white-space: nowrap;">
+                    <span class="fa-solid fa-clock" style="color: #3b82f6;"></span>
+                    <span>Session: <span id="pdfTimerText">--m --s</span></span>
+                </div>
+            </div>
+            <?php endif; ?>
+
             <div class="toolbar-group">
                 <button id="prevPageBtn" class="toolbar-btn" title="Previous Page">
                     <span class="fa-solid fa-chevron-left"></span>
@@ -672,13 +691,15 @@ if ($action === 'secure_pdf_viewer') {
 
                 return getPageProxy(1).then(function() {
                     buildPagesLayout();
-                    buildThumbnailSidebar();
                     return renderPageIfNeeded(1);
                 });
             }).then(function() {
-                updateVirtualization();
                 loader.style.opacity = '0';
-                setTimeout(() => loader.style.display = 'none', 300);
+                setTimeout(() => loader.style.display = 'none', 200);
+                updateVirtualization();
+                setTimeout(() => {
+                    buildThumbnailSidebar();
+                }, 100);
             }).catch(function(err) {
                 console.error('Error loading secure PDF: ', err);
                 loaderText.innerHTML = '<span style="color:#ef4444;"><span class="fa-solid fa-triangle-exclamation"></span> Error accessing file content or your e-reading permission has expired.</span>';
@@ -1064,6 +1085,53 @@ if ($action === 'secure_pdf_viewer') {
                     fullscreenBtn.innerHTML = '<span class="fa-expand fa-solid"></span> Fullscreen';
                 }
             });
+
+            // Live e-Reading Countdown Timer
+            const expiresAtUnix = <?= (int)$expiresAtUnix ?>;
+            if (expiresAtUnix > 0) {
+                const timerText = document.getElementById('pdfTimerText');
+                const timerBadge = document.getElementById('pdfTimerBadge');
+
+                function updateReaderTimer() {
+                    const now = Math.floor(Date.now() / 1000);
+                    const diff = expiresAtUnix - now;
+
+                    if (diff <= 0) {
+                        if (timerText) timerText.textContent = '00m 00s Expired';
+                        if (timerBadge) {
+                            timerBadge.style.background = 'rgba(239, 68, 68, 0.4)';
+                            timerBadge.style.borderColor = '#ef4444';
+                            timerBadge.style.color = '#ffffff';
+                        }
+                        alert('⏱️ Your active e-reading session time has expired.');
+                        window.close();
+                        window.location.href = '<?= BASE_URL ?>?action=user&tab=books';
+                        return;
+                    }
+
+                    const mins = Math.floor(diff / 60);
+                    const secs = diff % 60;
+                    const formatted = String(mins).padStart(2, '0') + 'm ' + String(secs).padStart(2, '0') + 's';
+                    if (timerText) timerText.textContent = formatted;
+
+                    if (diff <= 60) {
+                        if (timerBadge) {
+                            timerBadge.style.background = 'rgba(220, 38, 38, 0.35)';
+                            timerBadge.style.borderColor = '#dc2626';
+                            timerBadge.style.color = '#fca5a5';
+                        }
+                    } else if (diff <= 180) {
+                        if (timerBadge) {
+                            timerBadge.style.background = 'rgba(245, 158, 11, 0.25)';
+                            timerBadge.style.borderColor = 'rgba(245, 158, 11, 0.6)';
+                            timerBadge.style.color = '#fbbf24';
+                        }
+                    }
+                }
+
+                updateReaderTimer();
+                setInterval(updateReaderTimer, 1000);
+            }
         </script>
     </body>
     </html>
@@ -1076,18 +1144,28 @@ if (admin()) {
     $admin_id = (int)$_SESSION['admin'];
 
     if ($action === 'poll_admin_notifications') {
+        session_write_close();
         header('Content-Type: application/json');
+        header('Cache-Control: no-cache, no-store, must-revalidate, max-age=0');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+        
+        if (!admin()) {
+            echo json_encode(['success' => false, 'error' => 'Unauthorized']);
+            exit;
+        }
         
         $req_count = (int)$db->query("SELECT COUNT(*) c FROM reading_requests WHERE status='Pending'")->fetch_assoc()['c'];
         $prt_count = (int)$db->query("SELECT COUNT(*) c FROM print_requests WHERE status='Pending'")->fetch_assoc()['c'];
         
         $read_query = $db->query("
-            SELECT r.id, e.title, m.name as member_name, r.requested_at 
+            SELECT r.id, e.title, m.name as member_name, r.requested_at,
+                   TIMESTAMPDIFF(SECOND, r.requested_at, NOW()) as age_secs
             FROM reading_requests r 
             JOIN ebooks e ON e.id = r.ebook_id 
             JOIN members m ON m.id = r.member_id 
             WHERE r.status = 'Pending' 
-            ORDER BY r.id DESC LIMIT 5
+            ORDER BY r.id DESC LIMIT 15
         ");
         $recent_reading = [];
         while ($row = $read_query->fetch_assoc()) {
@@ -1096,17 +1174,19 @@ if (admin()) {
                 'type' => 'reading',
                 'title' => $row['title'],
                 'member' => $row['member_name'],
-                'time' => $row['requested_at']
+                'time' => $row['requested_at'],
+                'age_secs' => (int)$row['age_secs']
             ];
         }
         
         $print_query = $db->query("
-            SELECT p.id, e.title, m.name as member_name, p.pages, p.requested_at 
+            SELECT p.id, e.title, m.name as member_name, p.pages, p.requested_at,
+                   TIMESTAMPDIFF(SECOND, p.requested_at, NOW()) as age_secs
             FROM print_requests p 
             JOIN ebooks e ON e.id = p.ebook_id 
             JOIN members m ON m.id = p.member_id 
             WHERE p.status = 'Pending' 
-            ORDER BY p.id DESC LIMIT 5
+            ORDER BY p.id DESC LIMIT 15
         ");
         $recent_print = [];
         while ($row = $print_query->fetch_assoc()) {
@@ -1116,7 +1196,8 @@ if (admin()) {
                 'title' => $row['title'],
                 'member' => $row['member_name'],
                 'pages' => $row['pages'],
-                'time' => $row['requested_at']
+                'time' => $row['requested_at'],
+                'age_secs' => (int)$row['age_secs']
             ];
         }
         
@@ -2002,131 +2083,6 @@ if (admin()) {
         go('?action=admin&tab=' . $refTab . '&view=' . $id);
     }
 
-    if ($action === 'request_renewal' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-        if (!member()) {
-            flash('⚠️ Please log in to submit a renewal request.');
-            go('?action=login');
-        }
-        $member = $_SESSION['member'];
-        $member_id = (int)$member['id'];
-        $plan_id = (int)($_POST['plan_id'] ?? 0);
-        $shift = trim($_POST['shift'] ?? 'Morning');
-        $payment_id = trim($_POST['payment_id'] ?? '');
-
-        if ($plan_id <= 0 || $payment_id === '') {
-            flash('⚠️ Error: Please select a membership plan and provide a transaction reference ID.');
-            go('?action=user&tab=history');
-        }
-
-        // Check if there is already a pending renewal request for this member
-        $chkReq = $db->prepare("SELECT id FROM renewal_requests WHERE member_id = ? AND status = 'Pending' LIMIT 1");
-        $chkReq->bind_param("i", $member_id);
-        $chkReq->execute();
-        if ($chkReq->get_result()->num_rows > 0) {
-            $chkReq->close();
-            flash('⚠️ You already have a pending renewal request under review by the librarian.');
-            go('?action=user&tab=history');
-        }
-        $chkReq->close();
-
-        // Check for duplicate payment_id
-        $chkPay = $db->prepare("SELECT id FROM renewal_requests WHERE LOWER(payment_id) = LOWER(?) AND status != 'Rejected' LIMIT 1");
-        $chkPay->bind_param("s", $payment_id);
-        $chkPay->execute();
-        if ($chkPay->get_result()->num_rows > 0) {
-            $chkPay->close();
-            flash("⚠️ Duplicate Payment Reference: Transaction ID ('" . e($payment_id) . "') is already associated with another renewal request.");
-            go('?action=user&tab=history');
-        }
-        $chkPay->close();
-
-        // Insert renewal request
-        $ins = $db->prepare("INSERT INTO renewal_requests (member_id, membership_plan_id, shift, payment_id, status) VALUES (?, ?, ?, ?, 'Pending')");
-        $ins->bind_param("iiss", $member_id, $plan_id, $shift, $payment_id);
-        if ($ins->execute()) {
-            flash('✅ Online renewal request submitted successfully! The librarian will verify your payment and update your pass.');
-        } else {
-            flash('⚠️ Error submitting renewal request. Please try again.');
-        }
-        $ins->close();
-        go('?action=user&tab=history');
-    }
-
-    if ($action === 'approve_renewal_request' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-        if (!admin()) exit('Unauthorized');
-        $req_id = (int)$_POST['id'];
-
-        $rStmt = $db->prepare("SELECT r.*, m.name as member_name, m.start_date, m.end_date, m.is_active, m.approved FROM renewal_requests r JOIN members m ON r.member_id = m.id WHERE r.id = ? AND r.status = 'Pending'");
-        $rStmt->bind_param("i", $req_id);
-        $rStmt->execute();
-        $req = $rStmt->get_result()->fetch_assoc();
-        $rStmt->close();
-
-        if (!$req) {
-            flash('⚠️ Error: Pending renewal request not found.');
-            go('?action=admin&tab=members');
-        }
-
-        $id = (int)$req['member_id'];
-        $plan_id = (int)$req['membership_plan_id'];
-        $payment_id = $req['payment_id'];
-        $shift = $req['shift'];
-
-        $d = 'Yearly';
-        $fee = 0.00;
-        $pStmt = $db->prepare("SELECT duration, amount FROM membership_plans WHERE id = ?");
-        $pStmt->bind_param("i", $plan_id);
-        $pStmt->execute();
-        if ($pRes = $pStmt->get_result()->fetch_assoc()) {
-            $d = $pRes['duration'];
-            $fee = (float)$pRes['amount'];
-        }
-        $pStmt->close();
-
-        $today = date('Y-m-d');
-        $isCurrentlyActive = (!empty($req['end_date']) && $req['end_date'] >= $today && ($req['is_active'] ?? 1) == 1 && ($req['approved'] ?? 1) == 1);
-        $start = $isCurrentlyActive ? date('Y-m-d', strtotime($req['end_date'] . ' +1 day')) : $today;
-        $end = membership_end($d, $start);
-
-        $db->begin_transaction();
-        try {
-            $stmt = $db->prepare("UPDATE members SET duration = ?, start_date = ?, end_date = ?, payment_id = ?, membership_plan_id = ?, membership_fee = ?, shift = ?, is_active = 1 WHERE id = ?");
-            $stmt->bind_param("ssssidsi", $d, $start, $end, $payment_id, $plan_id, $fee, $shift, $id);
-            $stmt->execute();
-            $stmt->close();
-
-            $upReq = $db->prepare("UPDATE renewal_requests SET status = 'Approved', approved_at = NOW() WHERE id = ?");
-            $upReq->bind_param("i", $req_id);
-            $upReq->execute();
-            $upReq->close();
-
-            log_membership_history($db, $id, 'Renewal');
-            $db->commit();
-
-            flash('✅ Online Renewal Request Approved for ' . e($req['member_name']) . '! Active pass extended to ' . date('d M Y', strtotime($end)) . '.');
-        } catch (\Throwable $e) {
-            $db->rollback();
-            flash('⚠️ Transaction Error: Could not approve renewal request. ' . $e->getMessage());
-        }
-
-        go('?action=admin&tab=members');
-    }
-
-    if ($action === 'reject_renewal_request' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-        if (!admin()) exit('Unauthorized');
-        $req_id = (int)$_POST['id'];
-
-        $upReq = $db->prepare("UPDATE renewal_requests SET status = 'Rejected' WHERE id = ? AND status = 'Pending'");
-        $upReq->bind_param("i", $req_id);
-        if ($upReq->execute() && $upReq->affected_rows > 0) {
-            flash('Renewal request marked as rejected.');
-        } else {
-            flash('⚠️ Request not found or already processed.');
-        }
-        $upReq->close();
-
-        go('?action=admin&tab=members');
-    }
 
     if ($action === 'renew_member' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = (int)$_POST['id'];
@@ -2465,12 +2421,12 @@ if (admin()) {
         $id = (int)$_POST['request_id'];
         $mins = max(1, (int)$_POST['minutes']);
         
-        $stmt = $db->prepare("UPDATE reading_requests SET status = 'Approved', approved_at = NOW(), expires_at = DATE_ADD(NOW(), INTERVAL ? MINUTE) WHERE id = ?");
+        $stmt = $db->prepare("UPDATE reading_requests SET status = 'Approved', approved_at = NOW(), duration_minutes = ?, started_reading_at = NULL, expires_at = NULL WHERE id = ?");
         $stmt->bind_param("ii", $mins, $id);
         $stmt->execute();
         $stmt->close();
         
-        flash('Reading permission approved successfully.');
+        flash('Reading permission approved successfully. Session timer will start when member clicks Read Now.');
         go('?action=admin&tab=requests');
     }
 
@@ -2583,6 +2539,16 @@ if (admin()) {
         flash('Print request marked as completed successfully.');
         go('?action=admin&tab=prints');
     }
+
+    if ($action === 'reject_print' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $id = (int)($_POST['id'] ?? 0);
+        $stmt = $db->prepare("UPDATE print_requests SET status = 'Rejected' WHERE id = ?");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $stmt->close();
+        flash('Print request rejected successfully.');
+        go('?action=admin&tab=prints');
+    }
 }
 
 // 6. Member Controllers (Prepared Statements & Secure Actions)
@@ -2592,7 +2558,7 @@ if (member()) {
     if ($action === 'read_member_pdf') {
         $rid = (int)($_GET['id'] ?? 0);
         
-        $stmt = $db->prepare("SELECT r.*, e.pdf_file, e.title FROM reading_requests r JOIN ebooks e ON e.id = r.ebook_id WHERE (r.id = ? OR r.ebook_id = ?) AND r.member_id = ? AND r.status = 'Approved' AND r.expires_at > NOW() ORDER BY r.id DESC LIMIT 1");
+        $stmt = $db->prepare("SELECT r.*, e.pdf_file, e.title FROM reading_requests r JOIN ebooks e ON e.id = r.ebook_id WHERE (r.id = ? OR r.ebook_id = ?) AND r.member_id = ? AND r.status = 'Approved' AND (r.started_reading_at IS NULL OR r.expires_at > NOW()) ORDER BY r.id DESC LIMIT 1");
         $stmt->bind_param("iii", $rid, $rid, $mid);
         $stmt->execute();
         $r = $stmt->get_result()->fetch_assoc();
@@ -2601,6 +2567,14 @@ if (member()) {
         if (!$r || empty($r['pdf_file'])) {
             exit('<div style="font-family:system-ui, sans-serif; text-align:center; padding:60px 20px; color:#ef4444; background:#0b0f19; height:100vh; box-sizing:border-box;"><h2 style="font-size:24px; margin-bottom:12px;">⚠️ Permission Expired or Book Not Found</h2><p style="color:#9ca3af; font-size:15px; max-width:500px; margin:0 auto 20px;">Your e-reading request for this book is either not approved or your active reading session has expired.</p><a href="' . BASE_URL . '?action=user&tab=books" style="display:inline-block; padding:10px 20px; background:#3b82f6; color:#fff; text-decoration:none; border-radius:8px; font-weight:600;">Return to Dashboard</a></div>');
         }
+
+        if (empty($r['started_reading_at'])) {
+            $duration = !empty($r['duration_minutes']) ? (int)$r['duration_minutes'] : 15;
+            $upStmt = $db->prepare("UPDATE reading_requests SET started_reading_at = NOW(), expires_at = DATE_ADD(NOW(), INTERVAL ? MINUTE) WHERE id = ?");
+            $upStmt->bind_param("ii", $duration, $r['id']);
+            $upStmt->execute();
+            $upStmt->close();
+        }
         
         go(BASE_URL . '?action=secure_pdf_viewer&source=member&id=' . urlencode($r['id']));
     }
@@ -2608,13 +2582,20 @@ if (member()) {
     if ($action === 'read_member_pdf_content') {
         $rid = (int)($_GET['id'] ?? 0);
         
-        $stmt = $db->prepare("SELECT r.id, r.expires_at, e.pdf_file FROM reading_requests r JOIN ebooks e ON e.id = r.ebook_id WHERE (r.id = ? OR r.ebook_id = ?) AND r.member_id = ? AND r.status = 'Approved' AND r.expires_at > NOW() ORDER BY r.id DESC LIMIT 1");
+        $stmt = $db->prepare("SELECT r.id, r.duration_minutes, r.started_reading_at, r.expires_at, e.pdf_file FROM reading_requests r JOIN ebooks e ON e.id = r.ebook_id WHERE (r.id = ? OR r.ebook_id = ?) AND r.member_id = ? AND r.status = 'Approved' AND (r.started_reading_at IS NULL OR r.expires_at > NOW()) ORDER BY r.id DESC LIMIT 1");
         $stmt->bind_param("iii", $rid, $rid, $mid);
         $stmt->execute();
         $r = $stmt->get_result()->fetch_assoc();
         $stmt->close();
         
         if ($r && !empty($r['pdf_file'])) {
+            if (empty($r['started_reading_at'])) {
+                $duration = !empty($r['duration_minutes']) ? (int)$r['duration_minutes'] : 15;
+                $upStmt = $db->prepare("UPDATE reading_requests SET started_reading_at = NOW(), expires_at = DATE_ADD(NOW(), INTERVAL ? MINUTE) WHERE id = ?");
+                $upStmt->bind_param("ii", $duration, $r['id']);
+                $upStmt->execute();
+                $upStmt->close();
+            }
             $file = __DIR__ . '/uploads/' . basename($r['pdf_file']);
             if (is_file($file)) {
                 stream_file_ranged($file, 'application/pdf', true, 300);
@@ -2646,7 +2627,7 @@ if (member()) {
         $id = (int)$_GET['id'];
         
         // Check current active/pending request count (limit 5)
-        $cntStmt = $db->prepare("SELECT COUNT(*) c FROM reading_requests WHERE member_id = ? AND (status = 'Pending' OR (status = 'Approved' AND expires_at > NOW()))");
+        $cntStmt = $db->prepare("SELECT COUNT(*) c FROM reading_requests WHERE member_id = ? AND (status = 'Pending' OR (status = 'Approved' AND (started_reading_at IS NULL OR expires_at > NOW())))");
         $cntStmt->bind_param("i", $mid);
         $cntStmt->execute();
         $active_count = (int)($cntStmt->get_result()->fetch_assoc()['c'] ?? 0);
@@ -2686,7 +2667,7 @@ if (member()) {
             exit;
         }
         $mid = (int)$_SESSION['member'];
-        $query = $db->query("SELECT r.id, r.ebook_id, r.status, r.expires_at, e.title FROM reading_requests r JOIN ebooks e ON e.id = r.ebook_id WHERE r.member_id = $mid AND r.id = (SELECT MAX(r2.id) FROM reading_requests r2 WHERE r2.member_id = $mid AND r2.ebook_id = r.ebook_id)");
+        $query = $db->query("SELECT r.id, r.ebook_id, r.status, r.started_reading_at, r.expires_at, e.title FROM reading_requests r JOIN ebooks e ON e.id = r.ebook_id WHERE r.member_id = $mid AND r.id = (SELECT MAX(r2.id) FROM reading_requests r2 WHERE r2.member_id = $mid AND r2.ebook_id = r.ebook_id)");
         $updates = [];
         while ($row = $query->fetch_assoc()) {
             $updates[] = [
@@ -2694,7 +2675,7 @@ if (member()) {
                 'ebook_id' => (int)$row['ebook_id'],
                 'status' => $row['status'],
                 'title' => $row['title'],
-                'active' => ($row['status'] === 'Approved' && strtotime($row['expires_at']) > time())
+                'active' => ($row['status'] === 'Approved' && (empty($row['started_reading_at']) || strtotime($row['expires_at']) > time()))
             ];
         }
         echo json_encode($updates);
@@ -2702,7 +2683,11 @@ if (member()) {
     }
 
     if ($action === 'poll_member_notifications') {
+        session_write_close();
         header('Content-Type: application/json');
+        header('Cache-Control: no-cache, no-store, must-revalidate, max-age=0');
+        header('Pragma: no-cache');
+        header('Expires: 0');
         if (!member()) {
             echo json_encode(['success' => false, 'error' => 'Unauthorized']);
             exit;

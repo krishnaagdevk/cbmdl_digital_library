@@ -14,9 +14,6 @@ if ($viewId) {
 
 $pendingCountRes = $db->query("SELECT COUNT(*) c FROM members WHERE approved = 0");
 $pendingCount = $pendingCountRes ? $pendingCountRes->fetch_assoc()['c'] : 0;
-
-$pendingRenewalsRes = $db->query("SELECT r.*, m.name as member_name, m.membership_id, m.mobile, p.name as plan_name, p.duration, p.amount FROM renewal_requests r JOIN members m ON r.member_id = m.id JOIN membership_plans p ON r.membership_plan_id = p.id WHERE r.status = 'Pending' ORDER BY r.id DESC");
-$pendingRenewalCount = $pendingRenewalsRes ? $pendingRenewalsRes->num_rows : 0;
 ?>
 <?php if ($selected): ?>
     <div class="card">
@@ -199,72 +196,6 @@ $pendingRenewalCount = $pendingRenewalsRes ? $pendingRenewalsRes->num_rows : 0;
         <p style="margin-top:20px;"><a class="btn" href="?action=admin&tab=<?= $tab ?>" style="background:var(--navy-light);"><i class="fa-solid fa-arrow-left"></i> Back to Members Dashboard</a></p>
     </div>
 <?php else: ?>
-    <?php if ($pendingRenewalCount > 0): ?>
-        <!-- Pending Online Renewal Requests Queue -->
-        <div class="card" style="margin-bottom:25px; border-left:5px solid var(--accent-orange); background:#fffbeb;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
-                <h3 style="margin:0; color:#b45309;">
-                    <i class="fa-solid fa-clock-rotate-left"></i> Pending Online Pass Renewal Requests
-                    <span class="badge badge-orange" style="font-size:12px; margin-left:8px;"><?= $pendingRenewalCount ?> Pending</span>
-                </h3>
-            </div>
-            <div class="table-responsive" style="overflow-x:auto;">
-                <table style="width:100%; border-collapse:collapse; background:white; border-radius:8px; overflow:hidden;">
-                    <thead>
-                        <tr style="background:#fef3c7; text-align:left; font-size:12px; color:#92400e;">
-                            <th style="padding:10px;">Member Info</th>
-                            <th style="padding:10px;">Requested Plan</th>
-                            <th style="padding:10px;">Shift</th>
-                            <th style="padding:10px;">Fee</th>
-                            <th style="padding:10px;">Payment UTR / ID</th>
-                            <th style="padding:10px;">Date Requested</th>
-                            <th style="padding:10px; text-align:right;">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php while ($req = $pendingRenewalsRes->fetch_assoc()): ?>
-                            <tr style="border-bottom:1px solid #fde68a; font-size:13px;">
-                                <td style="padding:10px;">
-                                    <strong style="color:var(--navy-dark);"><?= e($req['member_name']) ?></strong>
-                                    <span style="font-size:11px; color:var(--text-muted); display:block;"><?= e($req['membership_id']) ?> | <?= e($req['mobile']) ?></span>
-                                </td>
-                                <td style="padding:10px;">
-                                    <strong><?= e($req['plan_name']) ?></strong>
-                                    <span style="font-size:11px; color:var(--text-muted); display:block;"><?= e($req['duration']) ?> Term</span>
-                                </td>
-                                <td style="padding:10px; font-size:12px;"><?= e($req['shift']) ?> Shift</td>
-                                <td style="padding:10px;"><strong style="color:#16a34a;">₹<?= number_format($req['amount'], 2) ?></strong></td>
-                                <td style="padding:10px; font-family:monospace; font-size:12px; color:var(--navy-dark); font-weight:700;">
-                                    <?= e($req['payment_id']) ?>
-                                </td>
-                                <td style="padding:10px; color:var(--text-muted); font-size:12px;">
-                                    <?= date('d M Y, h:i A', strtotime($req['requested_at'])) ?>
-                                </td>
-                                <td style="padding:10px; text-align:right;">
-                                    <div style="display:inline-flex; gap:6px;">
-                                        <form method="post" action="?action=approve_renewal_request" style="display:inline;">
-                                            <?= csrf_input() ?>
-                                            <input type="hidden" name="id" value="<?= $req['id'] ?>">
-                                            <button class="btn btn-green" style="padding:5px 10px; font-size:11px; background:#16a34a;">
-                                                <i class="fa-solid fa-check"></i> Approve
-                                            </button>
-                                        </form>
-                                        <form method="post" action="?action=reject_renewal_request" style="display:inline;" onsubmit="return confirm('Reject this online renewal request?')">
-                                            <?= csrf_input() ?>
-                                            <input type="hidden" name="id" value="<?= $req['id'] ?>">
-                                            <button class="btn btn-danger" style="padding:5px 10px; font-size:11px; background:#dc2626;">
-                                                <i class="fa-solid fa-xmark"></i> Reject
-                                            </button>
-                                        </form>
-                                    </div>
-                                </td>
-                            </tr>
-                        <?php endwhile; ?>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    <?php endif; ?>
 
     <div class="grid">
         <div class="card">

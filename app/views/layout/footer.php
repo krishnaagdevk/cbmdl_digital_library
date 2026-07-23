@@ -397,7 +397,8 @@
                 window.offlinePollerInterval = null;
             }
             
-            fetch(url)
+            const cacheBustUrl = url + (url.includes('?') ? '&' : '?') + '_t=' + Date.now();
+            fetch(cacheBustUrl, { cache: 'no-store' })
                 .then(response => {
                     progressBar.style.width = '70%';
                     if (!response.ok) throw new Error("Navigation request failed");
@@ -459,9 +460,9 @@
                 .catch(err => {
                     console.error("PJAX Navigation Error:", err);
                     progressBar.style.opacity = '0';
-                    window.location.href = url; // Fallback redirect if AJAX fails
                 });
         }
+        window.navigateToUrl = navigateToUrl;
 
         // Intercept clicks on links that change sub-tabs in admin or user views
         document.addEventListener('click', function(e) {

@@ -10,6 +10,7 @@ final class Admin {
     }
 
     public function authenticate(string $username, string $password): ?array {
+        $username = trim($username);
         $stmt = $this->db->prepare("SELECT * FROM admins WHERE username = ? LIMIT 1");
         if (!$stmt) {
             return null;

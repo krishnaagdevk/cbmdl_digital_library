@@ -725,9 +725,16 @@
 
             var iconWrap = document.createElement('div');
             iconWrap.style.cssText = 'width:32px;height:32px;border-radius:50%;background:' + iconBg + ';color:' + iconColor + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;';
-            var icon = document.createElement('i');
-            icon.className = 'fa-solid ' + iconClass;
-            iconWrap.appendChild(icon);
+            var emojiMap = {
+                'fa-triangle-exclamation': '⚠️',
+                'fa-circle-xmark': '❌',
+                'fa-xmark': '✖',
+                'fa-book-open': '📖',
+                'fa-print': '🖨️',
+                'fa-circle-info': 'ℹ️',
+                'fa-circle-check': '✔️'
+            };
+            iconWrap.innerHTML = emojiMap[iconClass] || '🔔';
 
             var msgDiv = document.createElement('div');
             msgDiv.style.cssText = 'flex:1;font-size:13px;font-weight:600;color:#0f172a;line-height:1.5;white-space:pre-line;word-break:break-word;';

@@ -421,7 +421,7 @@ if ($viewId) {
                         <th>Gender</th>
                         <th>Mobile Phone</th>
                         <th>Work Shift</th>
-                        <th>Term Validity Span</th>
+                        <th>Membership Period</th>
                         <th>Status</th>
                         <th>Action</th>
                     </tr>

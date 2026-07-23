@@ -68,7 +68,7 @@ if ($diff > 0 && $diff <= 7 * 24 * 60 * 60) {
 }
 // Fetch active or pending e-book reading requests for member sidebar
 $active_reading_requests = [];
-$actStmt = $db->prepare("SELECT r.id, r.status, r.expires_at, e.id as ebook_id, e.title FROM reading_requests r JOIN ebooks e ON e.id = r.ebook_id WHERE r.member_id = ? AND (r.status = 'Pending' OR (r.status = 'Approved' AND r.expires_at > NOW())) ORDER BY r.status DESC, r.requested_at DESC");
+$actStmt = $db->prepare("SELECT r.id, r.status, r.duration_minutes, r.started_reading_at, r.expires_at, e.id as ebook_id, e.title FROM reading_requests r JOIN ebooks e ON e.id = r.ebook_id WHERE r.member_id = ? AND (r.status = 'Pending' OR (r.status = 'Approved' AND (r.started_reading_at IS NULL OR r.expires_at > NOW()))) ORDER BY r.status DESC, r.requested_at DESC");
 $actStmt->bind_param("i", $mid);
 $actStmt->execute();
 $actRes = $actStmt->get_result();
@@ -98,15 +98,20 @@ $actStmt->close();
                 <?php foreach ($active_reading_requests as $arr): ?>
                     <?php if ($arr['status'] === 'Approved'): ?>
                         <?php 
-                        $remSecs = strtotime($arr['expires_at']) - time();
-                        $remMins = max(1, (int)ceil($remSecs / 60));
+                        $isStarted = !empty($arr['started_reading_at']);
+                        $durMins = !empty($arr['duration_minutes']) ? (int)$arr['duration_minutes'] : 15;
+                        $remMins = $durMins;
+                        if ($isStarted && !empty($arr['expires_at'])) {
+                            $remSecs = strtotime($arr['expires_at']) - time();
+                            $remMins = max(1, (int)ceil($remSecs / 60));
+                        }
                         ?>
                         <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:10px; margin-bottom:8px; display:flex; flex-direction:column; gap:6px;">
                             <div style="display:flex; align-items:center; justify-content:space-between; gap:4px;">
                                 <span style="font-size:12px; font-weight:700; color:#166534; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:130px;" title="<?= e($arr['title']) ?>"><i class="fa-solid fa-book-open"></i> <?= e($arr['title']) ?></span>
-                                <span class="badge badge-green" style="font-size:10px; padding:2px 6px;"><i class="fa-solid fa-clock"></i> <?= $remMins ?>m</span>
+                                <span class="badge badge-green" style="font-size:10px; padding:2px 6px;"><i class="fa-solid fa-clock"></i> <?= $isStarted ? $remMins . 'm' : $durMins . 'm Granted' ?></span>
                             </div>
-                            <button class="btn" style="width:100%; font-size:11px; padding:5px 8px; background:var(--accent-green);" onclick="openPdfModal(<?= $arr['id'] ?>, <?= strtotime($arr['expires_at']) ?>, '<?= addslashes(e($arr['title'])) ?>')"><i class="fa-solid fa-book-open"></i> Read Now</button>
+                            <button class="btn" style="width:100%; font-size:11px; padding:5px 8px; background:var(--accent-green);" onclick="openPdfModal(<?= $arr['id'] ?>, <?= $isStarted && !empty($arr['expires_at']) ? strtotime($arr['expires_at']) : 0 ?>, '<?= addslashes(e($arr['title'])) ?>')"><i class="fa-solid fa-book-open"></i> <?= $isStarted ? 'Continue Reading' : 'Read Now (Start Timer)' ?></button>
                         </div>
                     <?php else: ?>
                         <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:10px; padding:10px; margin-bottom:8px; display:flex; flex-direction:column; gap:4px;">
@@ -171,8 +176,8 @@ $actStmt->close();
     </div>
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
+<script class="dynamic-script">
+(function() {
     let isInitialMemberPoll = true;
 
     function showToastNotification(message, type = 'info') {
@@ -202,18 +207,18 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
 
         let badgeBg = 'var(--primary, #3b82f6)';
-        let iconClass = 'fa-solid fa-bell';
+        let emojiIcon = '🔔';
         let headerTitle = heading || 'Notification';
         
         if (type === 'success') {
             badgeBg = 'var(--accent-green, #10b981)';
-            iconClass = 'fa-solid fa-circle-check';
+            emojiIcon = '🎉';
         } else if (type === 'danger') {
             badgeBg = 'var(--accent-red, #ef4444)';
-            iconClass = 'fa-solid fa-circle-xmark';
+            emojiIcon = '❌';
         } else if (type === 'warning') {
             badgeBg = 'var(--accent-orange, #f59e0b)';
-            iconClass = 'fa-solid fa-triangle-exclamation';
+            emojiIcon = '⚠️';
         }
 
         const modal = document.createElement('div');
@@ -221,7 +226,7 @@ document.addEventListener('DOMContentLoaded', function() {
             background: var(--card-bg, #ffffff);
             color: var(--text-color, #1e293b);
             border-radius: 16px;
-            max-width: 460px;
+            max-width: 440px;
             width: 100%;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
             overflow: hidden;
@@ -232,17 +237,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
         modal.innerHTML = `
             <div style="background: ${badgeBg}; padding: 24px 20px; color: #ffffff; text-align: center; position: relative;">
-                <div style="width: 56px; height: 56px; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px auto; font-size: 28px;">
-                    <i class="${iconClass}"></i>
+                <div style="width: 60px; height: 60px; background: rgba(255,255,255,0.25); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px auto; font-size: 30px; line-height: 1;">
+                    ${emojiIcon}
                 </div>
                 <h3 style="margin: 0; font-size: 20px; font-weight: 700; color: #ffffff;">${headerTitle}</h3>
             </div>
             <div style="padding: 24px; text-align: center;">
                 <div style="font-size: 15px; color: var(--text-color, #334155); line-height: 1.6; margin-bottom: 24px;">${message}</div>
-                <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-                    ${actionUrl ? `<a href="${actionUrl}" style="padding: 10px 20px; background: ${badgeBg}; color: #ffffff; border-radius: 8px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; font-size: 14px;"><i class="fa-solid fa-arrow-right"></i> ${actionText || 'View Details'}</a>` : ''}
-                    <button id="closeNotificationModalBtn" style="padding: 10px 24px; background: var(--border-color, #e2e8f0); color: var(--navy-dark, #1e293b); border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px; transition: background 0.2s;">
-                        Got it / Close
+                <div style="display: flex; justify-content: center;">
+                    <button id="closeNotificationModalBtn" style="padding: 12px 40px; background: ${badgeBg}; color: #ffffff; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 15px; transition: opacity 0.2s; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
+                        OK
                     </button>
                 </div>
             </div>
@@ -271,18 +275,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (closeBtn) {
             closeBtn.addEventListener('click', closeModal);
         }
-        if (actionUrl) {
-            const actionBtn = modal.querySelector('a');
-            if (actionBtn) {
-                actionBtn.addEventListener('click', () => {
-                    overlay.remove();
-                });
-            }
-        }
     }
 
     function pollMemberNotifications() {
-        fetch(window.BASE_URL + 'index.php?action=poll_member_notifications')
+        fetch(window.BASE_URL + 'index.php?action=poll_member_notifications&_t=' + Date.now(), { cache: 'no-store' })
             .then(res => res.json())
             .then(data => {
                 if (!data.success) return;
@@ -302,7 +298,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     const handleStatusNotification = () => {
                         mustReloadTab = true;
-                        const onDismissReload = () => { window.location.reload(); };
+                        const onDismissReload = () => {
+                            if (typeof window.navigateToUrl === 'function') {
+                                window.navigateToUrl(window.location.href, false);
+                            } else {
+                                window.location.reload();
+                            }
+                        };
 
                         if (req.status === 'Approved') {
                             showToastNotification(`Your reading request for <strong>"${req.title}"</strong> has been approved! You can now read the E-Book.`, 'success');
@@ -310,8 +312,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                 'Reading Request Approved!',
                                 `Your reading request for <strong>"${req.title}"</strong> has been approved! You can now access and read this E-Book.`,
                                 'success',
-                                `?action=read&id=${req.id}`,
-                                'Read Now',
+                                null,
+                                null,
                                 onDismissReload
                             );
                         } else if (req.status === 'Rejected') {
@@ -343,24 +345,42 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     const handlePrintNotification = () => {
                         mustReloadTab = true;
-                        const onDismissReload = () => { window.location.reload(); };
+                        const onDismissReload = () => {
+                            if (typeof window.navigateToUrl === 'function') {
+                                window.navigateToUrl(window.location.href, false);
+                            } else {
+                                window.location.reload();
+                            }
+                        };
 
-                        showToastNotification(`Your print job request for <strong>"${req.title}"</strong> (Pages: ${req.pages}) has been completed! Please collect it from the front desk.`, 'success');
-                        showNotificationModal(
-                            'Print Job Completed',
-                            `Your print job request for <strong>"${req.title}"</strong> (Pages: ${req.pages}) has been completed! Please collect it from the front desk.`,
-                            'success',
-                            '?action=user&tab=lending',
-                            'View My History',
-                            onDismissReload
-                        );
+                        if (req.status === 'Completed') {
+                            showToastNotification(`Your print job request for <strong>"${req.title}"</strong> (Pages: ${req.pages}) has been completed! Please collect it from the front desk.`, 'success');
+                            showNotificationModal(
+                                'Print Job Completed',
+                                `Your print job request for <strong>"${req.title}"</strong> (Pages: ${req.pages}) has been completed! Please collect it from the front desk.`,
+                                'success',
+                                null,
+                                null,
+                                onDismissReload
+                            );
+                        } else if (req.status === 'Rejected') {
+                            showToastNotification(`Your print job request for <strong>"${req.title}"</strong> (Pages: ${req.pages}) was rejected by the librarian.`, 'danger');
+                            showNotificationModal(
+                                'Print Request Rejected',
+                                `Your print job request for <strong>"${req.title}"</strong> (Pages: ${req.pages}) was rejected by the librarian.`,
+                                'danger',
+                                null,
+                                null,
+                                onDismissReload
+                            );
+                        }
                     };
 
                     if (prevPrintState[req.id] !== undefined) {
-                        if (prevPrintState[req.id] !== req.status && req.status === 'Completed') {
+                        if (prevPrintState[req.id] !== req.status && req.status !== 'Pending') {
                             handlePrintNotification();
                         }
-                    } else if (!isInitialMemberPoll && req.status === 'Completed') {
+                    } else if (!isInitialMemberPoll && req.status !== 'Pending') {
                         handlePrintNotification();
                     }
                 });
@@ -374,8 +394,12 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(err => console.error(err));
     }
 
-    // Poll every 5 seconds
-    setInterval(pollMemberNotifications, 5000);
+    if (window.memberPollerInterval) {
+        clearInterval(window.memberPollerInterval);
+    }
+
+    // Poll every 4 seconds
+    window.memberPollerInterval = setInterval(pollMemberNotifications, 4000);
     pollMemberNotifications();
-});
+})();
 </script>

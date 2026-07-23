@@ -1,4 +1,6 @@
 <?php
+date_default_timezone_set('Asia/Kolkata');
+
 // Load environment configuration
 $envFile = __DIR__ . '/.env';
 if (is_file($envFile)) {
@@ -27,13 +29,18 @@ if (session_status() === PHP_SESSION_NONE) {
     ini_set('session.use_strict_mode', 1);
     session_set_cookie_params([
         'lifetime' => 0,
-        'path' => BASE_URL,
+        'path' => '/',
         'domain' => '',
         'secure' => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
         'httponly' => true,
         'samesite' => 'Lax'
     ]);
     session_start();
+    // If session has no data at all (stale cookie pointing to deleted session file),
+    // regenerate the ID so the browser gets a fresh, valid session cookie.
+    if (empty($_SESSION)) {
+        session_regenerate_id(true);
+    }
 }
 
 spl_autoload_register(function ($class) {
@@ -56,6 +63,7 @@ $resMember = $db->query("SHOW COLUMNS FROM members LIKE 'is_active'");
 if ($resMember && $resMember->num_rows == 0) {
     $db->query("ALTER TABLE members ADD COLUMN is_active TINYINT(1) DEFAULT 1");
 }
+$db->query("ALTER TABLE print_requests MODIFY COLUMN status ENUM('Pending', 'Completed', 'Rejected') DEFAULT 'Pending'");
 
 // Auto-migration check: membership plans table
 $db->query("CREATE TABLE IF NOT EXISTS membership_plans (
@@ -126,6 +134,16 @@ if ($resMobileIdx && $resMobileIdx->num_rows == 0) {
 $resEbookIdx = $db->query("SHOW INDEX FROM ebooks WHERE Key_name = 'idx_category_title'");
 if ($resEbookIdx && $resEbookIdx->num_rows == 0) {
     @$db->query("ALTER TABLE ebooks ADD UNIQUE INDEX idx_category_title (category_id, title)");
+}
+
+// Auto-migration check: duration_minutes and started_reading_at in reading_requests
+$resRRDuration = $db->query("SHOW COLUMNS FROM reading_requests LIKE 'duration_minutes'");
+if ($resRRDuration && $resRRDuration->num_rows == 0) {
+    @$db->query("ALTER TABLE reading_requests ADD COLUMN duration_minutes INT DEFAULT 15");
+}
+$resRRStarted = $db->query("SHOW COLUMNS FROM reading_requests LIKE 'started_reading_at'");
+if ($resRRStarted && $resRRStarted->num_rows == 0) {
+    @$db->query("ALTER TABLE reading_requests ADD COLUMN started_reading_at DATETIME NULL");
 }
 
 // Add shift column to members table (Both, Morning, Evening)
@@ -257,7 +275,31 @@ $db->query("CREATE TABLE IF NOT EXISTS renewal_requests (
 function e($v){ return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
 function admin(){ return isset($_SESSION['admin']); }
 function member(){ return isset($_SESSION['member']); }
-function go($url){ header('Location: '.$url); exit; }
+function expire_member_reading_requests($memberId, mysqli $db) {
+    $memberId = (int)$memberId;
+    if ($memberId <= 0) return;
+    $stmt = $db->prepare("UPDATE reading_requests SET status = 'Expired', expires_at = NOW() WHERE member_id = ? AND status IN ('Pending', 'Approved')");
+    if ($stmt) {
+        $stmt->bind_param("i", $memberId);
+        $stmt->execute();
+        $stmt->close();
+    }
+}
+function go($url){
+    // Build absolute URL to prevent relative-redirect mis-resolution (e.g. from /cbmdl/admin-login path)
+    if (!preg_match('#^https?://#i', $url)) {
+        $base = rtrim(BASE_URL, '/');
+        if (str_starts_with($url, '?') || str_starts_with($url, '#')) {
+            // Query/fragment-only: append to base app root
+            $url = $base . '/' . $url;
+        } elseif (!str_starts_with($url, '/')) {
+            // Relative path like 'admin-login' or 'member-login'
+            $url = $base . '/' . $url;
+        }
+    }
+    header('Location: ' . $url);
+    exit;
+}
 function flash($msg=''){ if($msg !== ''){ $_SESSION['flash']=$msg; return $msg; } $x=$_SESSION['flash']??''; unset($_SESSION['flash']); return $x; }
 function membership_end($duration, $startDate = null){ 
     $map = [
@@ -366,12 +408,18 @@ function clear_failed_attempts() {
 }
 
 // CSRF Protection Helpers
-if (!isset($_SESSION['csrf_token'])) {
+if (!isset($_SESSION['csrf_token']) || empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
 function csrf_token() {
-    return $_SESSION['csrf_token'] ?? '';
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    if (!isset($_SESSION['csrf_token']) || empty($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['csrf_token'];
 }
 
 function csrf_input() {
@@ -381,9 +429,28 @@ function csrf_input() {
 function verify_csrf() {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
-        if (empty($token) || !hash_equals($_SESSION['csrf_token'] ?? '', $token)) {
-            http_response_code(403);
-            exit('CSRF token validation failed.');
+        $currentToken = csrf_token();
+        if (empty($token) || !hash_equals($currentToken, $token)) {
+            // Rotate the CSRF token for next attempt
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+            if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+                // Flush session before responding so the new token is saved
+                session_write_close();
+                http_response_code(403);
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'error' => 'Security token expired. Please try again.']);
+                exit;
+            }
+            flash('⚠️ Security token expired or invalid. Please try again.');
+            // Flush session NOW so the new CSRF token is persisted before redirect
+            session_write_close();
+            // Determine safe redirect URL based on current action (do NOT trust HTTP_REFERER)
+            $action = $_GET['action'] ?? '';
+            if (str_contains($action, 'admin') || str_contains($_SERVER['REQUEST_URI'] ?? '', 'admin-login')) {
+                go('admin-login');
+            } else {
+                go('member-login');
+            }
         }
     }
 }
@@ -412,10 +479,11 @@ function stream_file_ranged($file, $contentType = 'application/pdf', $isPrivate 
     @set_time_limit(0);
     
     $size = filesize($file);
+    $mtime = filemtime($file);
     
-    // ETag for caching
-    $etag = '"' . md5_file($file) . '"';
-    $lastMod = gmdate('D, d M Y H:i:s', filemtime($file)) . ' GMT';
+    // High-performance ETag based on mtime + size (O(1) instant lookup without reading entire file)
+    $etag = sprintf('"%x-%x"', $mtime, $size);
+    $lastMod = gmdate('D, d M Y H:i:s', $mtime) . ' GMT';
     
     // Handle conditional GET (304 Not Modified)
     if (isset($_SERVER['HTTP_IF_NONE_MATCH']) && $_SERVER['HTTP_IF_NONE_MATCH'] === $etag) {
@@ -446,25 +514,27 @@ function stream_file_ranged($file, $contentType = 'application/pdf', $isPrivate 
     header('Last-Modified: ' . $lastMod);
     
     if ($isPrivate) {
-        header('Cache-Control: private, max-age=' . $cacheMaxAge);
+        header('Cache-Control: private, max-age=' . $cacheMaxAge . ', must-revalidate');
     } else {
-        header('Cache-Control: public, max-age=' . $cacheMaxAge);
+        header('Cache-Control: public, max-age=' . $cacheMaxAge . ', must-revalidate');
     }
     
     header('Content-Disposition: inline');
     header('X-Content-Type-Options: nosniff');
     
-    // Stream only requested byte range
+    // Stream requested byte range in optimal 64KB chunks
     $fp = fopen($file, 'rb');
-    fseek($fp, $start);
-    $remaining = $length;
-    while ($remaining > 0 && !feof($fp)) {
-        $chunk = min(8192, $remaining); // 8KB chunks
-        echo fread($fp, $chunk);
-        $remaining -= $chunk;
-        flush();
+    if ($fp) {
+        fseek($fp, $start);
+        $remaining = $length;
+        while ($remaining > 0 && !feof($fp)) {
+            $chunk = min(65536, $remaining); // 64KB chunks
+            echo fread($fp, $chunk);
+            $remaining -= $chunk;
+            if (connection_aborted()) break;
+        }
+        fclose($fp);
     }
-    fclose($fp);
     exit;
 }
 ?>

@@ -8,8 +8,10 @@ RewriteBase /cbmdl/
     Require all denied
 </FilesMatch>
 
-# Redirect index.php to root URL
-RewriteCond %{THE_REQUEST} \s/+cbmdl/index\.php(?:[?\s]|$) [NC]
+# Redirect index.php to root URL (for GET requests only without query params)
+RewriteCond %{REQUEST_METHOD} GET
+RewriteCond %{QUERY_STRING} ^$
+RewriteCond %{THE_REQUEST} \s/+cbmdl/index\.php[?\s] [NC]
 RewriteRule ^index\.php$ /cbmdl/ [R=301,L]
 
 # Route all requests to index.php if physical file/directory doesn't exist

@@ -116,25 +116,29 @@ $side_prt_count = (int)$db->query("SELECT COUNT(*) c FROM print_requests WHERE s
             </div>
         </div>
 
-        <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        <script class="dynamic-script">
+        (function() {
             const bellBtn = document.getElementById('bellBtn');
             const bellDropdown = document.getElementById('bellDropdown');
             if (bellBtn && bellDropdown) {
-                bellBtn.addEventListener('click', function(e) {
+                bellBtn.onclick = function(e) {
                     e.stopPropagation();
                     bellDropdown.style.display = bellDropdown.style.display === 'none' ? 'block' : 'none';
-                });
-                document.addEventListener('click', function(e) {
+                };
+                document.onclick = function(e) {
                     if (!bellDropdown.contains(e.target) && e.target !== bellBtn && !bellBtn.contains(e.target)) {
                         bellDropdown.style.display = 'none';
                     }
-                });
+                };
             }
 
             // Real-time admin request poller and dynamic UI updater
             let prevReadingCount = <?= $side_req_count ?>;
             let prevPrintCount = <?= $side_prt_count ?>;
+
+            // Load known IDs from sessionStorage so tab navigation retains memory
+            let knownReadingIds = new Set(JSON.parse(sessionStorage.getItem('cbmdl_known_reading_ids') || '[]'));
+            let knownPrintIds = new Set(JSON.parse(sessionStorage.getItem('cbmdl_known_print_ids') || '[]'));
             let isInitialAdminPoll = true;
 
             function showAdminToastNotification(message, type = 'info') {
@@ -143,8 +147,42 @@ $side_prt_count = (int)$db->query("SELECT COUNT(*) c FROM print_requests WHERE s
                 }
             }
 
+            function playAdminAlertSound() {
+                try {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    if (!AudioCtx) return;
+                    const ctx = new AudioCtx();
+                    const now = ctx.currentTime;
+                    
+                    const osc1 = ctx.createOscillator();
+                    const gain1 = ctx.createGain();
+                    osc1.type = 'sine';
+                    osc1.frequency.setValueAtTime(587.33, now); // D5
+                    gain1.gain.setValueAtTime(0.2, now);
+                    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                    osc1.connect(gain1);
+                    gain1.connect(ctx.destination);
+                    osc1.start(now);
+                    osc1.stop(now + 0.3);
+
+                    const osc2 = ctx.createOscillator();
+                    const gain2 = ctx.createGain();
+                    osc2.type = 'sine';
+                    osc2.frequency.setValueAtTime(880, now + 0.15); // A5
+                    gain2.gain.setValueAtTime(0.25, now + 0.15);
+                    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+                    osc2.connect(gain2);
+                    gain2.connect(ctx.destination);
+                    osc2.start(now + 0.15);
+                    osc2.stop(now + 0.5);
+                } catch(e) {}
+            }
+
+            let prevReadingIdsStr = '';
+            let prevPrintIdsStr = '';
+
             function pollAdminNotifications() {
-                fetch(window.BASE_URL + 'index.php?action=poll_admin_notifications')
+                fetch(window.BASE_URL + 'index.php?action=poll_admin_notifications&_t=' + Date.now(), { cache: 'no-store' })
                     .then(res => res.json())
                     .then(data => {
                         if (!data.success) return;
@@ -153,35 +191,67 @@ $side_prt_count = (int)$db->query("SELECT COUNT(*) c FROM print_requests WHERE s
                         const prtCount = data.print_pending_count;
                         const totalCount = reqCount + prtCount;
                         
-                        let hasNewRequest = false;
-                        
-                        // Check for reading requests changes
-                        if (reqCount !== prevReadingCount) {
-                            hasNewRequest = true;
-                            if (reqCount > prevReadingCount && !isInitialAdminPoll) {
-                                const newReq = data.recent_reading[0];
-                                if (newReq) {
-                                    showAdminToastNotification(`<strong>${newReq.member}</strong> requested e-reading permission for <strong>"${newReq.title}"</strong>.`, 'reading');
+                        const currentReading = data.recent_reading || [];
+                        const currentPrint = data.recent_print || [];
+
+                        const currentReadingIdsStr = currentReading.map(r => r.id).sort().join(',');
+                        const currentPrintIdsStr = currentPrint.map(p => p.id).sort().join(',');
+
+                        let hasNewReading = false;
+                        let hasNewPrint = false;
+
+                        currentReading.forEach(r => {
+                            if (!knownReadingIds.has(r.id)) {
+                                knownReadingIds.add(r.id);
+                                if (!isInitialAdminPoll || (r.age_secs !== undefined && r.age_secs <= 300)) {
+                                    hasNewReading = true;
+                                    showAdminToastNotification(`📖 <strong>${r.member}</strong> requested e-reading permission for <strong>"${r.title}"</strong>.`, 'reading');
+                                }
+                            }
+                        });
+
+                        currentPrint.forEach(p => {
+                            if (!knownPrintIds.has(p.id)) {
+                                knownPrintIds.add(p.id);
+                                if (!isInitialAdminPoll || (p.age_secs !== undefined && p.age_secs <= 300)) {
+                                    hasNewPrint = true;
+                                    showAdminToastNotification(`🖨️ <strong>${p.member}</strong> requested page printing (Pages: ${p.pages}) for <strong>"${p.title}"</strong>.`, 'print');
+                                }
+                            }
+                        });
+
+                        const countChanged = (!isInitialAdminPoll) && (reqCount !== prevReadingCount || prtCount !== prevPrintCount);
+                        const pendingSetChanged = (!isInitialAdminPoll) && (currentReadingIdsStr !== prevReadingIdsStr || currentPrintIdsStr !== prevPrintIdsStr);
+
+                        if (hasNewReading || hasNewPrint) {
+                            playAdminAlertSound();
+                        }
+
+                        // Auto-refresh active tab content in real-time without full page reload
+                        if (countChanged || pendingSetChanged || hasNewReading || hasNewPrint) {
+                            const activeTab = new URLSearchParams(window.location.search).get('tab') || 'dashboard';
+                            if (['requests', 'prints', 'dashboard'].includes(activeTab)) {
+                                const isTyping = document.activeElement && ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
+                                if (!isTyping && typeof window.navigateToUrl === 'function') {
+                                    window.navigateToUrl(window.location.href, false);
                                 }
                             }
                         }
-                        
-                        // Check for print requests changes
-                        if (prtCount !== prevPrintCount) {
-                            hasNewRequest = true;
-                            if (prtCount > prevPrintCount && !isInitialAdminPoll) {
-                                const newPrt = data.recent_print[0];
-                                if (newPrt) {
-                                    showAdminToastNotification(`<strong>${newPrt.member}</strong> requested page printing (Pages: ${newPrt.pages}) for <strong>"${newPrt.title}"</strong>.`, 'print');
-                                }
-                            }
-                        }
+
+                        isInitialAdminPoll = false;
+
+                        // Save updated known IDs to sessionStorage
+                        try {
+                            sessionStorage.setItem('cbmdl_known_reading_ids', JSON.stringify(Array.from(knownReadingIds)));
+                            sessionStorage.setItem('cbmdl_known_print_ids', JSON.stringify(Array.from(knownPrintIds)));
+                        } catch(e) {}
                         
                         prevReadingCount = reqCount;
                         prevPrintCount = prtCount;
-                        isInitialAdminPoll = false;
+                        prevReadingIdsStr = currentReadingIdsStr;
+                        prevPrintIdsStr = currentPrintIdsStr;
                         
-                        // Update DOM elements
+                        // Update DOM elements dynamically
                         const sidebarReadingBadge = document.getElementById('sidebarReadingBadge');
                         const sidebarPrintBadge = document.getElementById('sidebarPrintBadge');
                         const bellBadge = document.getElementById('bellBadge');
@@ -242,24 +312,18 @@ $side_prt_count = (int)$db->query("SELECT COUNT(*) c FROM print_requests WHERE s
                                 bellDropdownList.innerHTML = html;
                             }
                         }
-                        
-                        // Soft reload if on target admin page
-                        if (hasNewRequest) {
-                            const activeTab = new URLSearchParams(window.location.search).get('tab');
-                            if (activeTab === 'requests' || activeTab === 'prints' || activeTab === 'dashboard' || !activeTab) {
-                                setTimeout(() => {
-                                    window.location.reload();
-                                }, 1500);
-                            }
-                        }
                     })
                     .catch(err => console.error(err));
             }
 
-            // Poll every 5 seconds
-            setInterval(pollAdminNotifications, 5000);
+            if (window.adminPollerInterval) {
+                clearInterval(window.adminPollerInterval);
+            }
+
+            // Snappy 2.5 second polling
+            window.adminPollerInterval = setInterval(pollAdminNotifications, 2500);
             pollAdminNotifications();
-        });
+        })();
         </script>
 
         <?php

@@ -33,21 +33,15 @@ $x = $stmt->get_result();
                 $count = 0;
                 while($r = $x->fetch_assoc()) {
                     $count++;
+                    $isExp = ($r['status'] === 'Expired') || (!empty($r['expires_at']) && strtotime($r['expires_at']) <= time());
                     $badgeClass = 'badge-orange';
-                    if ($r['status'] === 'Approved') {
-                        if (strtotime($r['expires_at']) > time()) {
-                            $badgeClass = 'badge-green';
-                        } else {
-                            $badgeClass = 'badge-red';
-                        }
-                    } elseif ($r['status'] === 'Rejected') {
+                    if ($r['status'] === 'Approved' && !$isExp) {
+                        $badgeClass = 'badge-green';
+                    } elseif ($r['status'] === 'Rejected' || $isExp) {
                         $badgeClass = 'badge-red';
                     }
                     
-                    $statusText = $r['status'];
-                    if ($r['status'] === 'Approved' && strtotime($r['expires_at']) <= time()) {
-                        $statusText = 'Expired';
-                    }
+                    $statusText = $isExp ? 'Expired' : $r['status'];
                     
                     echo '
                     <tr>

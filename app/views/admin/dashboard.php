@@ -24,12 +24,7 @@ while ($l_row = $overdue_query->fetch_assoc()) {
     }
 }
 
-// Fetch members expiring within 7 days
-$expiring_7_days_count = 0;
-$exp_query = $db->query("SELECT end_date, is_active FROM members WHERE is_active = 1 AND end_date >= DATE(NOW()) AND end_date <= DATE_ADD(NOW(), INTERVAL 7 DAY)");
-if ($exp_query) {
-    $expiring_7_days_count = $exp_query->num_rows;
-}
+
 
 // Category distribution for progress meters
 $cat_distribution = [];
@@ -43,6 +38,13 @@ $recent_lendings = [];
 $rl_query = $db->query("SELECT l.*, p.title, p.book_code, m.name, m.membership_id FROM lendings l JOIN physical_books p ON p.id = l.physical_book_id JOIN members m ON m.id = l.member_id WHERE l.returned_at IS NULL AND l.due_date <= DATE_ADD(CURDATE(), INTERVAL 3 DAY) ORDER BY l.due_date ASC");
 while ($r_row = $rl_query->fetch_assoc()) {
     $recent_lendings[] = $r_row;
+}
+
+// Fetch members expiring within 15 days
+$expiring_15_days_count = 0;
+$exp_query = $db->query("SELECT end_date, is_active FROM members WHERE is_active = 1 AND end_date >= DATE(NOW()) AND end_date <= DATE_ADD(NOW(), INTERVAL 15 DAY)");
+if ($exp_query) {
+    $expiring_15_days_count = $exp_query->num_rows;
 }
 ?>
 <h3 style="margin-top:0; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
@@ -113,8 +115,8 @@ while ($r_row = $rl_query->fetch_assoc()) {
     <!-- Feature 4: Expiring Members KPI Card -->
     <div class="stat-card" style="border-left: 4px solid var(--accent-orange); cursor: pointer;" onclick="switchDashboardTab('inbox');">
         <div class="stat-info">
-            <h4>Expiring Membership<br> (7 days)</h4>
-            <p style="font-size:20px; color:var(--accent-orange);"><?= $expiring_7_days_count ?></p>
+            <h4>Expiring Membership<br> (15 days)</h4>
+            <p style="font-size:20px; color:var(--accent-orange);"><?= $expiring_15_days_count ?></p>
             <span style="font-size:11px; color:var(--text-muted);">Membership renewals</span>
         </div>
         <div class="stat-icon" style="background: rgba(245, 158, 11, 0.1); color: var(--accent-orange); border-radius: 50%; width: 45px; height: 45px; display: flex; align-items: center; justify-content: center;"><i class="fa-solid fa-hourglass-half"></i></div>
@@ -128,8 +130,8 @@ while ($r_row = $rl_query->fetch_assoc()) {
     </button>    
       <button id="tab-inbox" class="tab-btn" onclick="switchDashboardTab('inbox')">
         ⏰ Expiring Memberships
-        <?php if ($expiring_7_days_count > 0): ?>
-            <span class="badge badge-orange" style="font-size:10px; padding:2px 6px; margin-left: 5px;"><?= $expiring_7_days_count ?></span>
+        <?php if ($expiring_15_days_count > 0): ?>
+            <span class="badge badge-orange" style="font-size:10px; padding:2px 6px; margin-left: 5px;"><?= $expiring_15_days_count ?></span>
         <?php endif; ?>
     </button>
 <button id="tab-stats" class="tab-btn" onclick="switchDashboardTab('stats')">
@@ -286,9 +288,9 @@ while ($r_row = $rl_query->fetch_assoc()) {
 <div id="pane-inbox" class="dashboard-pane" style="display:none;">
     <div class="card" style="margin-bottom: 0; border-left: 5px solid var(--accent-orange);">
         <h3 style="color: var(--accent-orange); margin-top:0;">
-            <i class="fa-solid fa-hourglass-half"></i> Memberships Expiring within 7 Days
-            <?php if ($expiring_7_days_count > 0): ?>
-                <span class="badge badge-orange" style="font-size:12px; margin-left:8px;"><?= $expiring_7_days_count ?> Expiring</span>
+            <i class="fa-solid fa-hourglass-half"></i> Memberships Expiring within 15 Days
+            <?php if ($expiring_15_days_count > 0): ?>
+                <span class="badge badge-orange" style="font-size:12px; margin-left:8px;"><?= $expiring_15_days_count ?> Expiring</span>
             <?php endif; ?>
         </h3>
         <div class="table-responsive">
@@ -298,13 +300,13 @@ while ($r_row = $rl_query->fetch_assoc()) {
                         <th>Membership ID</th>
                         <th>Name</th>
                         <th>Mobile Number</th>
-                        <th>Expiry Date</th>
+                        <th>Membership Expiry Date</th>
                         <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php
-                    $exp_list = $db->query("SELECT id, membership_id, name, mobile, end_date FROM members WHERE is_active = 1 AND end_date >= DATE(NOW()) AND end_date <= DATE_ADD(NOW(), INTERVAL 7 DAY) ORDER BY end_date ASC");
+                    $exp_list = $db->query("SELECT id, membership_id, name, mobile, end_date FROM members WHERE is_active = 1 AND end_date >= DATE(NOW()) AND end_date <= DATE_ADD(NOW(), INTERVAL 15 DAY) ORDER BY end_date ASC");
                     if ($exp_list && $exp_list->num_rows > 0) {
                         while ($el = $exp_list->fetch_assoc()) {
                             echo '
@@ -317,7 +319,7 @@ while ($r_row = $rl_query->fetch_assoc()) {
                             </tr>';
                         }
                     } else {
-                        echo '<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:20px;"><i class="fa-solid fa-circle-check" style="color:var(--accent-green);"></i> No member accounts are expiring within the next 7 days.</td></tr>';
+                        echo '<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:20px;"><i class="fa-solid fa-circle-check" style="color:var(--accent-green);"></i> No member accounts are expiring within the next 15 days.</td></tr>';
                     }
                     ?>
                 </tbody>
