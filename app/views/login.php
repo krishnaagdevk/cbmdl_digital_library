@@ -1,92 +1,155 @@
-<h2 class="header-title-sub">Welcome To Cantonment Digital Library</h2>
+<h2 class="header-title-sub" style="margin-bottom:12px;">Welcome To Cantonment Digital Library</h2>
 
-<div class="login-container">
-    <div class="external-menu">
-        <!-- Interactive 4:3 Library Heritage Showcase Slider -->
-        <div class="library-gallery-card" style="background:white; border-radius:16px; border:1px solid var(--border-color); overflow:hidden; box-shadow:0 8px 25px rgba(0,0,0,0.04); margin-bottom:12px;">
-            <div style="position:relative; width:100%; aspect-ratio:4/3; background:#1e293b; overflow:hidden;">
+<style>
+@media (max-width: 992px) {
+    .login-container {
+        grid-template-columns: 1fr !important;
+    }
+    .bottom-tiles-row {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}
+@media (max-width: 576px) {
+    .bottom-tiles-row {
+        grid-template-columns: 1fr !important;
+    }
+}
+</style>
+
+<div class="login-container" style="max-width:1100px; margin:10px auto; padding:0 15px; display:grid; grid-template-columns:1fr 1fr; gap:20px; align-items:start;">
+    
+    <!-- LEFT COLUMN: Heritage Showcase Gallery -->
+    <div class="left-showcase-column" style="display:flex; flex-direction:column; gap:12px;">
+        <!-- Compact 16:9 / 4:3 Gallery Card -->
+        <div class="library-gallery-card" style="background:white; border-radius:14px; border:1px solid var(--border-color); overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.04);">
+            <div style="position:relative; width:100%; aspect-ratio:16/9; max-height:230px; background:#1e293b; overflow:hidden;">
                 <!-- Slide 1: Historical Plaque -->
                 <div class="gallery-slide active-slide" id="slide-0" style="position:absolute; inset:0; opacity:1; transition:opacity 0.5s ease;">
                     <img src="<?= BASE_URL ?>images/library_plaque.jpg" alt="Inauguration Plaque" style="width:100%; height:100%; object-fit:cover; display:block;">
-                    <div style="position:absolute; bottom:0; left:0; right:0; background:linear-gradient(transparent, rgba(15,23,42,0.9)); color:white; padding:12px 16px;">
-                        <span style="font-size:10px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase; color:var(--accent-orange); display:block;">Historical Foundation (1953)</span>
-                        <strong style="font-size:12.5px; display:block; line-height:1.3;">Inauguration Plaque by Hon'ble Shri Satish Chandra</strong>
+                    <div style="position:absolute; bottom:0; left:0; right:0; background:linear-gradient(transparent, rgba(15,23,42,0.92)); color:white; padding:8px 12px;">
+                        <span style="font-size:9.5px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase; color:var(--accent-orange); display:block;">Historical Foundation (1953)</span>
+                        <strong style="font-size:11.5px; display:block; line-height:1.2;">Inauguration Plaque by Hon'ble Shri Satish Chandra</strong>
                     </div>
                 </div>
 
                 <!-- Slide 2: Heritage Building -->
                 <div class="gallery-slide" id="slide-1" style="position:absolute; inset:0; opacity:0; transition:opacity 0.5s ease;">
                     <img src="<?= BASE_URL ?>images/library_building.png" alt="Library Entrance" style="width:100%; height:100%; object-fit:cover; display:block;">
-                    <div style="position:absolute; bottom:0; left:0; right:0; background:linear-gradient(transparent, rgba(15,23,42,0.9)); color:white; padding:12px 16px;">
-                        <span style="font-size:10px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase; color:#60a5fa; display:block;">Library Campus</span>
-                        <strong style="font-size:12.5px; display:block; line-height:1.3;">Cantonment Library Heritage Building</strong>
+                    <div style="position:absolute; bottom:0; left:0; right:0; background:linear-gradient(transparent, rgba(15,23,42,0.92)); color:white; padding:8px 12px;">
+                        <span style="font-size:9.5px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase; color:#60a5fa; display:block;">Library Campus</span>
+                        <strong style="font-size:11.5px; display:block; line-height:1.2;">Cantonment Library Heritage Building</strong>
                     </div>
                 </div>
 
                 <!-- Slide 3: Digital Reading Hall -->
                 <div class="gallery-slide" id="slide-2" style="position:absolute; inset:0; opacity:0; transition:opacity 0.5s ease;">
                     <img src="<?= BASE_URL ?>images/library_hall.png" alt="Digital Reading Hall" style="width:100%; height:100%; object-fit:cover; display:block;">
-                    <div style="position:absolute; bottom:0; left:0; right:0; background:linear-gradient(transparent, rgba(15,23,42,0.9)); color:white; padding:12px 16px;">
-                        <span style="font-size:10px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase; color:#34d399; display:block;">Modern Facilities</span>
-                        <strong style="font-size:12.5px; display:block; line-height:1.3;">E-Resource Center & Reading Hall</strong>
+                    <div style="position:absolute; bottom:0; left:0; right:0; background:linear-gradient(transparent, rgba(15,23,42,0.92)); color:white; padding:8px 12px;">
+                        <span style="font-size:9.5px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase; color:#34d399; display:block;">Modern Facilities</span>
+                        <strong style="font-size:11.5px; display:block; line-height:1.2;">E-Resource Center & Reading Hall</strong>
                     </div>
                 </div>
             </div>
 
             <!-- Thumbnail Selector Buttons -->
-            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:6px; padding:10px; background:#f8fafc; border-top:1px solid var(--border-color);">
-                <button type="button" class="thumb-btn active-thumb" onclick="switchGallerySlide(0)" style="border:2px solid var(--primary); padding:0; border-radius:8px; overflow:hidden; cursor:pointer; height:52px; background:none; transition:all 0.2s;" title="Historical Foundation Plaque">
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; padding:6px; background:#f8fafc; border-top:1px solid var(--border-color);">
+                <button type="button" class="thumb-btn active-thumb" onclick="switchGallerySlide(0)" style="border:2px solid var(--primary); padding:0; border-radius:6px; overflow:hidden; cursor:pointer; height:42px; background:none; transition:all 0.2s;" title="Historical Foundation Plaque">
                     <img src="<?= BASE_URL ?>images/library_plaque.jpg" style="width:100%; height:100%; object-fit:cover; display:block;">
                 </button>
-                <button type="button" class="thumb-btn" onclick="switchGallerySlide(1)" style="border:2px solid transparent; padding:0; border-radius:8px; overflow:hidden; cursor:pointer; height:52px; background:none; opacity:0.65; transition:all 0.2s;" title="Library Heritage Building">
+                <button type="button" class="thumb-btn" onclick="switchGallerySlide(1)" style="border:2px solid transparent; padding:0; border-radius:6px; overflow:hidden; cursor:pointer; height:42px; background:none; opacity:0.65; transition:all 0.2s;" title="Library Heritage Building">
                     <img src="<?= BASE_URL ?>images/library_building.png" style="width:100%; height:100%; object-fit:cover; display:block;">
                 </button>
-                <button type="button" class="thumb-btn" onclick="switchGallerySlide(2)" style="border:2px solid transparent; padding:0; border-radius:8px; overflow:hidden; cursor:pointer; height:52px; background:none; opacity:0.65; transition:all 0.2s;" title="Digital Reading Hall">
+                <button type="button" class="thumb-btn" onclick="switchGallerySlide(2)" style="border:2px solid transparent; padding:0; border-radius:6px; overflow:hidden; cursor:pointer; height:42px; background:none; opacity:0.65; transition:all 0.2s;" title="Digital Reading Hall">
                     <img src="<?= BASE_URL ?>images/library_hall.png" style="width:100%; height:100%; object-fit:cover; display:block;">
                 </button>
             </div>
         </div>
+    </div>
 
-        <a href="https://meerut.cantt.gov.in/" target="_blank">
-            <span><i class="fa-solid fa-globe"></i> MCB Official Website</span>
-            <i class="fa-solid fa-chevron-right"></i>
-        </a>
-        <a href="https://echhawani.gov.in/" target="_blank">
-            <span><i class="fa-solid fa-circle-info"></i> E-CHHAWANI Portal</span>
-            <i class="fa-solid fa-chevron-right"></i>
-        </a>
-        <div style="background:white; padding:16px 20px; border-radius:12px; border:1px solid var(--border-color); display:flex; flex-direction:column; gap:8px;">
-            <p style="margin:0; font-weight:600; color:var(--navy-dark); font-size:13px;"><i class="fa-solid fa-envelope" style="color:var(--primary);"></i> Email: cbmeerut1@gmail.com</p>
-            <p style="margin:0; font-weight:600; color:var(--navy-dark); font-size:13px;"><i class="fa-solid fa-phone" style="color:var(--primary);"></i> Help Desk: 0121-2652292</p>
+    <!-- RIGHT COLUMN: Login Form -->
+    <div class="right-login-column" style="display:flex; flex-direction:column; gap:12px;">
+        <div class="login-section" style="background:#fff; padding:20px 24px; border-radius:14px; box-shadow:0 8px 25px rgba(15,23,42,0.05); border:1px solid var(--border-color);">
+            <?php if ($action === 'admin_login'): ?>
+                <h3 style="text-align:center; border:none; margin-bottom:16px; font-size:17px;"><i class="fa-solid fa-user-shield" style="color:var(--primary);"></i> Librarian Login</h3>
+                <form method="post" action="?action=admin_login">
+                    <?= csrf_input() ?>
+                    <label for="admin_uid" style="font-size:12px; font-weight:600; margin-bottom:4px; display:block;"><i class="fa-solid fa-user"></i> User ID</label>
+                    <input id="admin_uid" name="username" required placeholder="Librarian Username" style="padding:10px 12px; margin-bottom:10px;">
+                    
+                    <label for="admin_pwd" style="font-size:12px; font-weight:600; margin-bottom:4px; display:block;"><i class="fa-solid fa-key"></i> Password</label>
+                    <input id="admin_pwd" type="password" name="password" required placeholder="Enter password" maxlength="15" style="padding:10px 12px; margin-bottom:12px;">
+                    
+                    <button style="width:100%; padding:12px; margin-top:4px; font-weight:600;"><i class="fa-solid fa-shield-halved"></i> Verify & Authorize</button>
+                </form>
+            <?php else: ?>
+                <h3 style="text-align:center; border:none; margin-bottom:16px; font-size:17px;"><i class="fa-solid fa-user-graduate" style="color:var(--primary);"></i> Member Login</h3>
+                <form method="post" action="?action=member_login">
+                    <?= csrf_input() ?>
+                    <label for="member_mob" style="font-size:12px; font-weight:600; margin-bottom:4px; display:block;"><i class="fa-solid fa-phone"></i> Mobile Number</label>
+                    <input id="member_mob" name="mobile" required placeholder="Registered Mobile No" style="padding:10px 12px; margin-bottom:10px;">
+                    
+                    <label for="member_pwd" style="font-size:12px; font-weight:600; margin-bottom:4px; display:block;"><i class="fa-solid fa-key"></i> Password</label>
+                    <input id="member_pwd" type="password" name="password" required placeholder="Enter password" maxlength="15" style="padding:10px 12px; margin-bottom:12px;">
+                    
+                    <button style="width:100%; padding:12px; margin-top:4px; font-weight:600;"><i class="fa-solid fa-right-to-bracket"></i> Login Account</button>
+                </form>
+            <?php endif; ?>
         </div>
     </div>
 
-    <div class="login-section">
-        <?php if ($action === 'admin_login'): ?>
-            <h3 style="text-align:center; border:none; margin-bottom:20px;"><i class="fa-solid fa-user-shield" style="color:var(--primary);"></i> Librarian Login</h3>
-            <form method="post" action="?action=admin_login">
-                <?= csrf_input() ?>
-                <label for="admin_uid"><i class="fa-solid fa-user"></i> User ID</label>
-                <input id="admin_uid" name="username" required placeholder="Librarian Username">
-                
-                <label for="admin_pwd"><i class="fa-solid fa-key"></i> Password</label>
-                <input id="admin_pwd" type="password" name="password" required placeholder="Enter password" maxlength="15">
-                
-                <button style="width:100%; padding:14px; margin-top:10px;"><i class="fa-solid fa-shield-halved"></i> Verify & Authorize</button>
-            </form>
-        <?php else: ?>
-            <h3 style="text-align:center; border:none; margin-bottom:20px;"><i class="fa-solid fa-user-graduate" style="color:var(--primary);"></i> Member Login</h3>
-            <form method="post" action="?action=member_login">
-                <?= csrf_input() ?>
-                <label for="member_mob"><i class="fa-solid fa-phone"></i> Mobile Number</label>
-                <input id="member_mob" name="mobile" required placeholder="Registered Mobile No">
-                
-                <label for="member_pwd"><i class="fa-solid fa-key"></i> Password</label>
-                <input id="member_pwd" type="password" name="password" required placeholder="Enter password" maxlength="15">
-                
-                <button style="width:100%; padding:14px; margin-top:10px;"><i class="fa-solid fa-right-to-bracket"></i> Login Account</button>
-            </form>
-        <?php endif; ?>
+    <!-- FULL WIDTH SINGLE ROW: All 4 Tiles Aligned in One Line Across Spanning Both Columns -->
+    <div class="bottom-tiles-row" style="grid-column: 1 / -1; display:grid; grid-template-columns: repeat(4, 1fr); gap:10px; width:100%;">
+        
+        <!-- Tile 1: Official Email -->
+        <a href="mailto:cbmeerut1@gmail.com" style="background:#fff; border:1px solid var(--border-color); border-radius:12px; padding:10px 12px; display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit; box-shadow:0 4px 12px rgba(0,0,0,0.02); transition:all 0.2s ease;" onmouseover="this.style.borderColor='var(--primary)'; this.style.transform='translateY(-1px)';" onmouseout="this.style.borderColor='var(--border-color)'; this.style.transform='none';">
+            <div style="width:36px; height:36px; border-radius:10px; background:#eff6ff; color:var(--primary); display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;">
+                ✉️
+            </div>
+            <div style="overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">
+                <span style="display:block; font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted);">Official Email</span>
+                <strong style="display:block; font-size:11.5px; color:var(--navy-dark); text-overflow:ellipsis; overflow:hidden;">cbmeerut1@gmail.com</strong>
+            </div>
+        </a>
+
+        <!-- Tile 2: Helpline Desk (with 📞 phone emoji in green box) -->
+        <a href="tel:01212652292" style="background:#fff; border:1px solid var(--border-color); border-radius:12px; padding:10px 12px; display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit; box-shadow:0 4px 12px rgba(0,0,0,0.02); transition:all 0.2s ease;" onmouseover="this.style.borderColor='var(--accent-green)'; this.style.transform='translateY(-1px)';" onmouseout="this.style.borderColor='var(--border-color)'; this.style.transform='none';">
+            <div style="width:36px; height:36px; border-radius:10px; background:#ecfdf5; color:var(--accent-green); display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;">
+                📞
+            </div>
+            <div style="overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">
+                <span style="display:block; font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted);">Helpline Desk</span>
+                <strong style="display:block; font-size:11.5px; color:var(--navy-dark);">0121-2652292</strong>
+            </div>
+        </a>
+
+        <!-- Tile 3: MCB Official Website -->
+        <a href="https://meerut.cantt.gov.in/" target="_blank" style="background:#fff; border:1px solid var(--border-color); border-radius:12px; padding:10px 12px; display:flex; align-items:center; justify-content:space-between; text-decoration:none; color:inherit; box-shadow:0 4px 12px rgba(0,0,0,0.02); transition:all 0.2s ease;" onmouseover="this.style.borderColor='var(--primary)'; this.style.transform='translateY(-1px)';" onmouseout="this.style.borderColor='var(--border-color)'; this.style.transform='none';">
+            <div style="display:flex; align-items:center; gap:10px; overflow:hidden;">
+                <div style="width:36px; height:36px; border-radius:10px; background:#e0f2fe; color:#0284c7; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;">
+                    🌐
+                </div>
+                <div style="overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">
+                    <span style="display:block; font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted);">MCB Govt Portal 🏛️</span>
+                    <strong style="display:block; font-size:11.5px; color:var(--navy-dark); text-overflow:ellipsis; overflow:hidden;">Official Website</strong>
+                </div>
+            </div>
+            <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:10px; opacity:0.5; color:var(--navy-dark); flex-shrink:0; margin-left:2px;"></i>
+        </a>
+
+        <!-- Tile 4: e-Chhawani Services -->
+        <a href="https://echhawani.gov.in/" target="_blank" style="background:#fff; border:1px solid var(--border-color); border-radius:12px; padding:10px 12px; display:flex; align-items:center; justify-content:space-between; text-decoration:none; color:inherit; box-shadow:0 4px 12px rgba(0,0,0,0.02); transition:all 0.2s ease;" onmouseover="this.style.borderColor='var(--accent-orange)'; this.style.transform='translateY(-1px)';" onmouseout="this.style.borderColor='var(--border-color)'; this.style.transform='none';">
+            <div style="display:flex; align-items:center; gap:10px; overflow:hidden;">
+                <div style="width:36px; height:36px; border-radius:10px; background:#fff7ed; color:#ea580c; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;">
+                    🇮🇳
+                </div>
+                <div style="overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">
+                    <span style="display:block; font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted);">Civic Portal 🏢</span>
+                    <strong style="display:block; font-size:11.5px; color:var(--navy-dark); text-overflow:ellipsis; overflow:hidden;">e-Chhawani Services</strong>
+                </div>
+            </div>
+            <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:10px; opacity:0.5; color:var(--navy-dark); flex-shrink:0; margin-left:2px;"></i>
+        </a>
+
     </div>
 </div>
 

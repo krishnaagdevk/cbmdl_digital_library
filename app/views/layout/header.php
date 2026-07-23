@@ -387,9 +387,9 @@
         .login-container {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 25px;
-            align-items: center;
-            margin: 20px auto;
+            gap: 20px;
+            align-items: start;
+            margin: 10px auto;
             max-width: 1100px;
             padding: 0 15px;
         }
@@ -744,8 +744,18 @@
 
     <!-- Global Toast Notification System -->
     <script>
-        window.showToast = function(msg, type) {
+        window.showToast = function(msg, type, targetUrl) {
             if (!msg) return;
+
+            // Auto-assign targetUrl based on toast type if not explicitly supplied
+            if (!targetUrl) {
+                if (type === 'reading') {
+                    targetUrl = (window.BASE_URL || '') + 'index.php?action=admin&tab=requests';
+                } else if (type === 'print') {
+                    targetUrl = (window.BASE_URL || '') + 'index.php?action=admin&tab=prints';
+                }
+            }
+
             var container = document.getElementById('toastNotificationContainer');
             if (!container) {
                 container = document.createElement('div');
@@ -775,7 +785,7 @@
             var iconClass  = isWarning ? 'fa-triangle-exclamation' : (isError ? 'fa-circle-xmark' : (isReading ? 'fa-book-open' : (isPrint ? 'fa-print' : (isInfo ? 'fa-circle-info' : 'fa-circle-check'))));
 
             var toast = document.createElement('div');
-            toast.style.cssText = [
+            var toastStyles = [
                 'background:#ffffff',
                 'color:#0f172a',
                 'border-radius:12px',
@@ -788,9 +798,32 @@
                 'gap:12px',
                 'pointer-events:auto',
                 'transform:translateX(120%)',
-                'transition:transform .4s cubic-bezier(.16,1,.3,1),opacity .4s',
+                'transition:transform .4s cubic-bezier(.16,1,.3,1),opacity .4s,box-shadow .2s',
                 'opacity:0'
-            ].join(';');
+            ];
+
+            if (targetUrl) {
+                toastStyles.push('cursor:pointer');
+            }
+
+            toast.style.cssText = toastStyles.join(';');
+
+            if (targetUrl) {
+                toast.addEventListener('mouseenter', function() {
+                    toast.style.boxShadow = '0 16px 35px -5px rgba(0,0,0,.25),0 10px 12px -6px rgba(0,0,0,.15)';
+                });
+                toast.addEventListener('mouseleave', function() {
+                    toast.style.boxShadow = '0 12px 30px -5px rgba(0,0,0,.2),0 8px 10px -6px rgba(0,0,0,.1)';
+                });
+                toast.addEventListener('click', function(e) {
+                    if (e.target.closest('.toast-close-btn')) return;
+                    if (typeof window.navigateToUrl === 'function') {
+                        window.navigateToUrl(targetUrl);
+                    } else {
+                        window.location.href = targetUrl;
+                    }
+                });
+            }
 
             var iconWrap = document.createElement('div');
             iconWrap.style.cssText = 'width:32px;height:32px;border-radius:50%;background:' + iconBg + ';color:' + iconColor + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;';
@@ -808,14 +841,21 @@
             var msgDiv = document.createElement('div');
             msgDiv.style.cssText = 'flex:1;font-size:13px;font-weight:600;color:#0f172a;line-height:1.5;white-space:pre-line;word-break:break-word;';
             msgDiv.innerHTML = msg;
+            if (targetUrl) {
+                msgDiv.innerHTML += '<div style="font-size:11px;color:' + iconColor + ';margin-top:4px;font-weight:700;"><i class="fa-solid fa-arrow-right"></i> Click to view request</div>';
+            }
 
             var closeBtn = document.createElement('button');
             closeBtn.type = 'button';
+            closeBtn.className = 'toast-close-btn';
             closeBtn.style.cssText = 'background:none;border:none;padding:0;cursor:pointer;color:#94a3b8;font-size:14px;flex-shrink:0;';
             var closeIcon = document.createElement('i');
             closeIcon.className = 'fa-solid fa-xmark';
             closeBtn.appendChild(closeIcon);
-            closeBtn.addEventListener('click', function() { toast.remove(); });
+            closeBtn.addEventListener('click', function(e) { 
+                e.stopPropagation();
+                toast.remove(); 
+            });
 
             toast.appendChild(iconWrap);
             toast.appendChild(msgDiv);

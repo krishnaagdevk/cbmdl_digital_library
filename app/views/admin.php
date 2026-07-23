@@ -190,9 +190,9 @@ if (typeof window.toggleSidebarSubmenu !== 'function') {
             let knownPrintIds = new Set(JSON.parse(sessionStorage.getItem('cbmdl_known_print_ids') || '[]'));
             let isInitialAdminPoll = true;
 
-            function showAdminToastNotification(message, type = 'info') {
+            function showAdminToastNotification(message, type = 'info', targetUrl = null) {
                 if (window.showToast) {
-                    window.showToast(message, type);
+                    window.showToast(message, type, targetUrl);
                 }
             }
 
@@ -254,7 +254,7 @@ if (typeof window.toggleSidebarSubmenu !== 'function') {
                                 knownReadingIds.add(r.id);
                                 if (!isInitialAdminPoll || (r.age_secs !== undefined && r.age_secs <= 300)) {
                                     hasNewReading = true;
-                                    showAdminToastNotification(`📖 <strong>${r.member}</strong> requested e-reading permission for <strong>"${r.title}"</strong>.`, 'reading');
+                                    showAdminToastNotification(`📖 <strong>${r.member}</strong> requested e-reading permission for <strong>"${r.title}"</strong>.`, 'reading', window.BASE_URL + 'index.php?action=admin&tab=requests');
                                 }
                             }
                         });
@@ -264,7 +264,7 @@ if (typeof window.toggleSidebarSubmenu !== 'function') {
                                 knownPrintIds.add(p.id);
                                 if (!isInitialAdminPoll || (p.age_secs !== undefined && p.age_secs <= 300)) {
                                     hasNewPrint = true;
-                                    showAdminToastNotification(`🖨️ <strong>${p.member}</strong> requested page printing (Pages: ${p.pages}) for <strong>"${p.title}"</strong>.`, 'print');
+                                    showAdminToastNotification(`🖨️ <strong>${p.member}</strong> requested page printing (Pages: ${p.pages}) for <strong>"${p.title}"</strong>.`, 'print', window.BASE_URL + 'index.php?action=admin&tab=prints');
                                 }
                             }
                         });

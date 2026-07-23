@@ -113,7 +113,7 @@ if ($q !== '') {
             <p style="font-size:12px; color:var(--text-muted); margin-bottom:15px; line-height:1.5;">For registration approvals, membership card print passes, or book issues, visit the librarian desk.</p>
             <div style="display:flex; flex-direction:column; gap:10px; font-size:12px; color:var(--navy-dark);">
                 <div><i class="fa-solid fa-envelope" style="color:var(--primary); width:16px;"></i> <code>cbmeerut1@gmail.com</code></div>
-                <div><i class="fa-solid fa-phone" style="color:var(--primary); width:16px;"></i> <code>0121-2652292</code></div>
+                <div><i class="fa-solid fa-phone" style="color:var(--primary); width:16px;"></i> <code>Helpline number 0121-2652292</code></div>
             </div>
             <div style="margin-top:15px; display:flex; flex-direction:column; gap:5px;">
                 <a href="https://meerut.cantt.gov.in/" target="_blank" class="btn" style="background:white; color:var(--navy-dark); border:1px solid var(--border-color); text-align:left; font-size:11px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center; margin:0;">
