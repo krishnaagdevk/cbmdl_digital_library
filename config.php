@@ -218,6 +218,50 @@ if ($shiftCountRes && (int)($shiftCountRes->fetch_assoc()['c'] ?? 0) === 0) {
         ('Both', '08:00:00', '20:00:00')");
 }
 
+// Auto-migration check: login log tables for admin and member login audits
+$db->query("CREATE TABLE IF NOT EXISTS admin_login_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(60) NOT NULL,
+    ip_address VARCHAR(45) NOT NULL,
+    user_agent VARCHAR(255) DEFAULT NULL,
+    status VARCHAR(30) NOT NULL DEFAULT 'Success',
+    login_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+$db->query("CREATE TABLE IF NOT EXISTS member_login_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    member_id INT NULL,
+    mobile VARCHAR(20) NOT NULL,
+    member_name VARCHAR(100) DEFAULT NULL,
+    shift VARCHAR(50) DEFAULT NULL,
+    ip_address VARCHAR(45) NOT NULL,
+    user_agent VARCHAR(255) DEFAULT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'Success',
+    login_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+function log_admin_login($db_conn, $username, $status = 'Success') {
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+    $agent = substr($_SERVER['HTTP_USER_AGENT'] ?? 'Browser/System', 0, 255);
+    $stmt = $db_conn->prepare("INSERT INTO admin_login_logs (username, ip_address, user_agent, status) VALUES (?, ?, ?, ?)");
+    if ($stmt) {
+        $stmt->bind_param("ssss", $username, $ip, $agent, $status);
+        $stmt->execute();
+        $stmt->close();
+    }
+}
+
+function log_member_login($db_conn, $mobile, $member_id = null, $member_name = null, $shift = null, $status = 'Success') {
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+    $agent = substr($_SERVER['HTTP_USER_AGENT'] ?? 'Browser/System', 0, 255);
+    $stmt = $db_conn->prepare("INSERT INTO member_login_logs (member_id, mobile, member_name, shift, ip_address, user_agent, status) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    if ($stmt) {
+        $stmt->bind_param("issssss", $member_id, $mobile, $member_name, $shift, $ip, $agent, $status);
+        $stmt->execute();
+        $stmt->close();
+    }
+}
+
 function get_shift_time_window($shift_name, $db_conn) {
     $stmt = $db_conn->prepare("SELECT start_time, end_time FROM work_shifts WHERE name = ? LIMIT 1");
     if ($stmt) {

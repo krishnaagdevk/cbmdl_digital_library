@@ -77,7 +77,11 @@
                 'fa-gauge-high': '📊',
                 'fa-user-gear' : '🧑‍🦱',
                 'fa-user-master': '👮‍♂️',
-                'fa-id-card-clip': '📜'
+                'fa-id-card-clip': '📜',
+                'fa-sliders':'🧐',
+                'fa-users-rectangle':'🧾',
+                'fa-circle-plus':'➕',
+                'fa-list-check':'📋'
             };
             
             document.querySelectorAll('i[class*="fa-"]').forEach(el => {

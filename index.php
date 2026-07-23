@@ -2216,7 +2216,7 @@ if (admin()) {
         } else {
             flash('⚠️ Plan name is required.');
         }
-        go('?action=admin&tab=plans');
+        go('?action=admin&tab=active_plans');
     }
 
     if ($action === 'update_plan' && $_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -2238,7 +2238,7 @@ if (admin()) {
         } else {
             flash('⚠️ Plan name is required.');
         }
-        go('?action=admin&tab=plans');
+        go('?action=admin&tab=active_plans');
     }
 
     if ($action === 'delete_plan' && $_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -2252,7 +2252,7 @@ if (admin()) {
         } catch (\mysqli_sql_exception $e) {
             flash('⚠️ Integrity Warning: Cannot delete a membership plan that is assigned to existing members.');
         }
-        go('?action=admin&tab=plans');
+        go('?action=admin&tab=active_plans');
     }
 
     if ($action === 'save_shift_times' && $_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -2294,7 +2294,7 @@ if (admin()) {
         } else {
             flash('Work Shift timing windows updated successfully.');
         }
-        go('?action=admin&tab=plans');
+        go('?action=admin&tab=shift_timings');
     }
 
     if ($action === 'settle_fine' && $_SERVER['REQUEST_METHOD'] === 'POST') {

@@ -16,6 +16,7 @@ final class AuthController {
 
         $admin = (new Admin($this->db))->authenticate($username, $password);
         if ($admin) {
+            log_admin_login($this->db, $username, 'Success');
             clear_failed_attempts();
             session_regenerate_id(true);
             $_SESSION['admin'] = $admin['id'];
@@ -23,6 +24,7 @@ final class AuthController {
             session_write_close();
             go('?action=admin');
         }
+        log_admin_login($this->db, $username, 'Failed Credentials');
         register_failed_attempt();
         flash('⚠️ Invalid admin credentials.');
         session_write_close();
@@ -64,34 +66,39 @@ final class AuthController {
                 }
                 
                 if ($pwdCorrect) {
+                    $mShift = $member['shift'] ?? 'Both';
                     // Check approval / active status / expiry
                     if ($member['approved'] == 0) {
+                        log_member_login($this->db, $mobile, $member['id'], $member['name'], $mShift, 'Pending Approval');
                         flash('⚠️ Your membership registration is pending approval from the librarian.');
                         session_write_close();
                         go('member-login');
                     }
                     if ($member['is_active'] == 0) {
+                        log_member_login($this->db, $mobile, $member['id'], $member['name'], $mShift, 'Inactive Account');
                         flash('⚠️ Your membership is inactive. Kindly contact the librarian.');
                         session_write_close();
                         go('member-login');
                     }
                     if ($member['end_date'] < date('Y-m-d')) {
+                        log_member_login($this->db, $mobile, $member['id'], $member['name'], $mShift, 'Membership Expired');
                         flash('⚠️ Your membership has expired. Kindly contact the librarian.');
                         session_write_close();
                         go('member-login');
                     }
                     
                     // Check shift
-                    $shift = $member['shift'] ?? 'Both';
-                    if (!is_member_within_shift_time($shift, $this->db)) {
-                        $time_win = get_shift_time_window($shift, $this->db);
+                    if (!is_member_within_shift_time($mShift, $this->db)) {
+                        log_member_login($this->db, $mobile, $member['id'], $member['name'], $mShift, 'Shift Restricted');
+                        $time_win = get_shift_time_window($mShift, $this->db);
                         $fmt_start = date('h:i A', strtotime($time_win['start_time']));
                         $fmt_end = date('h:i A', strtotime($time_win['end_time']));
-                        flash("🔒 Shift Access Restricted: Your account is assigned to the '" . $shift . "' shift (" . $fmt_start . " - " . $fmt_end . "). You cannot log in outside your assigned shift timings.");
+                        flash("🔒 Shift Access Restricted: Your account is assigned to the '" . $mShift . "' shift (" . $fmt_start . " - " . $fmt_end . "). You cannot log in outside your assigned shift timings.");
                         session_write_close();
                         go('member-login');
                     }
                     
+                    log_member_login($this->db, $mobile, $member['id'], $member['name'], $mShift, 'Success');
                     clear_failed_attempts();
                     session_regenerate_id(true);
                     $_SESSION['member'] = $member['id'];
@@ -103,6 +110,7 @@ final class AuthController {
             }
         }
         
+        log_member_login($this->db, $mobile, null, null, null, 'Failed Credentials');
         register_failed_attempt();
         flash('⚠️ Invalid login credentials.');
         session_write_close();

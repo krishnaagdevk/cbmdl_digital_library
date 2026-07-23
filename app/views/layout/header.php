@@ -220,6 +220,75 @@
             box-shadow: 0 4px 15px rgba(37, 99, 235, 0.25);
         }
 
+        /* Sidebar Accordion Submenu Styles */
+        .sidebar-item-group {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+        }
+
+        .sidebar-parent-btn {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: 9px 14px;
+            background: none;
+            border: none;
+            color: var(--text-dark);
+            font-weight: 500;
+            border-radius: 8px;
+            font-size: 13.5px;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .sidebar-parent-btn:hover {
+            background: #eff6ff;
+            color: var(--primary);
+        }
+
+        .sidebar-parent-btn.active-parent {
+            background: rgba(37, 99, 235, 0.08);
+            color: var(--primary);
+            font-weight: 700;
+            border: 1px solid rgba(37, 99, 235, 0.2);
+        }
+
+        .sidebar-parent-btn .toggle-icon {
+            font-size: 11px;
+            transition: transform 0.25s ease;
+            color: var(--text-muted);
+        }
+
+        .sidebar-parent-btn.active-parent .toggle-icon,
+        .sidebar-parent-btn:hover .toggle-icon {
+            color: var(--primary);
+        }
+
+        .sidebar-item-group.open .toggle-icon {
+            transform: rotate(180deg);
+        }
+
+        .sidebar-submenu {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            padding-left: 10px;
+            margin-top: 3px;
+            margin-bottom: 4px;
+            border-left: 2.5px solid rgba(37, 99, 235, 0.25);
+            margin-left: 12px;
+        }
+
+        .sidebar-submenu a {
+            padding: 7.5px 10px;
+            font-size: 12.5px;
+            border-radius: 6px;
+        }
+
         /* Cards & Surfaces */
         .card {
             background: var(--bg-card);

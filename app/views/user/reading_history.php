@@ -47,7 +47,7 @@ $x = $stmt->get_result();
                     <tr>
                         <td>' . e($r['title']) . '</td>
                         <td>' . date('d-m-Y h:i A', strtotime($r['requested_at'])) . '</td>
-                        <td>' . ($r['approved_at'] ? date('d-m-Y h:i A', strtotime($r['approved_at'])) . ' to ' . date('d-m-Y h:i A', strtotime($r['expires_at'])) : '--') . '</td>
+                        <td>' . ($r['approved_at'] ? date('d-m-Y h:i A', strtotime($r['approved_at'])) . ($r['expires_at'] ? ' to ' . date('d-m-Y h:i A', strtotime($r['expires_at'])) : ' (' . (int)$r['duration_minutes'] . ' mins)') : '--') . '</td>
                         <td><span class="badge ' . $badgeClass . '">' . $statusText . '</span></td>
                     </tr>';
                 }

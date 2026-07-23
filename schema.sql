@@ -578,6 +578,39 @@ ALTER TABLE `print_requests`
 ALTER TABLE `reading_requests`
   ADD CONSTRAINT `reading_requests_ibfk_1` FOREIGN KEY (`member_id`) REFERENCES `members` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `reading_requests_ibfk_2` FOREIGN KEY (`ebook_id`) REFERENCES `ebooks` (`id`) ON DELETE CASCADE;
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `admin_login_logs`
+--
+
+CREATE TABLE IF NOT EXISTS `admin_login_logs` (
+  `id` int(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `username` varchar(60) NOT NULL,
+  `ip_address` varchar(45) NOT NULL,
+  `user_agent` varchar(255) DEFAULT NULL,
+  `status` varchar(30) NOT NULL DEFAULT 'Success',
+  `login_at` timestamp NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `member_login_logs`
+--
+
+CREATE TABLE IF NOT EXISTS `member_login_logs` (
+  `id` int(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `member_id` int(11) DEFAULT NULL,
+  `mobile` varchar(20) NOT NULL,
+  `member_name` varchar(100) DEFAULT NULL,
+  `shift` varchar(50) DEFAULT NULL,
+  `ip_address` varchar(45) NOT NULL,
+  `user_agent` varchar(255) DEFAULT NULL,
+  `status` varchar(50) NOT NULL DEFAULT 'Success',
+  `login_at` timestamp NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

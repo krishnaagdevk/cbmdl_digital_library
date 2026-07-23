@@ -4,7 +4,28 @@ if (!defined('BASE_URL')) exit;
 $tab = $_GET['tab'] ?? 'dashboard';
 $side_req_count = (int)$db->query("SELECT COUNT(*) c FROM reading_requests WHERE status='Pending'")->fetch_assoc()['c'];
 $side_prt_count = (int)$db->query("SELECT COUNT(*) c FROM print_requests WHERE status='Pending'")->fetch_assoc()['c'];
+
+$master_data_tabs = ['plans', 'active_plans', 'create_plan', 'shift_timings', 'login_window', 'admin_login_logs', 'member_login_logs'];
+$is_master_data_active = in_array($tab, $master_data_tabs);
 ?>
+<script>
+if (typeof window.toggleSidebarSubmenu !== 'function') {
+    window.toggleSidebarSubmenu = function(btn) {
+        const itemGroup = btn.closest('.sidebar-item-group');
+        if (!itemGroup) return;
+        const submenu = itemGroup.querySelector('.sidebar-submenu');
+        if (!submenu) return;
+        
+        if (submenu.style.display === 'none' || !submenu.style.display) {
+            submenu.style.display = 'flex';
+            itemGroup.classList.add('open');
+        } else {
+            submenu.style.display = 'none';
+            itemGroup.classList.remove('open');
+        }
+    };
+}
+</script>
 <div class="admin-wrapper">
     
     <!-- Sidebar Nav with Icons -->
@@ -27,7 +48,35 @@ $side_prt_count = (int)$db->query("SELECT COUNT(*) c FROM print_requests WHERE s
         <a href="?action=admin&tab=members" class="<?= $tab === 'members' ? 'active' : '' ?>"><i class="fa-solid fa-user-plus"></i> Add Membership</a>
         <a href="?action=admin&tab=view_members" class="<?= $tab === 'view_members' ? 'active' : '' ?>"><i class="fa-solid fa-users"></i>View Membership</a>
         <a href="?action=admin&tab=membership_history" class="<?= $tab === 'membership_history' ? 'active' : '' ?>"><i class="fa-solid fa-clock-rotate-left"></i> Membership History</a>
-        <a href="?action=admin&tab=plans" class="<?= $tab === 'plans' ? 'active' : '' ?>"><i class="fa-solid fa-user-master"></i>Master Data</a>
+        
+        <!-- Master Data Collapsible Submenu -->
+        <div class="sidebar-item-group <?= $is_master_data_active ? 'open' : '' ?>">
+            <button type="button" class="sidebar-parent-btn <?= $is_master_data_active ? 'active-parent' : '' ?>" onclick="toggleSidebarSubmenu(this)">
+                <span><i class="fa-solid fa-database"></i> Master Data</span>
+                <i class="fa-solid fa-chevron-down toggle-icon"></i>
+            </button>
+            <div class="sidebar-submenu" style="<?= $is_master_data_active ? 'display:flex;' : 'display:none;' ?>">
+                <a href="?action=admin&tab=active_plans" class="<?= ($tab === 'active_plans' || $tab === 'plans') ? 'active' : '' ?>">
+                    <i class="fa-solid fa-list-check"></i> Active Membership Plans
+                </a>
+                <a href="?action=admin&tab=create_plan" class="<?= $tab === 'create_plan' ? 'active' : '' ?>">
+                    <i class="fa-solid fa-circle-plus"></i> Create New Membership Plans
+                </a>
+                <a href="?action=admin&tab=shift_timings" class="<?= $tab === 'shift_timings' ? 'active' : '' ?>">
+                    <i class="fa-solid fa-clock"></i> Library Shift Timings
+                </a>
+                <a href="?action=admin&tab=login_window" class="<?= $tab === 'login_window' ? 'active' : '' ?>">
+                    <i class="fa-solid fa-sliders"></i> Login Window Master Control
+                </a>
+                <a href="?action=admin&tab=admin_login_logs" class="<?= $tab === 'admin_login_logs' ? 'active' : '' ?>">
+                    <i class="fa-solid fa-user-shield"></i> Admin Login Logs
+                </a>
+                <a href="?action=admin&tab=member_login_logs" class="<?= $tab === 'member_login_logs' ? 'active' : '' ?>">
+                    <i class="fa-solid fa-users-rectangle"></i> Member Login Logs
+                </a>
+            </div>
+        </div>
+
         <a href="?action=admin&tab=categories" class="<?= $tab === 'categories' ? 'active' : '' ?>"><i class="fa-solid fa-folder-open"></i>E-Book Categories</a>
         <a href="?action=admin&tab=profile" class="<?= $tab === 'profile' ? 'active' : '' ?>"><i class="fa-solid fa-user-shield"></i>Librarian Profile</a>
         <a href="?action=logout" style="margin-top:15px; color:#ef4444; border-top:1px solid var(--border-color); padding-top:12px; font-weight:600;"><i class="fa-solid fa-right-from-bracket"></i>Logout Panel</a>
@@ -328,7 +377,13 @@ $side_prt_count = (int)$db->query("SELECT COUNT(*) c FROM print_requests WHERE s
 
         <?php
         // Include modular tab view
-        $allowed_tabs = ['dashboard', 'categories', 'ebooks', 'view_ebooks', 'physical', 'view_physical', 'requests', 'prints', 'members', 'view_members', 'membership_history', 'plans', 'lending', 'view_lending', 'profile'];
+        $allowed_tabs = [
+            'dashboard', 'categories', 'ebooks', 'view_ebooks', 
+            'physical', 'view_physical', 'requests', 'prints', 
+            'members', 'view_members', 'membership_history', 'plans', 
+            'active_plans', 'create_plan', 'shift_timings', 'login_window', 
+            'admin_login_logs', 'member_login_logs', 'lending', 'view_lending', 'profile'
+        ];
         if (in_array($tab, $allowed_tabs)) {
             require __DIR__ . "/admin/{$tab}.php";
         } else {

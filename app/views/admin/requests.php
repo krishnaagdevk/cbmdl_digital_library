@@ -119,7 +119,13 @@ $query_str = "SELECT r.*, m.name, m.membership_id, e.title FROM reading_requests
                                  </form>
                             </div>';
                         } elseif ($r['status'] === 'Approved' && !$isExp) {
-                            echo '<span style="font-size:12px; color:var(--accent-green); font-weight:600;"><i class="fa-solid fa-circle-check"></i> Granted till ' . date('d-m-Y h:i A', strtotime($r['expires_at'])) . '</span>';
+                            if (!empty($r['expires_at'])) {
+                                echo '<span style="font-size:12px; color:var(--accent-green); font-weight:600;"><i class="fa-solid fa-circle-check"></i> Active session till ' . date('d-m-Y h:i A', strtotime($r['expires_at'])) . '</span>';
+                            } elseif (!empty($r['approved_at'])) {
+                                echo '<span style="font-size:12px; color:var(--accent-green); font-weight:600;"><i class="fa-solid fa-circle-check"></i> Approved at ' . date('d-m-Y h:i A', strtotime($r['approved_at'])) . ' (' . (int)$r['duration_minutes'] . ' mins)</span>';
+                            } else {
+                                echo '<span style="font-size:12px; color:var(--accent-green); font-weight:600;"><i class="fa-solid fa-circle-check"></i> Approved (' . (int)$r['duration_minutes'] . ' mins)</span>';
+                            }
                         } elseif ($isExp) {
                             echo '<span style="font-size:12px; color:var(--text-muted); font-weight:600;"><i class="fa-solid fa-clock-rotate-left"></i> Session Expired</span>';
                         } else {
