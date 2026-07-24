@@ -23,7 +23,7 @@ if ($lookup !== '') {
             <div style="display:flex; gap:10px; width:100%; align-items:flex-end;">
                 <div style="flex:1;">
                     <label for="lk_input">Registered ID or Phone Number</label>
-                    <input id="lk_input" name="lookup" value="<?= e($lookup) ?>" placeholder="Membership Code or Mobile No..." style="margin-bottom:0;">
+                    <input id="lk_input" name="lookup" value="<?= e($lookup) ?>" placeholder="Membership ID or Mobile No..." style="margin-bottom:0;">
                 </div>
                 <button style="margin:6px 0;"><i class="fa-solid fa-magnifying-glass"></i> Lookup Member</button>
             </div>
@@ -58,12 +58,12 @@ if ($lookup !== '') {
     </div>
 
     <div class="card">
-        <h3><i class="fa-solid fa-book-medical"></i> Register Physical Lending Issue</h3>
+        <h3><i class="fa-solid fa-book-medical"></i>Physical Book Issue Entry</h3>
         <form method="post" action="?action=lend" class="grid" style="grid-template-columns: 1fr 1fr;">
             <?= csrf_input() ?>
             <div style="grid-column: span 2;">
                 <label for="ld_member">Member ID *</label>
-                <input id="ld_member" name="member" value="<?= $looked ? e($looked['membership_id']) : '' ?>" placeholder="Enter Member ID" required>
+                <input id="ld_member" name="member" value="<?= $looked ? e($looked['membership_id']) : '' ?>" placeholder="Enter Member ID" <?= $looked ? 'readonly style="background-color: var(--bg-slate); cursor: not-allowed;"' : '' ?> required>
             </div>
             <div>
                 <label for="ld_book">Book ID *</label>
@@ -85,13 +85,12 @@ if ($lookup !== '') {
 </div>
 
 <div class="card">
-    <h3><i class="fa-solid fa-clock-rotate-left"></i>Lending History</h3>
+    <h3><i class="fa-solid fa-clock-rotate-left"></i> Recent Lending History (Latest 5)</h3>
     <div class="table-responsive">
         <table>
             <thead>
                 <tr>
                     <th>Book Title</th>
-                    <th>Book ID</th>
                     <th>Borrower Member</th>
                     <th>Lending Date</th>
                     <th>Due Date Target</th>
@@ -101,8 +100,11 @@ if ($lookup !== '') {
             <tbody>
                 <?php 
                 $filterClause = $looked ? ' WHERE l.member_id = ' . (int)$looked['id'] : '';
-                $x = $db->query('SELECT l.*, p.title, p.book_code, m.name FROM lendings l JOIN physical_books p ON p.id = l.physical_book_id JOIN members m ON m.id = l.member_id' . $filterClause . ' ORDER BY l.lent_at DESC');
+
+                $x = $db->query('SELECT l.*, p.title, p.book_code, m.name, m.membership_id FROM lendings l JOIN physical_books p ON p.id = l.physical_book_id JOIN members m ON m.id = l.member_id' . $filterClause . ' ORDER BY l.lent_at DESC LIMIT 5');
+                $lCount = 0;
                 while($r = $x->fetch_assoc()) {
+                    $lCount++;
                     $returnCol = $r['returned_at'] 
                         ? '<span style="font-size:12px; color:var(--text-muted); font-weight:600;"><i class="fa-solid fa-circle-check"></i> Returned ' . date('d-m-Y', strtotime($r['returned_at'])) . '</span>' 
                         : '<form method="post" action="?action=return_book" style="display:inline; margin:0;"><input type="hidden" name="id" value="' . $r['id'] . '"><input type="hidden" name="tab" value="lending">' . csrf_input() . '<button class="btn" type="submit" style="padding:6px 12px;"><i class="fa-solid fa-right-left"></i> Register Return</button></form>';
@@ -124,15 +126,25 @@ if ($lookup !== '') {
                         }
                     }
                     
+                    $mem_id = !empty($r['membership_id']) ? $r['membership_id'] : ('MID-' . $r['member_id']);
+
                     echo '
                     <tr' . $row_style . '>
-                        <td style="font-weight:600; color:var(--navy-dark);">' . e($r['title']) . '</td>
-                        <td><code style="background:var(--bg-slate); padding:2px 6px; border-radius:4px; font-weight:700; font-size:12px; color:var(--navy-dark); border:1px solid var(--border-color);">' . e($r['book_code']) . '</code></td>
-                        <td>' . e($r['name']) . '</td>
+                        <td>
+                            <span style="font-weight:600; color:var(--navy-dark); display:block;">' . e($r['title']) . '</span>
+                            <small style="font-size:11px; color:var(--text-muted); font-weight:600;"><i class="fa-solid fa-barcode"></i> Book ID: <code style="background:var(--bg-slate); padding:1px 5px; border-radius:4px; font-weight:700; font-size:11px; color:var(--navy-dark); border:1px solid var(--border-color);">' . e($r['book_code']) . '</code></small>
+                        </td>
+                        <td>
+                            <span style="font-weight:600; color:var(--navy-dark); display:block;">' . e($r['name']) . '</span>
+                            <small style="font-size:11px; color:var(--text-muted); font-weight:600;"><i class="fa-solid fa-id-card"></i> Member ID: <code style="background:var(--bg-slate); padding:1px 5px; border-radius:4px; font-weight:700; font-size:11px; color:var(--navy-dark); border:1px solid var(--border-color);">' . e($mem_id) . '</code></small>
+                        </td>
                         <td>' . date('d-m-Y h:i A', strtotime($r['lent_at'])) . '</td>
                         <td>' . $due_col_html . '</td>
                         <td>' . $returnCol . '</td>
                     </tr>';
+                }
+                if ($lCount === 0) {
+                    echo '<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--text-muted);">No lending records found.</td></tr>';
                 }
                 ?>
             </tbody>

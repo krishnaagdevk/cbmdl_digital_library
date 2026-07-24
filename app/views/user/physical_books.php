@@ -101,7 +101,7 @@ $link_p_base = "?action=user&tab=physical_books&p_search=" . urlencode($m_search
             $lendStmt->close();
 
             $status_badge = $on_loan 
-                ? '<span class="badge badge-red" style="font-size:10px; padding:3px 8px;"><i class="fa-solid fa-circle-minus"></i> On Loan</span>'
+                ? '<span class="badge badge-red" style="font-size:10px; padding:3px 8px;"><i class="fa-solid fa-circle-minus"></i> On Lend</span>'
                 : '<span class="badge badge-green" style="font-size:10px; padding:3px 8px;"><i class="fa-solid fa-circle-check"></i> Available</span>';
             ?>
             <div class="card physical-book-card" style="display:flex; flex-direction:column; justify-content:space-between; height:100%; padding:18px; transition:all 0.2s ease; border-radius:12px; border:1px solid var(--border-color); background:var(--card-bg);" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">

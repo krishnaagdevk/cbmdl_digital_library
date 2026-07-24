@@ -12,7 +12,8 @@ $backupService = new BackupService($db);
 $backups = $backupService->getBackupList();
 $totalStorageBytes = array_sum(array_column($backups, 'size_bytes'));
 $formattedStorage = $totalStorageBytes > 0 ? round($totalStorageBytes / (1024 * 1024), 2) . ' MB' : '0 MB';
-$latestBackup = !empty($backups) ? $backups[0]['created_at'] : 'None';
+$latestBackupRaw = !empty($backups) ? $backups[0]['created_at'] : null;
+$latestBackup = $latestBackupRaw ? date('d-m-Y H:i:s', strtotime($latestBackupRaw)) : 'None';
 ?>
 
 <div style="background:#fff; border-radius:14px; border:1px solid var(--border-color); padding:24px; box-shadow:0 6px 20px rgba(15,23,42,0.03);">
@@ -62,16 +63,6 @@ $latestBackup = !empty($backups) ? $backups[0]['created_at'] : 'None';
             </div>
         </div>
 
-        <div style="background:linear-gradient(135deg, #faf5ff, #f3e8ff); border:1px solid #e9d5ff; border-radius:12px; padding:16px; display:flex; align-items:center; gap:14px;">
-            <div style="width:46px; height:46px; border-radius:12px; background:#9333ea; color:white; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0;">
-                <i class="fa-solid fa-calendar-check"></i>
-            </div>
-            <div>
-                <span style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#6b21a8; display:block;">Auto-Retention</span>
-                <strong style="font-size:13.5px; color:#581c87;">30 Days Auto-Purge</strong>
-            </div>
-        </div>
-
     </div>
 
     <!-- Action Toolbar Bar -->
@@ -109,7 +100,6 @@ $latestBackup = !empty($backups) ? $backups[0]['created_at'] : 'None';
                         <th style="padding:12px 14px; border-bottom:2px solid var(--border-color);">Type</th>
                         <th style="padding:12px 14px; border-bottom:2px solid var(--border-color);">File Size</th>
                         <th style="padding:12px 14px; border-bottom:2px solid var(--border-color);">Date Created</th>
-                        <th style="padding:12px 14px; border-bottom:2px solid var(--border-color);">SHA-256 Checksum</th>
                         <th style="padding:12px 14px; border-bottom:2px solid var(--border-color); text-align:right;">Actions</th>
                     </tr>
                 </thead>
@@ -139,19 +129,7 @@ $latestBackup = !empty($backups) ? $backups[0]['created_at'] : 'None';
 
                             <!-- Date -->
                             <td style="padding:12px 14px; color:#64748b; font-family:monospace; font-size:12px;">
-                                <?= $b['created_at'] ?>
-                            </td>
-
-                            <!-- SHA-256 Checksum -->
-                            <td style="padding:12px 14px;">
-                                <div style="display:flex; align-items:center; gap:6px;">
-                                    <code style="background:#f1f5f9; padding:3px 6px; border-radius:4px; font-size:10.5px; color:#475569; max-width:110px; overflow:hidden; text-overflow:ellipsis; display:inline-block;" title="<?= $b['checksum'] ?>">
-                                        <?= substr($b['checksum'], 0, 12) ?>...
-                                    </code>
-                                    <button type="button" onclick="navigator.clipboard.writeText('<?= $b['checksum'] ?>'); alert('SHA-256 Hash copied to clipboard!');" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:12px; padding:2px 4px;" title="Copy full SHA-256 Checksum">
-                                        <i class="fa-solid fa-copy"></i>
-                                    </button>
-                                </div>
+                                <?= date('d-m-Y H:i:s', strtotime($b['created_at'])) ?>
                             </td>
 
                             <!-- Actions -->

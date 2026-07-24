@@ -158,11 +158,16 @@ if ($resRRStarted && $resRRStarted->num_rows == 0) {
     @$db->query("ALTER TABLE reading_requests ADD COLUMN started_reading_at DATETIME NULL");
 }
 
-// Add shift column to members table (Both, Morning, Evening)
+// Add / Update shift column in members table to VARCHAR(100) so dynamic shifts are supported
 $resShift = $db->query("SHOW COLUMNS FROM members LIKE 'shift'");
 if ($resShift && $resShift->num_rows == 0) {
-    $db->query("ALTER TABLE members ADD COLUMN shift ENUM('Both', 'Morning', 'Evening') DEFAULT 'Both' AFTER duration");
+    $db->query("ALTER TABLE members ADD COLUMN shift VARCHAR(100) DEFAULT 'Full Day' AFTER duration");
+} else {
+    // Ensure column is VARCHAR(100) instead of restricted ENUM
+    @$db->query("ALTER TABLE members MODIFY COLUMN shift VARCHAR(100) DEFAULT 'Full Day'");
 }
+$db->query("UPDATE members SET shift = 'Full Day' WHERE shift = 'Both' OR shift = 'both' OR shift = '' OR shift IS NULL");
+$db->query("UPDATE membership_history SET shift = 'Full Day' WHERE shift = 'Both' OR shift = 'both' OR shift = '' OR shift IS NULL");
 
 // Add gender column to members table (Male, Female, Other)
 $resGender = $db->query("SHOW COLUMNS FROM members LIKE 'gender'");
@@ -270,6 +275,9 @@ $db->query("CREATE TABLE IF NOT EXISTS member_login_logs (
     login_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
+// Update existing 'Both' log entries to 'Full Day'
+$db->query("UPDATE member_login_logs SET shift = 'Full Day' WHERE shift = 'Both' OR shift = 'both'");
+
 function log_admin_login($db_conn, $username, $status = 'Success') {
     $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
     $agent = substr($_SERVER['HTTP_USER_AGENT'] ?? 'Browser/System', 0, 255);
@@ -282,6 +290,9 @@ function log_admin_login($db_conn, $username, $status = 'Success') {
 }
 
 function log_member_login($db_conn, $mobile, $member_id = null, $member_name = null, $shift = null, $status = 'Success') {
+    if ($shift === 'Both' || $shift === 'both' || $shift === '' || $shift === null) {
+        $shift = 'Full Day';
+    }
     $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
     $agent = substr($_SERVER['HTTP_USER_AGENT'] ?? 'Browser/System', 0, 255);
     $stmt = $db_conn->prepare("INSERT INTO member_login_logs (member_id, mobile, member_name, shift, ip_address, user_agent, status) VALUES (?, ?, ?, ?, ?, ?, ?)");
@@ -385,7 +396,25 @@ function membership_end($duration, $startDate = null){
     ]; 
     $span = isset($map[$duration]) ? $map[$duration] : '+1 year';
     $baseTime = $startDate ? strtotime($startDate) : time();
-    return date('Y-m-d', strtotime($span, $baseTime)); 
+    return date('Y-m-d', strtotime($span, $baseTime));
+}
+// Validate a submitted shift against the live work_shifts table (the single
+// source of truth the admin UI is populated from). Falls back to 'Both' only
+// when the value is unknown, instead of a hardcoded Morning/Evening/Both list.
+function valid_shift($db, $shift, $default = 'Both') {
+    $shift = trim((string)$shift);
+    if ($shift === '') return $default;
+    $stmt = $db->prepare("SELECT name FROM work_shifts WHERE LOWER(TRIM(name)) = LOWER(?) LIMIT 1");
+    if (!$stmt) return $shift; // don't clobber input if the check can't run
+    $stmt->bind_param("s", $shift);
+    $stmt->execute();
+    $res = $stmt->get_result();
+    if ($res && $row = $res->fetch_assoc()) {
+        $stmt->close();
+        return $row['name'];
+    }
+    $stmt->close();
+    return $default;
 }
 function active_member($m, $db = null, $date = null) {
     if (!$m || (isset($m['is_active']) && $m['is_active'] == 0) || (isset($m['approved']) && $m['approved'] == 0)) {

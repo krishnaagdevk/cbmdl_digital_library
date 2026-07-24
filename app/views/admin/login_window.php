@@ -93,7 +93,7 @@ $now_fmt = date('h:i A');
             </div>
         </div>
         <a href="?action=admin&tab=shift_timings" class="btn" style="padding:8px 16px; font-size:13px; text-decoration:none; display:inline-flex; align-items:center; gap:6px; font-weight:600;">
-            <i class="fa-solid fa-clock"></i> Add New Shift Timings
+            <i class="fa-solid fa-clock"></i> Add / Edit New Shift Timings
         </a>
     </div>
 </div>

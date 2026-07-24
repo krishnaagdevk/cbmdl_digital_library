@@ -2,23 +2,13 @@
 // views/admin/view_lending.php
 if (!defined('BASE_URL')) exit;
 
-$sort = $_GET['sort'] ?? 'lent_desc';
+$status = $_GET['status'] ?? 'all';
 
-$orderBy = 'l.lent_at DESC';
-if ($sort === 'lent_asc') {
-    $orderBy = 'l.lent_at ASC';
-} elseif ($sort === 'due_desc') {
-    $orderBy = 'l.due_date DESC';
-} elseif ($sort === 'due_asc') {
-    $orderBy = 'l.due_date ASC';
-} elseif ($sort === 'title_asc') {
-    $orderBy = 'p.title ASC';
-} elseif ($sort === 'title_desc') {
-    $orderBy = 'p.title DESC';
-} elseif ($sort === 'member_asc') {
-    $orderBy = 'm.name ASC';
-} elseif ($sort === 'member_desc') {
-    $orderBy = 'm.name DESC';
+$whereClause = '';
+if ($status === 'returned') {
+    $whereClause = ' WHERE l.returned_at IS NOT NULL';
+} elseif ($status === 'not_returned') {
+    $whereClause = ' WHERE l.returned_at IS NULL';
 }
 ?>
 <div class="card">
@@ -29,16 +19,11 @@ if ($sort === 'lent_asc') {
             <input type="text" id="lendingFilterInput" placeholder="Type to filter lending logs..." style="margin-bottom:0; width:100%;">
         </div>
         <div style="display:flex; align-items:center; gap:8px;">
-            <label for="lendingSortSelect" style="margin:0; font-size:13px; font-weight:600; white-space:nowrap; color:var(--text-muted);"><i class="fa-solid fa-arrow-down-up-wide"></i> Sort By:</label>
-            <select id="lendingSortSelect" onchange="location.href='?action=admin&tab=view_lending&sort=' + this.value" style="margin:0; padding:8px 12px; font-size:13px; width:auto; background:var(--bg-slate); border:1px solid var(--border-color); border-radius:8px;">
-                <option value="lent_desc" <?= $sort === 'lent_desc' ? 'selected' : '' ?>>Lent Date (Newest First)</option>
-                <option value="lent_asc" <?= $sort === 'lent_asc' ? 'selected' : '' ?>>Lent Date (Oldest First)</option>
-                <option value="due_desc" <?= $sort === 'due_desc' ? 'selected' : '' ?>>Due Date (Newest First)</option>
-                <option value="due_asc" <?= $sort === 'due_asc' ? 'selected' : '' ?>>Due Date (Oldest First)</option>
-                <option value="title_asc" <?= $sort === 'title_asc' ? 'selected' : '' ?>>Book Title (A-Z)</option>
-                <option value="title_desc" <?= $sort === 'title_desc' ? 'selected' : '' ?>>Book Title (Z-A)</option>
-                <option value="member_asc" <?= $sort === 'member_asc' ? 'selected' : '' ?>>Member Name (A-Z)</option>
-                <option value="member_desc" <?= $sort === 'member_desc' ? 'selected' : '' ?>>Member Name (Z-A)</option>
+            <label for="lendingStatusSelect" style="margin:0; font-size:13px; font-weight:600; white-space:nowrap; color:var(--text-muted);"><i class="fa-solid fa-filter"></i> Filter By:</label>
+            <select id="lendingStatusSelect" onchange="if(window.navigateToUrl){ window.navigateToUrl('?action=admin&tab=view_lending&status=' + this.value); } else { location.href='?action=admin&tab=view_lending&status=' + this.value; }" style="margin:0; padding:8px 12px; font-size:13px; width:auto; background:var(--bg-slate); border:1px solid var(--border-color); border-radius:8px;">
+                <option value="all" <?= $status === 'all' ? 'selected' : '' ?>>All Records</option>
+                <option value="returned" <?= $status === 'returned' ? 'selected' : '' ?>>Returned</option>
+                <option value="not_returned" <?= $status === 'not_returned' ? 'selected' : '' ?>>Not Returned</option>
             </select>
         </div>
     </div>
@@ -48,7 +33,6 @@ if ($sort === 'lent_asc') {
             <thead>
                 <tr>
                     <th>Book Title</th>
-                    <th>Book ID</th>
                     <th>Member Name</th>
                     <th>Date of Lending</th>
                     <th>Due Date</th>
@@ -60,18 +44,18 @@ if ($sort === 'lent_asc') {
                 $p_limit = 10;
                 $p_page = max(1, (int)($_GET['p_page'] ?? 1));
 
-                $cnt_res = $db->query("SELECT COUNT(*) c FROM lendings l JOIN physical_books p ON p.id = l.physical_book_id JOIN members m ON m.id = l.member_id");
+                $cnt_res = $db->query("SELECT COUNT(*) c FROM lendings l JOIN physical_books p ON p.id = l.physical_book_id JOIN members m ON m.id = l.member_id" . $whereClause);
                 $total_items = (int)($cnt_res ? $cnt_res->fetch_assoc()['c'] : 0);
                 $total_pages = ceil($total_items / $p_limit);
                 $p_offset = ($p_page - 1) * $p_limit;
 
-                $x = $db->query("SELECT l.*, p.title, p.book_code, m.name FROM lendings l JOIN physical_books p ON p.id = l.physical_book_id JOIN members m ON m.id = l.member_id ORDER BY $orderBy LIMIT $p_limit OFFSET $p_offset");
+                $x = $db->query("SELECT l.*, p.title, p.book_code, m.name, m.membership_id FROM lendings l JOIN physical_books p ON p.id = l.physical_book_id JOIN members m ON m.id = l.member_id" . $whereClause . " ORDER BY l.lent_at DESC LIMIT $p_limit OFFSET $p_offset");
                 $lCount = 0;
                 while($r = $x->fetch_assoc()) {
                     $lCount++;
                     
                     $returnCol = $r['returned_at'] 
-                        ? '<span style="font-size:12px; color:var(--text-muted); font-weight:600;"><i class="fa-solid fa-box-archive"></i>' . date('d-m-Y', strtotime($r['returned_at'])) . '</span>' 
+                        ? '<span style="font-size:12px; color:var(--text-muted); font-weight:600;"><i class="fa-solid fa-box-archive"></i> ' . date('d-m-Y', strtotime($r['returned_at'])) . '</span>' 
                         : '<form method="post" action="?action=return_book" style="display:inline; margin:0;"><input type="hidden" name="id" value="' . $r['id'] . '"><input type="hidden" name="tab" value="view_lending">' . csrf_input() . '<button class="btn" type="submit" style="padding:6px 12px;"><i class="fa-solid fa-rotate-left"></i> Tag Return</button></form>';
                     
                     $due_time = strtotime($r['due_date']);
@@ -91,18 +75,25 @@ if ($sort === 'lent_asc') {
                         }
                     }
                     
+                    $mem_id = !empty($r['membership_id']) ? $r['membership_id'] : ('MID-' . $r['member_id']);
+
                     echo '
                     <tr' . $row_style . '>
-                        <td style="font-weight:600; color:var(--navy-dark);">' . e($r['title']) . '</td>
-                        <td><code style="background:var(--bg-slate); padding:2px 6px; border-radius:4px; font-weight:700; font-size:12px; color:var(--navy-dark); border:1px solid var(--border-color);">' . e($r['book_code']) . '</code></td>
-                        <td>' . e($r['name']) . '</td>
+                        <td>
+                            <span style="font-weight:600; color:var(--navy-dark); display:block;">' . e($r['title']) . '</span>
+                            <small style="font-size:11px; color:var(--text-muted); font-weight:600;"><i class="fa-solid fa-barcode"></i> Book ID: <code style="background:var(--bg-slate); padding:1px 5px; border-radius:4px; font-weight:700; font-size:11px; color:var(--navy-dark); border:1px solid var(--border-color);">' . e($r['book_code']) . '</code></small>
+                        </td>
+                        <td>
+                            <span style="font-weight:600; color:var(--navy-dark); display:block;">' . e($r['name']) . '</span>
+                            <small style="font-size:11px; color:var(--text-muted); font-weight:600;"><i class="fa-solid fa-id-card"></i> Member ID: <code style="background:var(--bg-slate); padding:1px 5px; border-radius:4px; font-weight:700; font-size:11px; color:var(--navy-dark); border:1px solid var(--border-color);">' . e($mem_id) . '</code></small>
+                        </td>
                         <td>' . date('d-m-Y h:i A', strtotime($r['lent_at'])) . '</td>
                         <td>' . $due_col_html . '</td>
                         <td>' . $returnCol . '</td>
                     </tr>';
                 }
                 if ($lCount === 0) {
-                    echo '<tr><td colspan="6" style="text-align:center; padding:30px; color:var(--text-muted);">No lending records found in database.</td></tr>';
+                    echo '<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--text-muted);">No lending records found in database.</td></tr>';
                 }
                 ?>
             </tbody>

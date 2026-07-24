@@ -65,7 +65,7 @@ $pendingCount = $pendingCountRes ? $pendingCountRes->fetch_assoc()['c'] : 0;
                             $shiftsRes = $db->query("SELECT * FROM work_shifts ORDER BY id ASC");
                             while ($s = $shiftsRes->fetch_assoc()) {
                                 $sName = $s['name'];
-                                $sel = (($selected['shift'] ?? 'Morning') === $sName) ? 'selected' : '';
+                                $sel = (strcasecmp($selected['shift'] ?? '', $sName) === 0) ? 'selected' : '';
                                 $sStart = date('h:i A', strtotime($s['start_time']));
                                 $sEnd = date('h:i A', strtotime($s['end_time']));
                                 echo '<option value="' . e($sName) . '" ' . $sel . '>' . e($sName) . ' Shift (' . $sStart . ' - ' . $sEnd . ')</option>';
@@ -103,6 +103,13 @@ $pendingCount = $pendingCountRes ? $pendingCountRes->fetch_assoc()['c'] : 0;
                         <label for="upd_name">Full Name *</label>
                         <input id="upd_name" name="name" value="<?= e($selected['name']) ?>" required>
                         
+                        <label for="upd_gender">Gender *</label>
+                        <select id="upd_gender" name="gender" required>
+                            <option value="Male" <?= ($selected['gender'] ?? 'Male') === 'Male' ? 'selected' : '' ?>>Male</option>
+                            <option value="Female" <?= ($selected['gender'] ?? '') === 'Female' ? 'selected' : '' ?>>Female</option>
+                            <option value="Other" <?= ($selected['gender'] ?? '') === 'Other' ? 'selected' : '' ?>>Others</option>
+                        </select>
+
                         <label for="upd_guardian">Father / Husband Name *</label>
                         <input id="upd_guardian" name="guardian_name" value="<?= e($selected['guardian_name']) ?>" required>
                         
@@ -118,6 +125,20 @@ $pendingCount = $pendingCountRes ? $pendingCountRes->fetch_assoc()['c'] : 0;
                         <label for="upd_aadhar">Aadhar ID No. *</label>
                         <input id="upd_aadhar" name="aadhar_no" value="<?= e($selected['aadhar_no']) ?>" required maxlength="12" pattern="\d{12}" inputmode="numeric" title="Aadhar ID must be exactly 12 digits (numbers only)" placeholder="12 Digit ID">
                         
+                        <label for="upd_shift">Library Work Shift *</label>
+                        <select id="upd_shift" name="shift" required>
+                            <?php 
+                            $shiftsRes = $db->query("SELECT * FROM work_shifts ORDER BY id ASC");
+                            while ($s = $shiftsRes->fetch_assoc()) {
+                                $sName = $s['name'];
+                                $sel = (strcasecmp($selected['shift'] ?? '', $sName) === 0) ? 'selected' : '';
+                                $sStart = date('h:i A', strtotime($s['start_time']));
+                                $sEnd = date('h:i A', strtotime($s['end_time']));
+                                echo '<option value="' . e($sName) . '" ' . $sel . '>' . e($sName) . ' Shift (' . $sStart . ' - ' . $sEnd . ')</option>';
+                            }
+                            ?>
+                        </select>
+
                         <label for="upd_status">Account Status</label>
                         <select id="upd_status" name="is_active">
                             <option value="1" <?= $selected['is_active'] == 1 ? 'selected' : '' ?>>Active</option>
@@ -168,7 +189,7 @@ $pendingCount = $pendingCountRes ? $pendingCountRes->fetch_assoc()['c'] : 0;
                                 $shiftsRes = $db->query("SELECT * FROM work_shifts ORDER BY id ASC");
                                 while ($s = $shiftsRes->fetch_assoc()) {
                                     $sName = $s['name'];
-                                    $sel = (($selected['shift'] ?? 'Morning') === $sName) ? 'selected' : '';
+                                    $sel = (strcasecmp($selected['shift'] ?? '', $sName) === 0) ? 'selected' : '';
                                     $sStart = date('h:i A', strtotime($s['start_time']));
                                     $sEnd = date('h:i A', strtotime($s['end_time']));
                                     echo '<option value="' . e($sName) . '" ' . $sel . '>' . e($sName) . ' Shift (' . $sStart . ' - ' . $sEnd . ')</option>';
@@ -233,7 +254,7 @@ $pendingCount = $pendingCountRes ? $pendingCountRes->fetch_assoc()['c'] : 0;
                 <label for="m_aadhar">Aadhar ID No. *</label>
                 <input id="m_aadhar" name="aadhar_no" value="<?= e($draft['aadhar_no'] ?? '') ?>" placeholder="12 Digit Unique Aadhar" required maxlength="12" pattern="\d{12}" inputmode="numeric" title="Aadhar ID must be exactly 12 digits (numbers only)">
                 
-                <label for="m_plan">Membership Plan Class *</label>
+                <label for="m_plan">Membership Plan *</label>
                 <select id="m_plan" name="plan_id" required>
                     <option value="">Choose Membership Tier...</option>
                     <?php 
@@ -251,7 +272,7 @@ $pendingCount = $pendingCountRes ? $pendingCountRes->fetch_assoc()['c'] : 0;
                     $shiftsRes = $db->query("SELECT * FROM work_shifts ORDER BY id ASC");
                     while ($s = $shiftsRes->fetch_assoc()) {
                         $sName = $s['name'];
-                        $sel = (($draft['shift'] ?? 'Morning') === $sName) ? 'selected' : '';
+                        $sel = (strcasecmp($draft['shift'] ?? '', $sName) === 0) ? 'selected' : '';
                         $sStart = date('h:i A', strtotime($s['start_time']));
                         $sEnd = date('h:i A', strtotime($s['end_time']));
                         echo '<option value="' . e($sName) . '" ' . $sel . '>' . e($sName) . ' Shift (' . $sStart . ' - ' . $sEnd . ')</option>';

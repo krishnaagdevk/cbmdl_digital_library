@@ -31,7 +31,7 @@ if ($editId) {
                 <?= csrf_input() ?>
                 <input type="hidden" name="id" value="<?= $editPlan['id'] ?>">
 
-                <label for="p_name" style="font-weight:600; display:block; margin-bottom:5px;">Plan Class Name *</label>
+                <label for="p_name" style="font-weight:600; display:block; margin-bottom:5px;">Membership Plan Name *</label>
                 <input id="p_name" name="name" value="<?= e($editPlan['name']) ?>" required placeholder="e.g. Platinum Premium Pass" style="margin-bottom:15px;">
 
                 <label for="p_duration" style="font-weight:600; display:block; margin-bottom:5px;">Duration Term *</label>
@@ -72,7 +72,7 @@ if ($editId) {
             <form method="post" action="?action=add_plan">
                 <?= csrf_input() ?>
 
-                <label for="p_name" style="font-weight:600; display:block; margin-bottom:5px;">Plan Class Name *</label>
+                <label for="p_name" style="font-weight:600; display:block; margin-bottom:5px;">Membership Plan Name *</label>
                 <input id="p_name" name="name" required placeholder="e.g. Premium Annual Pass" style="margin-bottom:15px;">
 
                 <label for="p_duration" style="font-weight:600; display:block; margin-bottom:5px;">Duration Term *</label>

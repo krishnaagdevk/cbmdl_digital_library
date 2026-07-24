@@ -7,7 +7,7 @@ $checkCount = $db->query("SELECT COUNT(*) c FROM member_login_logs");
 if ($checkCount && (int)($checkCount->fetch_assoc()['c'] ?? 0) === 0) {
     $sampleMem = $db->query("SELECT * FROM members ORDER BY id DESC LIMIT 1")->fetch_assoc();
     if ($sampleMem) {
-        log_member_login($db, $sampleMem['mobile'], $sampleMem['id'], $sampleMem['name'], $sampleMem['shift'] ?? 'Both', 'Success');
+        log_member_login($db, $sampleMem['mobile'], $sampleMem['id'], $sampleMem['name'], $sampleMem['shift'] ?? 'Full Day', 'Success');
     }
 }
 
@@ -110,8 +110,11 @@ $logsQuery = $db->query("SELECT lg.*, m.membership_id FROM member_login_logs lg 
                                 <?php endif; ?>
                             </td>
                             <td>
+                                <?php 
+                                $shiftDisp = ($log['shift'] === 'Both' || $log['shift'] === 'both' || empty($log['shift'])) ? 'Full Day' : $log['shift'];
+                                ?>
                                 <span class="badge badge-blue" style="font-size:11px; padding:3px 8px;">
-                                    <i class="fa-solid fa-sun"></i> <?= e($log['shift'] ?: 'Both') ?>
+                                    <i class="fa-solid fa-sun"></i> <?= e($shiftDisp) ?>
                                 </span>
                             </td>
                             <td><code style="background:var(--bg-slate); padding:2px 6px; border-radius:4px; font-size:12px; font-family:monospace; color:var(--navy-dark);"><?= e($log['ip_address']) ?></code></td>

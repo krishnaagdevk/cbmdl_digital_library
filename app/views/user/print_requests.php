@@ -34,9 +34,13 @@ $print_query = $stmt->get_result();
                 $print_count = 0;
                 while ($pr = $print_query->fetch_assoc()) {
                     $print_count++;
-                    $p_badge = $pr['status'] === 'Pending' 
-                        ? '<span class="badge badge-orange"><i class="fa-solid fa-clock"></i> Pending (Awaiting Print)</span>' 
-                        : '<span class="badge badge-green"><i class="fa-solid fa-circle-check"></i> Completed</span>';
+                    if ($pr['status'] === 'Pending') {
+                        $p_badge = '<span class="badge badge-orange"><i class="fa-solid fa-clock"></i> Pending (Awaiting Print)</span>';
+                    } elseif ($pr['status'] === 'Rejected') {
+                        $p_badge = '<span class="badge badge-red"><i class="fa-solid fa-circle-xmark"></i> Rejected</span>';
+                    } else {
+                        $p_badge = '<span class="badge badge-green"><i class="fa-solid fa-circle-check"></i> Completed</span>';
+                    }
                     echo '
                     <tr>
                         <td>' . e($pr['title']) . '</td>

@@ -10,7 +10,7 @@ if (!defined('BASE_URL')) exit;
                 <i class="fa-solid fa-list-check" style="color:var(--primary);"></i> Active Membership Plans
             </h3>
             <p style="margin:4px 0 0 0; font-size:13px; color:var(--text-muted);">
-                View and manage available membership duration classes and access fees.
+                View and manage available membership plans, duration and fees.
             </p>
         </div>
         <a href="?action=admin&tab=create_plan" class="btn" style="padding:8px 16px; font-size:13px; text-decoration:none; display:inline-flex; align-items:center; gap:6px; font-weight:600;">
@@ -23,7 +23,7 @@ if (!defined('BASE_URL')) exit;
             <thead>
                 <tr>
                     <th style="width:70px;">ID</th>
-                    <th>Plan Class Name</th>
+                    <th>Membership Plan Name</th>
                     <th>Duration Term</th>
                     <th>Amount Fee (INR)</th>
                     <th style="width:180px;">Actions</th>

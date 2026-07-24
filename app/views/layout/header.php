@@ -701,14 +701,13 @@
             min-height: 250px;
         }
 
-        /* Footer */
         footer {
             background: linear-gradient(135deg, var(--navy-dark), var(--navy-light));
             color: #94a3b8;
             text-align: center;
-            padding: 25px;
+            padding: 8px 15px;
             margin-top: auto;
-            font-size: 14px;
+            font-size: 12px;
             border-top: 1px solid rgba(255,255,255,0.05);
         }
 
@@ -763,11 +762,6 @@
 
         body.login-page main {
             padding: 4px 3% 10px 3% !important;
-        }
-
-        body.login-page footer {
-            padding: 8px 15px !important;
-            font-size: 12px !important;
         }
     </style>
 </head>

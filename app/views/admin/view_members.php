@@ -53,7 +53,7 @@ if ($viewId) {
                         $shiftsRes = $db->query("SELECT * FROM work_shifts ORDER BY id ASC");
                         while ($s = $shiftsRes->fetch_assoc()) {
                             $sName = $s['name'];
-                            $sel = (($selected['shift'] ?? 'Both') === $sName) ? 'selected' : '';
+                            $sel = (strcasecmp($selected['shift'] ?? '', $sName) === 0) ? 'selected' : '';
                             $sStart = date('h:i A', strtotime($s['start_time']));
                             $sEnd = date('h:i A', strtotime($s['end_time']));
                             echo '<option value="' . e($sName) . '" ' . $sel . '>' . e($sName) . ' Shift (' . $sStart . ' - ' . $sEnd . ')</option>';
@@ -212,7 +212,7 @@ if ($viewId) {
                             $shiftsRes = $db->query("SELECT * FROM work_shifts ORDER BY id ASC");
                             while ($s = $shiftsRes->fetch_assoc()) {
                                 $sName = $s['name'];
-                                $sel = (($selected['shift'] ?? 'Morning') === $sName) ? 'selected' : '';
+                                $sel = (strcasecmp($selected['shift'] ?? '', $sName) === 0) ? 'selected' : '';
                                 $sStart = date('h:i A', strtotime($s['start_time']));
                                 $sEnd = date('h:i A', strtotime($s['end_time']));
                                 echo '<option value="' . e($sName) . '" ' . $sel . '>' . e($sName) . ' Shift (' . $sStart . ' - ' . $sEnd . ')</option>';
@@ -262,13 +262,12 @@ if ($viewId) {
                             <th style="padding:10px;">Fee Paid</th>
                             <th style="padding:10px;">Payment Ref ID</th>
                             <th style="padding:10px;">Logged On</th>
-                            <th style="padding:10px; text-align:right;">Receipt</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if ($mHistRes->num_rows === 0): ?>
                             <tr>
-                                <td colspan="9" style="text-align:center; padding:20px; color:var(--text-muted);">
+                                <td colspan="8" style="text-align:center; padding:20px; color:var(--text-muted);">
                                     No historical records logged yet for this member.
                                 </td>
                             </tr>
@@ -286,7 +285,7 @@ if ($viewId) {
                                         <?php endif; ?>
                                     </td>
                                     <td style="padding:10px;">
-                                        <strong><?= e($hRow['plan_name'] ?? $hRow['duration']) ?></strong>
+                                        <strong><?= e(!empty($hRow['duration']) ? $hRow['duration'] : $hRow['plan_name']) ?></strong>
                                     </td>
                                     <td style="padding:10px;">
                                         <?= date('d-m-Y', strtotime($hRow['start_date'])) ?> &rarr; <?= date('d-m-Y', strtotime($hRow['end_date'])) ?>
@@ -295,24 +294,6 @@ if ($viewId) {
                                     <td style="padding:10px; font-weight:700; color:#16a34a;">₹<?= number_format($hRow['membership_fee'], 2) ?></td>
                                     <td style="padding:10px; font-family:monospace;"><?= e($hRow['payment_id'] ?? 'N/A') ?></td>
                                     <td style="padding:10px; color:var(--text-muted);"><?= date('d M Y, H:i', strtotime($hRow['created_at'])) ?></td>
-                                    <td style="padding:10px; text-align:right;">
-                                        <button onclick='printReceipt(<?= json_encode([
-                                            "memberName" => $selected["name"],
-                                            "membershipId" => $selected["membership_id"] ?: "N/A",
-                                            "mobile" => $selected["mobile"] ?: "N/A",
-                                            "actionType" => $hRow["action_type"],
-                                            "planName" => $hRow["plan_name"] ?: $hRow["duration"],
-                                            "duration" => $hRow["duration"],
-                                            "shift" => $hRow["shift"],
-                                            "startDate" => date("d M Y", strtotime($hRow["start_date"])),
-                                            "endDate" => date("d M Y", strtotime($hRow["end_date"])),
-                                            "fee" => number_format($hRow["membership_fee"], 2),
-                                            "paymentId" => $hRow["payment_id"] ?: "N/A",
-                                            "date" => date("d M Y, h:i A", strtotime($hRow["created_at"]))
-                                        ]) ?>)' class="btn" style="padding:3px 8px; font-size:11px; background:var(--bg-slate); border:1px solid var(--border-color);">
-                                            <i class="fa-solid fa-print"></i> Receipt
-                                        </button>
-                                    </td>
                                 </tr>
                             <?php endwhile; ?>
                         <?php endif; ?>
@@ -341,29 +322,48 @@ if ($viewId) {
         $whereClause .= " AND is_active = 1 AND (end_date < CURDATE() OR start_date > CURDATE())";
     }
 
-    // Sort logic
-    $sort = $_GET['sort'] ?? 'default';
-    $orderBy = 'id DESC';
-    if ($sort === 'shift_asc') {
-        $orderBy = "CASE WHEN shift = 'Morning' THEN 1 WHEN shift = 'Evening' THEN 2 ELSE 3 END ASC, id DESC";
-    } elseif ($sort === 'shift_desc') {
-        $orderBy = "CASE WHEN shift = 'Evening' THEN 1 WHEN shift = 'Morning' THEN 2 ELSE 3 END ASC, id DESC";
+    // Fetch shift names directly from work_shifts database table
+    $availableShifts = [];
+    $wsRes = $db->query("SELECT name FROM work_shifts ORDER BY id ASC");
+    if ($wsRes) {
+        while ($wsRow = $wsRes->fetch_assoc()) {
+            if (!empty($wsRow['name']) && !in_array($wsRow['name'], $availableShifts)) {
+                $availableShifts[] = $wsRow['name'];
+            }
+        }
     }
+
+    // Shift Filter logic (defaults to 'all' / All Shifts)
+    $shift_filter = $_GET['shift_filter'] ?? 'all';
+    if ($shift_filter !== 'all' && in_array($shift_filter, $availableShifts)) {
+        $whereClause .= " AND shift = '" . $db->real_escape_string($shift_filter) . "'";
+    } else {
+        $shift_filter = 'all';
+    }
+
+    // Default order
+    $orderBy = 'id DESC';
     ?>
     <div class="card">
         <h3>
             <i class="fa-solid fa-address-book"></i> Membership Details 
-            <?php if ($status_filter !== 'all'): ?>
+            <?php if ($status_filter !== 'all' || $shift_filter !== 'all'): ?>
                 <span style="font-size:13px; font-weight:normal; margin-left:10px;">
-                    (Filtered: <strong style="text-transform:capitalize;"><?= $status_filter ?></strong>) 
-                    <a href="?action=admin&tab=view_members<?= $sort !== 'default' ? '&sort='.$sort : '' ?>" class="btn" style="padding:4px 8px; font-size:11px; background:var(--bg-slate); color:var(--text-color); border:1px solid var(--border-color);"><i class="fa-solid fa-filter-circle-xmark"></i> Clear Filter</a>
+                    (Filtered: 
+                    <?php 
+                    $labels = [];
+                    if ($status_filter !== 'all') $labels[] = '<strong>' . ucfirst($status_filter) . '</strong>';
+                    if ($shift_filter !== 'all') $labels[] = '<strong>' . e($shift_filter) . ' Shift</strong>';
+                    echo implode(' | ', $labels);
+                    ?>) 
+                    <a href="?action=admin&tab=view_members" class="btn" style="padding:4px 8px; font-size:11px; background:var(--bg-slate); color:var(--text-color); border:1px solid var(--border-color);"><i class="fa-solid fa-filter-circle-xmark"></i> Clear Filter</a>
                 </span>
             <?php endif; ?>
         </h3>
         
         <!-- Member Stats Summary Cards -->
         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px;">
-            <a href="?action=admin&tab=view_members&status_filter=active<?= $sort !== 'default' ? '&sort='.$sort : '' ?>" style="text-decoration:none; color:inherit; display:block;">
+            <a href="?action=admin&tab=view_members&status_filter=active<?= $shift_filter !== 'all' ? '&shift_filter='.urlencode($shift_filter) : '' ?>" style="text-decoration:none; color:inherit; display:block;">
                 <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:12px; padding:15px; display:flex; align-items:center; gap:12px; transition: transform 0.2s, box-shadow 0.2s; <?= $status_filter === 'active' ? 'box-shadow: 0 0 0 3px #16a34a;' : '' ?>" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
                     <div style="width:40px; height:40px; border-radius:50%; background:rgba(16, 185, 129, 0.1); color:var(--accent-green); display:flex; align-items:center; justify-content:center; font-size:18px;">
                         <i class="fa-solid fa-circle-check"></i>
@@ -375,7 +375,7 @@ if ($viewId) {
                 </div>
             </a>
 
-            <a href="?action=admin&tab=view_members&status_filter=inactive<?= $sort !== 'default' ? '&sort='.$sort : '' ?>" style="text-decoration:none; color:inherit; display:block;">
+            <a href="?action=admin&tab=view_members&status_filter=inactive<?= $shift_filter !== 'all' ? '&shift_filter='.urlencode($shift_filter) : '' ?>" style="text-decoration:none; color:inherit; display:block;">
                 <div style="background:#fff1f2; border:1px solid #fecdd3; border-radius:12px; padding:15px; display:flex; align-items:center; gap:12px; transition: transform 0.2s, box-shadow 0.2s; <?= $status_filter === 'inactive' ? 'box-shadow: 0 0 0 3px #dc2626;' : '' ?>" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
                     <div style="width:40px; height:40px; border-radius:50%; background:rgba(239, 68, 68, 0.1); color:var(--accent-red); display:flex; align-items:center; justify-content:center; font-size:18px;">
                         <i class="fa-solid fa-circle-xmark"></i>
@@ -387,7 +387,7 @@ if ($viewId) {
                 </div>
             </a>
 
-            <a href="?action=admin&tab=view_members&status_filter=expired<?= $sort !== 'default' ? '&sort='.$sort : '' ?>" style="text-decoration:none; color:inherit; display:block;">
+            <a href="?action=admin&tab=view_members&status_filter=expired<?= $shift_filter !== 'all' ? '&shift_filter='.urlencode($shift_filter) : '' ?>" style="text-decoration:none; color:inherit; display:block;">
                 <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:12px; padding:15px; display:flex; align-items:center; gap:12px; transition: transform 0.2s, box-shadow 0.2s; <?= $status_filter === 'expired' ? 'box-shadow: 0 0 0 3px #d97706;' : '' ?>" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
                     <div style="width:40px; height:40px; border-radius:50%; background:rgba(245, 158, 11, 0.1); color:var(--accent-orange); display:flex; align-items:center; justify-content:center; font-size:18px;">
                         <i class="fa-solid fa-circle-exclamation"></i>
@@ -403,11 +403,12 @@ if ($viewId) {
         <div style="display:flex; justify-content:space-between; align-items:center; gap:15px; margin-bottom:15px; flex-wrap:wrap;">
             <input type="text" id="viewMembersFilter" placeholder="Instant Search Directory..." style="margin-bottom:0; flex:1; min-width:200px;">
             <div style="display:flex; align-items:center; gap:8px;">
-                <label for="memberSort" style="margin:0; font-size:13px; font-weight:600; color:var(--text-muted); white-space:nowrap;"><i class="fa-solid fa-sort"></i> Sort by:</label>
-                <select id="memberSort" onchange="location.href=this.value;" style="margin:0; padding:8px 12px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-card); font-size:13px; font-weight:600; color:var(--navy-dark); cursor:pointer;">
-                    <option value="?action=admin&tab=view_members&sort=default<?= $status_filter !== 'all' ? '&status_filter='.$status_filter : '' ?>" <?= $sort === 'default' ? 'selected' : '' ?>>Newest First</option>
-                    <option value="?action=admin&tab=view_members&sort=shift_asc<?= $status_filter !== 'all' ? '&status_filter='.$status_filter : '' ?>" <?= $sort === 'shift_asc' ? 'selected' : '' ?>>Morning Shift</option>
-                    <option value="?action=admin&tab=view_members&sort=shift_desc<?= $status_filter !== 'all' ? '&status_filter='.$status_filter : '' ?>" <?= $sort === 'shift_desc' ? 'selected' : '' ?>>Evening Shift</option>
+                <label for="memberShiftFilter" style="margin:0; font-size:13px; font-weight:600; color:var(--text-muted); white-space:nowrap;"><i class="fa-solid fa-filter"></i> Filter Shift:</label>
+                <select id="memberShiftFilter" onchange="location.href=this.value;" style="margin:0; padding:8px 12px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-card); font-size:13px; font-weight:600; color:var(--navy-dark); cursor:pointer;">
+                    <option value="?action=admin&tab=view_members&shift_filter=all<?= $status_filter !== 'all' ? '&status_filter='.$status_filter : '' ?>" <?= $shift_filter === 'all' ? 'selected' : '' ?>>All Shifts</option>
+                    <?php foreach ($availableShifts as $sName): ?>
+                        <option value="?action=admin&tab=view_members&shift_filter=<?= urlencode($sName) ?><?= $status_filter !== 'all' ? '&status_filter='.$status_filter : '' ?>" <?= $shift_filter === $sName ? 'selected' : '' ?>><?= e($sName) ?> Shift</option>
+                    <?php endforeach; ?>
                 </select>
             </div>
         </div>
@@ -420,7 +421,7 @@ if ($viewId) {
                         <th>Full Name</th>
                         <th>Gender</th>
                         <th>Mobile Phone</th>
-                        <th>Work Shift</th>
+                        <th>Current Shift</th>
                         <th>Membership Period</th>
                         <th>Status</th>
                         <th>Action</th>
@@ -440,11 +441,19 @@ if ($viewId) {
                     $mCount = 0;
                     while($r = $x->fetch_assoc()) {
                         $mCount++;
-                        $shiftBadge = ($r['shift'] ?? 'Both') === 'Morning' 
-                            ? '<span class="badge badge-orange" style="font-size:11px;"><i class="fa-solid fa-sun"></i> Morning</span>' 
-                            : (($r['shift'] ?? 'Both') === 'Evening' 
-                                ? '<span class="badge badge-purple" style="font-size:11px; background:#f3e8ff; color:#7e22ce;"><i class="fa-solid fa-moon"></i> Evening</span>' 
-                                : '<span class="badge badge-blue" style="font-size:11px;"><i class="fa-solid"></i> Both Shifts</span>');
+                        $memShift = trim($r['shift'] ?? '');
+                        if ($memShift === '' || $memShift === 'Both' || $memShift === 'both') {
+                            $memShift = 'Full Day';
+                        }
+                        if (strcasecmp($memShift, 'Morning') === 0) {
+                            $shiftBadge = '<span class="badge badge-orange" style="font-size:11px;"><i class="fa-solid fa-sun"></i> ' . e($memShift) . '</span>';
+                        } elseif (strcasecmp($memShift, 'Evening') === 0) {
+                            $shiftBadge = '<span class="badge badge-purple" style="font-size:11px; background:#f3e8ff; color:#7e22ce;"><i class="fa-solid fa-moon"></i> ' . e($memShift) . '</span>';
+                        } elseif (strcasecmp($memShift, 'Full Day') === 0) {
+                            $shiftBadge = '<span class="badge badge-blue" style="font-size:11px;"><i class="fa-solid fa-clock"></i> ' . e($memShift) . '</span>';
+                        } else {
+                            $shiftBadge = '<span class="badge badge-blue" style="font-size:11px; background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd;"><i class="fa-solid fa-clock"></i> ' . e($memShift) . '</span>';
+                        }
                         $gText = e($r['gender'] ?? 'Male');
                         if ($gText === 'Other') $gText = 'Others';
                         
@@ -548,58 +557,4 @@ if ($viewId) {
         </script>
     </div>
 <?php endif; ?>
-
-<!-- Modal: Printable Official Payment Receipt -->
-<div id="receiptModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:9999; justify-content:center; align-items:center; padding:15px;">
-    <div style="background:white; border-radius:12px; max-width:520px; width:100%; padding:30px; box-shadow:0 10px 25px rgba(0,0,0,0.3); position:relative; font-family:sans-serif;">
-        <button onclick="closeReceiptModal()" style="position:absolute; top:15px; right:15px; background:none; border:none; font-size:20px; cursor:pointer; color:#666;">&times;</button>
-        
-        <div id="printableReceiptArea">
-            <div style="text-align:center; border-bottom:2px solid #2563eb; padding-bottom:15px; margin-bottom:20px;">
-                <h2 style="margin:0; font-size:18px; color:#1e293b; text-transform:uppercase; font-weight:800;">CBMDL Digital Library</h2>
-                <div style="font-size:11px; color:#64748b; font-weight:600; margin-top:3px;">MEERUT CANTONMENT BOARD</div>
-                <div style="font-size:13px; font-weight:700; color:#2563eb; margin-top:8px; letter-spacing:1px; text-transform:uppercase;">Official Fee Payment Receipt</div>
-            </div>
-
-            <table style="width:100%; border-collapse:collapse; font-size:13px; margin-bottom:20px;">
-                <tr><td style="padding:6px 0; color:#64748b; width:40%;">Member Name:</td><td style="padding:6px 0; font-weight:700; color:#0f172a;" id="rcptMemberName">-</td></tr>
-                <tr><td style="padding:6px 0; color:#64748b;">Membership ID:</td><td style="padding:6px 0; font-weight:700; color:#0f172a;" id="rcptMembershipId">-</td></tr>
-                <tr><td style="padding:6px 0; color:#64748b;">Action Type:</td><td style="padding:6px 0; font-weight:700; color:#2563eb;" id="rcptActionType">-</td></tr>
-                <tr><td style="padding:6px 0; color:#64748b;">Plan & Duration:</td><td style="padding:6px 0; font-weight:700; color:#0f172a;" id="rcptPlanName">-</td></tr>
-                <tr><td style="padding:6px 0; color:#64748b;">Shift Allocated:</td><td style="padding:6px 0; font-weight:700; color:#0f172a;" id="rcptShift">-</td></tr>
-                <tr><td style="padding:6px 0; color:#64748b;">Validity Term:</td><td style="padding:6px 0; font-weight:700; color:#0f172a;" id="rcptValidity">-</td></tr>
-                <tr><td style="padding:6px 0; color:#64748b;">Amount Paid:</td><td style="padding:6px 0; font-weight:800; font-size:16px; color:#16a34a;" id="rcptFee">-</td></tr>
-                <tr><td style="padding:6px 0; color:#64748b;">Transaction UTR / ID:</td><td style="padding:6px 0; font-family:monospace; font-weight:700; color:#0f172a;" id="rcptPaymentId">-</td></tr>
-                <tr><td style="padding:6px 0; color:#64748b;">Date & Time:</td><td style="padding:6px 0; color:#64748b;" id="rcptDate">-</td></tr>
-            </table>
-
-            <div style="text-align:center; border-top:1px dashed #cbd5e1; padding-top:12px; font-size:11px; color:#94a3b8;">
-                This is a computer-generated official payment receipt issued by CBMDL e-Library.
-            </div>
-        </div>
-
-        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;" class="no-print">
-            <button type="button" onclick="closeReceiptModal()" class="btn" style="background:#f1f5f9; color:#334155;">Close</button>
-            <button type="button" onclick="window.print()" class="btn" style="background:#2563eb; color:white;"><i class="fa-solid fa-print"></i> Print Receipt</button>
-        </div>
-    </div>
-</div>
-
-<script>
-function printReceipt(data) {
-    document.getElementById('rcptMemberName').innerText = data.memberName;
-    document.getElementById('rcptMembershipId').innerText = data.membershipId;
-    document.getElementById('rcptActionType').innerText = data.actionType;
-    document.getElementById('rcptPlanName').innerText = data.planName + ' (' + data.duration + ')';
-    document.getElementById('rcptShift').innerText = data.shift + ' Shift';
-    document.getElementById('rcptValidity').innerText = data.startDate + ' to ' + data.endDate;
-    document.getElementById('rcptFee').innerText = '₹' + data.fee;
-    document.getElementById('rcptPaymentId').innerText = data.paymentId;
-    document.getElementById('rcptDate').innerText = data.date;
-    document.getElementById('receiptModal').style.display = 'flex';
-}
-function closeReceiptModal() {
-    document.getElementById('receiptModal').style.display = 'none';
-}
-</script>
 

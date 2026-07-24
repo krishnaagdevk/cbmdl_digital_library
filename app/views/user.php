@@ -137,15 +137,33 @@ $actStmt->close();
     <!-- Dynamic Member View Container -->
     <div class="admin-content">
         <!-- Member Greeting Header Banner -->
+        <?php
+        $genderVal = strtolower(trim($me['gender'] ?? 'male'));
+        if ($genderVal === 'female') {
+            $userEmoji = '👩‍💼';
+            $avatarBg = 'rgba(236, 72, 153, 0.2)';
+            $avatarBorder = '#ec4899';
+            $genderLabel = 'Female Member';
+        } elseif ($genderVal === 'other') {
+            $userEmoji = '🧑‍💼';
+            $avatarBg = 'rgba(139, 92, 246, 0.2)';
+            $avatarBorder = '#8b5cf6';
+            $genderLabel = 'Member';
+        } else {
+            $userEmoji = '👨‍💼';
+            $avatarBg = 'rgba(37, 99, 235, 0.25)';
+            $avatarBorder = '#3b82f6';
+            $genderLabel = 'Male Member';
+        }
+        ?>
         <div class="user-greeting-banner" style="background: linear-gradient(135deg, var(--navy-dark), var(--navy-light)); color: white; padding: 18px 24px; border-radius: 14px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(15, 23, 42, 0.12); flex-wrap: wrap; gap: 15px;">
             <div style="display: flex; align-items: center; gap: 16px;">
-                <div style="width: 48px; height: 48px; background: rgba(37, 99, 235, 0.2); border: 2px solid var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; color: #60a5fa; flex-shrink: 0;">
-                    <i class="fa-solid fa-user-check"></i>
+                <div style="width: 52px; height: 52px; background: <?= $avatarBg ?>; border: 2px solid <?= $avatarBorder ?>; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 26px; flex-shrink: 0; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);" title="Gender: <?= $genderLabel ?>">
+                    <span style="line-height: 1; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); cursor: default; user-select: none;"><?= $userEmoji ?></span>
                 </div>
                 <div>
                     <h2 style="margin: 0; font-size: 20px; font-weight: 700; color: #ffffff; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                         Welcome, <?= e($me['name']) ?>
-                      
                     </h2>
                     <p style="margin: 4px 0 0 0; font-size: 13px; color: #94a3b8; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
                         <span><i class="fa-solid fa-id-card" style="color: var(--primary);"></i> Membership ID: <strong style="color: #f1f5f9; font-weight: 600;"><?= e($me['membership_id']) ?></strong></span>
@@ -156,7 +174,7 @@ $actStmt->close();
             </div>
             <div style="display: flex; align-items: center; gap: 10px;">
                 <a href="?action=user&tab=profile" class="btn" style="background: rgba(255, 255, 255, 0.1); color: #ffffff; padding: 8px 14px; font-size: 13px; border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; font-weight: 500;">
-                    <i class="fa-solid fa-user-gear"></i> Profile
+                    <span><?= $userEmoji ?></span> Profile
                 </a>
                 <a href="?action=logout" class="btn" style="background: linear-gradient(135deg, #ef4444, #b91c1c); color: #ffffff; padding: 8px 14px; font-size: 13px; border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; font-weight: 600;">
                     <i class="fa-solid fa-right-from-bracket"></i> Logout

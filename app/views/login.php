@@ -146,7 +146,7 @@
                     🇮🇳
                 </div>
                 <div style="overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">
-                    <span style="display:block; font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted);">Civic Portal 🏢</span>
+                    <span style="display:block; font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted);">View 🏢</span>
                     <strong style="display:block; font-size:11.5px; color:var(--navy-dark); text-overflow:ellipsis; overflow:hidden;">e-Chhawani Portal</strong>
                 </div>
             </div>

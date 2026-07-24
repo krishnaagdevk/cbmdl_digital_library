@@ -9,7 +9,7 @@ if (!defined('BASE_URL')) exit;
             <i class="fa-solid fa-clock" style="color:var(--primary);"></i> Library Shift Timings Configuration
         </h3>
         <p style="font-size:13px; color:var(--text-muted); margin:4px 0 0 0;">
-            Define login time windows for assigned member shifts. Members assigned to a shift will be restricted from logging in before or after their specified shift window.
+            Manage and configure login time windows for member shifts. You can edit shift names, modify start/end times, add new shifts, or delete unwanted shifts.
         </p>
     </div>
 
@@ -19,10 +19,11 @@ if (!defined('BASE_URL')) exit;
             <table>
                 <thead>
                     <tr>
-                        <th>Shift Name</th>
+                        <th>Shift Name (Editable)</th>
                         <th>Login Allowed From (Start Time)</th>
                         <th>Login Allowed Until (End Time)</th>
                         <th>Access Window Preview</th>
+                        <th style="text-align:center;">Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -35,8 +36,11 @@ if (!defined('BASE_URL')) exit;
                     ?>
                         <tr>
                             <td style="font-weight:700; color:var(--navy-dark);">
-                                <input type="hidden" name="shift_name[]" value="<?= e($sf['name']) ?>">
-                                <i class="fa-solid fa-sun" style="color:var(--accent-orange); margin-right:5px;"></i> <?= e($sf['name']) ?> Shift
+                                <input type="hidden" name="shift_id[]" value="<?= $sf['id'] ?>">
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <i class="fa-solid fa-clock-rotate-left" style="color:var(--primary);"></i>
+                                    <input type="text" name="shift_name[]" value="<?= e($sf['name']) ?>" required style="margin:0; padding:6px 10px; font-size:13px; font-weight:700; max-width:180px;">
+                                </div>
                             </td>
                             <td>
                                 <input type="time" name="start_time[]" value="<?= e($sf['start_time']) ?>" required style="margin:0; padding:6px 10px; font-size:13px;">
@@ -49,11 +53,20 @@ if (!defined('BASE_URL')) exit;
                                     <i class="fa-solid fa-business-time"></i> <?= $sStart ?> &rarr; <?= $sEnd ?>
                                 </span>
                             </td>
+                            <td style="text-align:center;">
+                                <button type="submit" formaction="?action=delete_shift&id=<?= $sf['id'] ?>" class="btn" style="padding:6px 12px; font-size:11.5px; background:var(--accent-red); color:white;" onclick="return confirm('Are you sure you want to delete the shift \'<?= e(addslashes($sf['name'])) ?>\'?');">
+                                    <i class="fa-solid fa-trash-can"></i> Delete
+                                </button>
+                            </td>
                         </tr>
                     <?php 
                         endwhile;
-                    endif;
+                    else:
                     ?>
+                        <tr>
+                            <td colspan="5" style="text-align:center; padding:20px; color:var(--text-muted);">No work shifts configured. Add a custom shift below.</td>
+                        </tr>
+                    <?php endif; ?>
                 </tbody>
             </table>
         </div>
@@ -61,7 +74,7 @@ if (!defined('BASE_URL')) exit;
         <!-- Add Custom Shift Creation Row -->
         <div style="background:var(--bg-slate); padding:16px; border-radius:10px; border:1px solid var(--border-color); margin-bottom:20px;">
             <h4 style="margin:0 0 10px 0; font-size:13.5px; color:var(--navy-dark); display:flex; align-items:center; gap:6px;">
-                <i class="fa-solid fa-plus-circle" style="color:var(--primary);"></i> Add Custom Shift (Market Standard)
+                <i class="fa-solid fa-plus-circle" style="color:var(--primary);"></i> Add Custom Shift
             </h4>
             <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px;">
                 <div>
@@ -79,6 +92,6 @@ if (!defined('BASE_URL')) exit;
             </div>
         </div>
 
-        <button type="submit" class="btn" style="padding:10px 24px; font-weight:600;"><i class="fa-solid fa-floppy-disk"></i> Save Shift Timing Configurations</button>
+        <button type="submit" class="btn" style="padding:10px 24px; font-weight:600;"><i class="fa-solid fa-floppy-disk"></i> Save Shift Configurations</button>
     </form>
 </div>

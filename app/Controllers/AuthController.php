@@ -181,7 +181,7 @@ final class AuthController {
                         $time_win = get_shift_time_window($mShift, $this->db);
                         $fmt_start = date('h:i A', strtotime($time_win['start_time']));
                         $fmt_end = date('h:i A', strtotime($time_win['end_time']));
-                        flash("🔒 Shift Access Restricted: Your account is assigned to the '" . $mShift . "' shift (" . $fmt_start . " - " . $fmt_end . "). You cannot log in outside your assigned shift timings.");
+                        flash("🔒 Shift Access Restricted: Your account is assigned to the " . $mShift . " shift (" . $fmt_start . " - " . $fmt_end . "). You cannot log in outside your assigned shift timings.");
                         session_write_close();
                         go('member-login');
                     }

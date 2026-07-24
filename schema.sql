@@ -167,7 +167,7 @@ CREATE TABLE `members` (
   `address` text NOT NULL,
   `aadhar_no` varchar(30) NOT NULL,
   `duration` enum('Yearly','Half Yearly','Quarterly','Monthly','Daily') NOT NULL,
-  `shift` enum('Both','Morning','Evening') DEFAULT 'Both',
+  `shift` varchar(50) DEFAULT 'Both',
   `start_date` date NOT NULL,
   `end_date` date NOT NULL,
   `membership_fee` varchar(50) NOT NULL,

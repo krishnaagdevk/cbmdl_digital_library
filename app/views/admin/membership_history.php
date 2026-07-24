@@ -203,10 +203,9 @@ $totalJoins = (int)$db->query("SELECT COUNT(*) c FROM membership_history WHERE a
                                 </div>
                             </td>
                             <td style="padding:12px;">
-                                <strong style="color:var(--navy-dark); font-family:inherit;"><?= e($row['plan_name'] ?? $row['duration']) ?></strong>
+                                <strong style="color:var(--navy-dark); font-family:inherit;"><?= e(!empty($row['duration']) ? $row['duration'] : $row['plan_name']) ?></strong>
                                 <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">
-                                    <span><i class="fa-solid fa-hourglass-half"></i> <?= e($row['duration']) ?></span>
-                                    <span style="margin-left:6px;"><i class="fa-solid fa-sun"></i> <?= e($row['shift']) ?> Shift</span>
+                                    <span><i class="fa-solid fa-sun"></i> <?= e($row['shift']) ?> Shift</span>
                                 </div>
                             </td>
                             <td style="padding:12px;">

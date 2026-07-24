@@ -121,11 +121,12 @@ function log_membership_history($db, $member_id, $action_type = 'Initial Joining
     $stmt->close();
     
     if ($m && !empty($m['membership_id'])) {
-        $pName = !empty($m['plan_name']) ? $m['plan_name'] : $m['duration'];
+        $pName = !empty($m['duration']) ? $m['duration'] : (!empty($m['plan_name']) ? $m['plan_name'] : 'N/A');
         $fee = (float)($m['membership_fee'] ?? 0.00);
+        $shift = !empty($m['shift']) ? valid_shift($db, $m['shift'], 'Full Day') : 'Full Day';
         $histStmt = $db->prepare("INSERT INTO membership_history (member_id, membership_id, membership_plan_id, plan_name, duration, shift, start_date, end_date, membership_fee, payment_id, action_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         if ($histStmt) {
-            $histStmt->bind_param("isisssssdss", $m['id'], $m['membership_id'], $m['membership_plan_id'], $pName, $m['duration'], $m['shift'], $m['start_date'], $m['end_date'], $fee, $m['payment_id'], $action_type);
+            $histStmt->bind_param("isisssssdss", $m['id'], $m['membership_id'], $m['membership_plan_id'], $pName, $m['duration'], $shift, $m['start_date'], $m['end_date'], $fee, $m['payment_id'], $action_type);
             $histStmt->execute();
             $histStmt->close();
         }
@@ -824,7 +825,7 @@ if ($action === 'secure_pdf_viewer') {
                         pageCtx.textBaseline = 'middle';
                         pageCtx.translate(viewport.width / 2, viewport.height / 2);
                         pageCtx.rotate(-Math.PI / 6);
-                        pageCtx.fillText('CBMDLM SECURE DIGITAL READER - AUTHORIZED COPY', 0, 0);
+                        pageCtx.fillText('CBMDL SECURE DIGITAL READER - AUTHORIZED COPY', 0, 0);
                         pageCtx.restore();
 
                         const placeholder = inner.querySelector('.page-placeholder');
@@ -1934,10 +1935,7 @@ if (admin()) {
 
     if ($action === 'add_member' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $d = trim($_POST['duration'] ?? '');
-        $shift = trim($_POST['shift'] ?? '');
-        if ($shift === '') {
-            $shift = 'Morning';
-        }
+        $shift = valid_shift($db, $_POST['shift'] ?? '', 'Morning');
         $plan_id = isset($_POST['plan_id']) && $_POST['plan_id'] !== '' ? (int)$_POST['plan_id'] : null;
         $start = date('Y-m-d');
         
@@ -2090,10 +2088,7 @@ if (admin()) {
         $id = (int)$_POST['id'];
         $plan_id = isset($_POST['plan_id']) && $_POST['plan_id'] !== '' ? (int)$_POST['plan_id'] : null;
         $d = trim($_POST['duration'] ?? '');
-        $shift = trim($_POST['shift'] ?? '');
-        if ($shift === '') {
-            $shift = 'Morning';
-        }
+        $shift = valid_shift($db, $_POST['shift'] ?? '', 'Morning');
         $fee = (float)($_POST['membership_fee'] ?? 0.00);
         $payment_id = trim($_POST['payment_id'] ?? '');
 
@@ -2159,15 +2154,32 @@ if (admin()) {
 
     if ($action === 'update_member' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = (int)$_POST['id'];
-        $name = trim($_POST['name'] ?? '');
-        $gender = in_array($_POST['gender'] ?? '', ['Male', 'Female', 'Other']) ? $_POST['gender'] : 'Male';
-        $g_name = trim($_POST['guardian_name'] ?? '');
-        $mobile = trim($_POST['mobile'] ?? '');
-        $email = trim($_POST['email'] ?? '');
-        $address = trim($_POST['address'] ?? '');
-        $aadhar = trim($_POST['aadhar_no'] ?? '');
-        $shift = in_array($_POST['shift'] ?? '', ['Both', 'Morning', 'Evening']) ? $_POST['shift'] : 'Both';
-        $is_active = isset($_POST['is_active']) ? (int)$_POST['is_active'] : 1;
+        
+        // Fetch current member record to preserve unsubmitted fields
+        $curMem = null;
+        $mStmt = $db->prepare("SELECT * FROM members WHERE id = ?");
+        if ($mStmt) {
+            $mStmt->bind_param("i", $id);
+            $mStmt->execute();
+            $curMem = $mStmt->get_result()->fetch_assoc();
+            $mStmt->close();
+        }
+
+        $name = trim($_POST['name'] ?? ($curMem['name'] ?? ''));
+        $gender = isset($_POST['gender']) && in_array($_POST['gender'], ['Male', 'Female', 'Other']) ? $_POST['gender'] : ($curMem['gender'] ?? 'Male');
+        $g_name = trim($_POST['guardian_name'] ?? ($curMem['guardian_name'] ?? ''));
+        $mobile = trim($_POST['mobile'] ?? ($curMem['mobile'] ?? ''));
+        $email = trim($_POST['email'] ?? ($curMem['email'] ?? ''));
+        $address = trim($_POST['address'] ?? ($curMem['address'] ?? ''));
+        $aadhar = trim($_POST['aadhar_no'] ?? ($curMem['aadhar_no'] ?? ''));
+        
+        if (isset($_POST['shift']) && $_POST['shift'] !== '') {
+            $shift = valid_shift($db, $_POST['shift'], $curMem['shift'] ?? 'Both');
+        } else {
+            $shift = $curMem['shift'] ?? 'Both';
+        }
+
+        $is_active = isset($_POST['is_active']) ? (int)$_POST['is_active'] : ($curMem['is_active'] ?? 1);
         $pass = trim($_POST['password'] ?? '');
         
         try {
@@ -2260,6 +2272,7 @@ if (admin()) {
         }
 
         $shift = trim($_POST['shift'] ?? '');
+        if ($shift !== '') $shift = valid_shift($db, $shift);
 
         $db->begin_transaction();
         try {
@@ -2361,12 +2374,42 @@ if (admin()) {
         go('?action=admin&tab=active_plans');
     }
 
+    if ($action === 'delete_shift' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $id = (int)($_GET['id'] ?? ($_POST['id'] ?? 0));
+        if ($id > 0) {
+            $stmtS = $db->prepare("SELECT name FROM work_shifts WHERE id = ?");
+            $stmtS->bind_param("i", $id);
+            $stmtS->execute();
+            $shiftRow = $stmtS->get_result()->fetch_assoc();
+            $stmtS->close();
+
+            if ($shiftRow) {
+                $sName = $shiftRow['name'];
+                $stmt = $db->prepare("DELETE FROM work_shifts WHERE id = ?");
+                $stmt->bind_param("i", $id);
+                $stmt->execute();
+                $stmt->close();
+
+                // Safely update members on this deleted shift to 'Both' as default fallback
+                $stmtM = $db->prepare("UPDATE members SET shift = 'Both' WHERE shift = ?");
+                $stmtM->bind_param("s", $sName);
+                $stmtM->execute();
+                $stmtM->close();
+                
+                flash("Shift '" . $sName . "' deleted successfully. Any members assigned to this shift were defaulted to 'Both'.");
+            }
+        }
+        go('?action=admin&tab=shift_timings');
+    }
+
     if ($action === 'save_shift_times' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $shift_ids = $_POST['shift_id'] ?? [];
         $shift_names = $_POST['shift_name'] ?? [];
         $start_times = $_POST['start_time'] ?? [];
         $end_times = $_POST['end_time'] ?? [];
         
         for ($i = 0; $i < count($shift_names); $i++) {
+            $sid = (int)($shift_ids[$i] ?? 0);
             $sname = trim($shift_names[$i]);
             $stime = trim($start_times[$i]);
             $etime = trim($end_times[$i]);
@@ -2376,10 +2419,31 @@ if (admin()) {
                 if (strlen($stime) == 5) $stime .= ':00';
                 if (strlen($etime) == 5) $etime .= ':00';
                 
-                $stmt = $db->prepare("INSERT INTO work_shifts (name, start_time, end_time) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE start_time = VALUES(start_time), end_time = VALUES(end_time)");
-                $stmt->bind_param("sss", $sname, $stime, $etime);
-                $stmt->execute();
-                $stmt->close();
+                if ($sid > 0) {
+                    // Check if shift name changed to sync assigned members
+                    $stmtOld = $db->prepare("SELECT name FROM work_shifts WHERE id = ?");
+                    $stmtOld->bind_param("i", $sid);
+                    $stmtOld->execute();
+                    $oldRow = $stmtOld->get_result()->fetch_assoc();
+                    $stmtOld->close();
+
+                    $stmt = $db->prepare("UPDATE work_shifts SET name = ?, start_time = ?, end_time = ? WHERE id = ?");
+                    $stmt->bind_param("sssi", $sname, $stime, $etime, $sid);
+                    $stmt->execute();
+                    $stmt->close();
+
+                    if ($oldRow && $oldRow['name'] !== $sname) {
+                        $stmtM = $db->prepare("UPDATE members SET shift = ? WHERE shift = ?");
+                        $stmtM->bind_param("ss", $sname, $oldRow['name']);
+                        $stmtM->execute();
+                        $stmtM->close();
+                    }
+                } else {
+                    $stmt = $db->prepare("INSERT INTO work_shifts (name, start_time, end_time) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE start_time = VALUES(start_time), end_time = VALUES(end_time)");
+                    $stmt->bind_param("sss", $sname, $stime, $etime);
+                    $stmt->execute();
+                    $stmt->close();
+                }
             }
         }
         
@@ -2398,7 +2462,7 @@ if (admin()) {
             $stmt->close();
             flash("Work Shift configuration and custom shift '" . $custom_name . "' saved.");
         } else {
-            flash('Work Shift timing windows updated successfully.');
+            flash('Work Shift timing configurations updated successfully.');
         }
         go('?action=admin&tab=shift_timings');
     }
@@ -2525,7 +2589,7 @@ if (admin()) {
 
     if ($action === 'approve' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = (int)$_POST['request_id'];
-        $mins = max(1, (int)$_POST['minutes']);
+        $mins = min(240, max(1, (int)$_POST['minutes']));
         
         $stmt = $db->prepare("UPDATE reading_requests SET status = 'Approved', approved_at = NOW(), duration_minutes = ?, started_reading_at = NULL, expires_at = NULL WHERE id = ?");
         $stmt->bind_param("ii", $mins, $id);

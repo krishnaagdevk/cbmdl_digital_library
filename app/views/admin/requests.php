@@ -124,7 +124,7 @@ $query_str = "SELECT r.*, m.name, m.membership_id, e.title FROM reading_requests
                                  <form method="post" action="?action=approve" style="display:inline-flex; gap:6px; align-items:center; margin:0;">
                                      ' . csrf_input() . '
                                      <input type="hidden" name="request_id" value="' . $r['id'] . '">
-                                     <input type="number" name="minutes" min="1" placeholder="Minutes" required style="width:90px; margin:0; padding:8px;">
+                                     <input type="number" name="minutes" min="1" max="240" placeholder="Mins (Max 240)" required style="width:125px; margin:0; padding:8px;">
                                      <button class="btn" style="padding:8px 12px; background:var(--accent-green);"><i class="fa-solid fa-check"></i> Grant Access</button>
                                  </form>
                                  <form method="post" action="?action=reject" style="display:inline-block; margin:0;">

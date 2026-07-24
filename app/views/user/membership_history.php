@@ -28,37 +28,6 @@ $isExpired = !empty($me['end_date']) && $me['end_date'] < date('Y-m-d');
         </div>
     </div>
 
-    <!-- Active Membership Overview Card -->
-    <div style="background:var(--bg-slate); border:1px solid var(--border-color); border-radius:12px; padding:20px; margin-bottom:25px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:20px;">
-        <div style="display:flex; align-items:center; gap:15px;">
-            <div style="width:50px; height:50px; border-radius:50%; background:var(--primary); color:white; display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:700;">
-                <i class="fa-solid fa-id-card"></i>
-            </div>
-            <div>
-                <span style="font-size:11px; text-transform:uppercase; font-weight:700; color:var(--text-muted); letter-spacing:0.5px;">Current Active Pass</span>
-                <h4 style="margin:2px 0 0 0; color:var(--navy-dark); font-size:16px;">
-                    <?= e($me['membership_id'] ?? 'N/A') ?> — <?= e(!empty($me['plan_name']) ? $me['plan_name'] : ($me['duration'] ?? 'N/A')) ?>
-                </h4>
-                <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">
-                    <span><i class="fa-solid fa-sun"></i> <?= e($me['shift'] ?? 'Both') ?> Shift</span>
-                    <?php if (!empty($me['start_date']) && !empty($me['end_date'])): ?>
-                        <span style="margin-left:10px;"><i class="fa-solid fa-calendar"></i> Valid: <?= date('d M Y', strtotime($me['start_date'])) ?> to <?= date('d M Y', strtotime($me['end_date'])) ?></span>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </div>
-
-        <div>
-            <?php if (isset($me['is_active']) && $me['is_active'] == 0): ?>
-                <span class="badge badge-red" style="font-size:13px; padding:8px 14px;"><i class="fa-solid fa-circle-xmark"></i> Pass Suspended</span>
-            <?php elseif ($isExpired): ?>
-                <span class="badge badge-red" style="font-size:13px; padding:8px 14px;"><i class="fa-solid fa-circle-exclamation"></i> Pass Expired</span>
-            <?php else: ?>
-                <span class="badge badge-green" style="font-size:13px; padding:8px 14px;"><i class="fa-solid fa-circle-check"></i> Pass Active</span>
-            <?php endif; ?>
-        </div>
-    </div>
-
     <!-- History Table -->
     <div style="overflow-x:auto;">
         <table class="table" style="width:100%; border-collapse:collapse;">
@@ -71,7 +40,7 @@ $isExpired = !empty($me['end_date']) && $me['end_date'] < date('Y-m-d');
                     <th style="padding:12px;">Shift</th>
                     <th style="padding:12px;">Fee Paid</th>
                     <th style="padding:12px;">Payment Ref ID</th>
-                    <th style="padding:12px;">Date Recorded</th>
+                    <th style="padding:12px;">Issue Date</th>
                 </tr>
             </thead>
             <tbody>
@@ -104,8 +73,7 @@ $isExpired = !empty($me['end_date']) && $me['end_date'] < date('Y-m-d');
                                 <?php endif; ?>
                             </td>
                             <td style="padding:12px;">
-                                <strong style="color:var(--navy-dark);"><?= e(!empty($row['plan_name']) ? $row['plan_name'] : $row['duration']) ?></strong>
-                                <span style="font-size:11px; color:var(--text-muted); display:block; margin-top:2px;"><?= e($row['duration']) ?> Term</span>
+                                <strong style="color:var(--navy-dark);"><?= e(!empty($row['duration']) ? $row['duration'] : $row['plan_name']) ?></strong>
                             </td>
                             <td style="padding:12px;">
                                 <div style="font-weight:600; font-size:12px;">

@@ -6,7 +6,7 @@ if (!defined('BASE_URL')) exit;
 $tot_cats = (int)$db->query('SELECT COUNT(*) c FROM categories')->fetch_assoc()['c'];
 $tot_ebooks = (int)$db->query('SELECT COUNT(*) c FROM ebooks')->fetch_assoc()['c'];
 $tot_physical = (int)$db->query('SELECT COUNT(*) c FROM physical_books')->fetch_assoc()['c'];
-$tot_members = (int)$db->query('SELECT COUNT(*) c FROM members')->fetch_assoc()['c'];
+$tot_members = (int)$db->query("SELECT COUNT(*) c FROM members WHERE approved = 1 AND is_active = 1 AND start_date <= CURDATE() AND end_date >= CURDATE()")->fetch_assoc()['c'];
 $tot_requests = (int)$db->query("SELECT COUNT(*) c FROM reading_requests WHERE status='Pending'")->fetch_assoc()['c'];
 $tot_prints = (int)$db->query("SELECT COUNT(*) c FROM print_requests WHERE status='Pending'")->fetch_assoc()['c'];
 $tot_lent = (int)$db->query("SELECT COUNT(*) c FROM lendings WHERE returned_at IS NULL")->fetch_assoc()['c'];
@@ -76,6 +76,28 @@ if ($exp_query) {
 <!-- KPI Highlight Cards Grid -->
 <div class="stats-grid stats-grid-3cols" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 25px;">
     <div class="stat-card">
+        <div class="stat-info">
+            <h4>E-Books Available</h4>
+            <p><?= $tot_ebooks ?></p>
+        </div>
+        <div class="stat-icon stat-green"><i class="fa-solid fa-file-pdf"></i></div>
+    </div>
+        <div class="stat-card">
+        <div class="stat-info">
+            <h4>Total E-Books Read</h4>
+            <p style="font-size:20px; color:var(--navy-dark); font-weight:700;"><?= $tot_ebooks_read ?></p>
+            <span style="font-size:11px; color:var(--text-muted);">Till Date</span>
+        </div>
+        <div class="stat-icon stat-green"><i class="fa-solid fa-book-open"></i></div>
+    </div>    
+        <div class="stat-card">
+        <div class="stat-info">
+            <h4>Active Members</h4>
+            <p><?= $tot_members ?></p>
+        </div>
+        <div class="stat-icon stat-orange"><i class="fa-solid fa-users"></i></div>
+    </div>
+<div class="stat-card">
         <div class="stat-info" style="flex:1;">
             <h4>Physical Books</h4>
             <div style="display:flex; align-items:baseline; gap:12px; margin-top:4px;">
@@ -86,44 +108,7 @@ if ($exp_query) {
         </div>
         <div class="stat-icon stat-blue"><i class="fa-solid fa-book"></i></div>
     </div>
-    <div class="stat-card">
-        <div class="stat-info">
-            <h4>E-Books Available</h4>
-            <p><?= $tot_ebooks ?></p>
-        </div>
-        <div class="stat-icon stat-green"><i class="fa-solid fa-file-pdf"></i></div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-info">
-            <h4>Active Members</h4>
-            <p><?= $tot_members ?></p>
-        </div>
-        <div class="stat-icon stat-orange"><i class="fa-solid fa-users"></i></div>
-    </div>
-    <!-- <div class="stat-card">
-        <div class="stat-info">
-            <h4>Overdue Fines</h4>
-            <p style="font-size:20px; color:var(--accent-red);">₹<?= number_style_format($tot_overdue_fines) ?></p>
-            <span style="font-size:11px; color:var(--text-muted);"><?= $tot_overdue_count ?> book(s) overdue</span>
-        </div>
-        <div class="stat-icon stat-red"><i class="fa-solid fa-clock"></i></div>
-    </div> -->
-    <div class="stat-card">
-        <div class="stat-info">
-            <h4>Pending Inbox</h4>
-            <p style="font-size:20px; color:var(--primary);"><?= $tot_requests + $tot_prints ?></p>
-            <span style="font-size:11px; color:var(--text-muted);"><?= $tot_requests ?> reading / <?= $tot_prints ?> print</span>
-        </div>
-        <div class="stat-icon stat-blue"><i class="fa-solid fa-inbox"></i></div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-info">
-            <h4>Total E-Books Read</h4>
-            <p style="font-size:20px; color:var(--navy-dark); font-weight:700;"><?= $tot_ebooks_read ?></p>
-            <span style="font-size:11px; color:var(--text-muted);">Till Date</span>
-        </div>
-        <div class="stat-icon stat-green"><i class="fa-solid fa-book-open"></i></div>
-    </div>
+
     <div class="stat-card">
         <div class="stat-info">
             <h4>Total Physical Books Lend</h4>
@@ -132,6 +117,17 @@ if ($exp_query) {
         </div>
         <div class="stat-icon stat-purple"><i class="fa-solid fa-hand-holding-hand"></i></div>
     </div>
+
+    <div class="stat-card">
+        <div class="stat-info">
+            <h4>Pending Inbox</h4>
+            <p style="font-size:20px; color:var(--primary);"><?= $tot_requests + $tot_prints ?></p>
+            <span style="font-size:11px; color:var(--text-muted);"><?= $tot_requests ?> reading / <?= $tot_prints ?> print</span>
+        </div>
+        <div class="stat-icon stat-blue"><i class="fa-solid fa-inbox"></i></div>
+    </div>
+
+
 </div>
 
 <!-- Beautiful Dynamic Tabbed Layout Control -->
