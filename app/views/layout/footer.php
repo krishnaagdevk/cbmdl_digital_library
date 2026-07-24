@@ -668,6 +668,32 @@
                 }
             }
         });
+
+        // Web Browser Storage Cleanup on Logout
+        (function() {
+            function purgeBrowserStorage() {
+                try {
+                    sessionStorage.clear();
+                    localStorage.clear();
+                } catch (e) {
+                    console.warn("Unable to purge web browser storage:", e);
+                }
+            }
+
+            // 1. Intercept clicks on all logout buttons/links
+            document.addEventListener('click', function(e) {
+                const logoutAnchor = e.target.closest('a[href*="action=logout"]');
+                if (logoutAnchor) {
+                    purgeBrowserStorage();
+                }
+            });
+
+            // 2. Check if current URL indicates a logout action or post-logout redirect
+            const query = window.location.search || '';
+            if (query.includes('action=logout') || query.includes('logged_out=1')) {
+                purgeBrowserStorage();
+            }
+        })();
     </script>
 </body>
 </html>

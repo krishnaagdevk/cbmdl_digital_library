@@ -76,7 +76,10 @@
                     <label for="admin_uid" style="font-size:12.5px; font-weight:600; margin-bottom:5px; display:block;"><i class="fa-solid fa-user"></i> User ID</label>
                     <input id="admin_uid" name="username" required placeholder="Librarian Username" style="padding:11px 14px; margin-bottom:12px; font-size:13.5px;">
                     
-                    <label for="admin_pwd" style="font-size:12.5px; font-weight:600; margin-bottom:5px; display:block;"><i class="fa-solid fa-key"></i> Password</label>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                        <label for="admin_pwd" style="font-size:12.5px; font-weight:600; margin:0;"><i class="fa-solid fa-key"></i> Password</label>
+                        <a href="admin-forgot-password" style="font-size:12px; color:var(--primary); font-weight:600; text-decoration:none;"><i class="fa-solid fa-unlock-keyhole"></i> Forgot Password?</a>
+                    </div>
                     <input id="admin_pwd" type="password" name="password" required placeholder="Enter password" maxlength="15" style="padding:11px 14px; margin-bottom:16px; font-size:13.5px;">
                     
                     <button style="width:100%; padding:13px; margin-top:4px; font-weight:600; font-size:14px;"><i class="fa-solid fa-shield-halved"></i> Verify & Authorize</button>
@@ -193,5 +196,11 @@
     }
 
     resetSlideTimer();
+
+    // Ensure web browser storage is clean on login page render
+    try {
+        sessionStorage.clear();
+        localStorage.clear();
+    } catch(e) {}
 })();
 </script>

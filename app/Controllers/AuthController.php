@@ -31,6 +31,88 @@ final class AuthController {
         go('admin-login');
     }
 
+    public function adminForgotPassword() {
+        if (check_login_lockout()) {
+            session_write_close();
+            go('?action=admin_forgot_password');
+        }
+
+        $username = trim($_POST['username'] ?? '');
+        $recoveryPin = trim($_POST['recovery_pin'] ?? '');
+        $newPassword = $_POST['new_password'] ?? '';
+        $confirmPassword = $_POST['confirm_password'] ?? '';
+
+        if (empty($username)) {
+            flash('⚠️ Please enter your Librarian Username ID.');
+            session_write_close();
+            go('?action=admin_forgot_password');
+        }
+
+        if (empty($recoveryPin)) {
+            flash('⚠️ Please enter your Master Security Recovery PIN.');
+            session_write_close();
+            go('?action=admin_forgot_password');
+        }
+
+        if (empty($newPassword) || strlen($newPassword) < 4) {
+            flash('⚠️ New password must be at least 4 characters long.');
+            session_write_close();
+            go('?action=admin_forgot_password');
+        }
+
+        if ($newPassword !== $confirmPassword) {
+            flash('⚠️ New password and confirm password do not match.');
+            session_write_close();
+            go('?action=admin_forgot_password');
+        }
+
+        $stmt = $this->db->prepare("SELECT * FROM admins WHERE username = ? LIMIT 1");
+        if (!$stmt) {
+            flash('⚠️ Database error looking up admin details.');
+            session_write_close();
+            go('?action=admin_forgot_password');
+        }
+
+        $stmt->bind_param("s", $username);
+        $stmt->execute();
+        $admin = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if (!$admin) {
+            log_admin_login($this->db, $username, 'Password Reset Failed (Invalid User)');
+            register_failed_attempt();
+            flash('⚠️ Invalid Librarian Username ID.');
+            session_write_close();
+            go('?action=admin_forgot_password');
+        }
+
+        $masterPin = get_admin_master_pin();
+        $dbPin = !empty($admin['recovery_pin']) ? $admin['recovery_pin'] : $masterPin;
+        $isVerified = (password_verify($recoveryPin, $dbPin) || $recoveryPin === $dbPin || $recoveryPin === $masterPin);
+
+        if ($isVerified) {
+            $hashed = password_hash($newPassword, PASSWORD_BCRYPT);
+            $updateStmt = $this->db->prepare("UPDATE admins SET password = ? WHERE id = ?");
+            if ($updateStmt) {
+                $updateStmt->bind_param("si", $hashed, $admin['id']);
+                $updateStmt->execute();
+                $updateStmt->close();
+            }
+
+            log_admin_login($this->db, $username, 'Password Reset Success');
+            clear_failed_attempts();
+            flash('✅ Admin password updated successfully! Please log in with your new password.');
+            session_write_close();
+            go('admin-login');
+        } else {
+            log_admin_login($this->db, $username, 'Password Reset Failed (Verification Mismatch)');
+            register_failed_attempt();
+            flash('⚠️ Verification Failed: Incorrect Master Recovery PIN or Security Answer.');
+            session_write_close();
+            go('?action=admin_forgot_password');
+        }
+    }
+
     public function memberLogin() {
         if (check_login_lockout()) {
             session_write_close();

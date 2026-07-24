@@ -23,6 +23,10 @@ if (is_file($envFile)) {
 
 define('BASE_URL', $_ENV['BASE_URL'] ?? '/cbmdl/');
 
+function get_admin_master_pin(): string {
+    return $_ENV['ADMIN_MASTER_PIN'] ?? getenv('ADMIN_MASTER_PIN') ?: '1953';
+}
+
 // Secure Session configurations
 if (session_status() === PHP_SESSION_NONE) {
     ini_set('session.use_only_cookies', 1);
@@ -41,6 +45,14 @@ if (session_status() === PHP_SESSION_NONE) {
     if (empty($_SESSION)) {
         session_regenerate_id(true);
     }
+}
+
+// Send strict No-Cache headers to prevent browser storage/history caching of session data
+if (!headers_sent()) {
+    header("Cache-Control: no-cache, no-store, must-revalidate, max-age=0");
+    header("Cache-Control: post-check=0, pre-check=0", false);
+    header("Pragma: no-cache");
+    header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
 }
 
 spl_autoload_register(function ($class) {
@@ -156,6 +168,24 @@ if ($resShift && $resShift->num_rows == 0) {
 $resGender = $db->query("SHOW COLUMNS FROM members LIKE 'gender'");
 if ($resGender && $resGender->num_rows == 0) {
     $db->query("ALTER TABLE members ADD COLUMN gender ENUM('Male', 'Female', 'Other') DEFAULT 'Male' AFTER name");
+}
+
+// Auto-migration check: admins table recovery columns
+$resAdminEmail = $db->query("SHOW COLUMNS FROM admins LIKE 'email'");
+if ($resAdminEmail && $resAdminEmail->num_rows == 0) {
+    @$db->query("ALTER TABLE admins ADD COLUMN email VARCHAR(150) NULL DEFAULT 'admin@cantonment.gov.in'");
+}
+$resAdminPin = $db->query("SHOW COLUMNS FROM admins LIKE 'recovery_pin'");
+if ($resAdminPin && $resAdminPin->num_rows == 0) {
+    @$db->query("ALTER TABLE admins ADD COLUMN recovery_pin VARCHAR(255) NULL DEFAULT '1953'");
+}
+$resAdminQ = $db->query("SHOW COLUMNS FROM admins LIKE 'security_question'");
+if ($resAdminQ && $resAdminQ->num_rows == 0) {
+    @$db->query("ALTER TABLE admins ADD COLUMN security_question VARCHAR(255) NULL DEFAULT 'What is the Cantonment Library establishment year?'");
+}
+$resAdminAns = $db->query("SHOW COLUMNS FROM admins LIKE 'security_answer'");
+if ($resAdminAns && $resAdminAns->num_rows == 0) {
+    @$db->query("ALTER TABLE admins ADD COLUMN security_answer VARCHAR(255) NULL DEFAULT '1953'");
 }
 
 // Auto-migration check: membership_history table

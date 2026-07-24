@@ -12,6 +12,8 @@ if (isset($_GET['action'])) {
     $action = 'member_login';
 } elseif ($pathRoute === 'admin-login') {
     $action = 'admin_login';
+} elseif ($pathRoute === 'admin-forgot-password') {
+    $action = 'admin_forgot_password';
 } else {
     $action = 'home';
 }
@@ -33,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // If already logged in, redirect away from login pages (GET requests)
-if (in_array($action, ['admin_login', 'member_login']) && $_SERVER['REQUEST_METHOD'] === 'GET') {
+if (in_array($action, ['admin_login', 'member_login', 'admin_forgot_password']) && $_SERVER['REQUEST_METHOD'] === 'GET') {
     if (admin()) {
         go('?action=admin');
     } elseif (member()) {
@@ -47,17 +49,39 @@ if ($action === 'logout') {
     if (member()) {
         expire_member_reading_requests($_SESSION['member'], $db);
     }
+    
+    // Clear all session array variables in memory
+    $_SESSION = array();
+
+    // Delete session cookie from browser storage
+    if (ini_get("session.use_cookies")) {
+        $params = session_get_cookie_params();
+        setcookie(session_name(), '', time() - 42000,
+            $params["path"], $params["domain"],
+            $params["secure"], $params["httponly"]
+        );
+    }
+
+    // Destroy session storage on server
     session_destroy();
+
+    // Start a fresh, clean session for flash message & CSRF token
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
+    session_regenerate_id(true);
+
     csrf_token(); // Re-initialize valid CSRF token in new session
     flash('Logged out successfully.');
-    go($was_admin ? 'admin-login' : 'member-login');
+    go(($was_admin ? 'admin-login' : 'member-login') . '&logged_out=1');
 }
 
 if ($action === 'admin_login' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     (new App\Controllers\AuthController($db))->adminLogin();
+}
+
+if ($action === 'process_admin_forgot_password' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    (new App\Controllers\AuthController($db))->adminForgotPassword();
 }
 
 if ($action === 'member_login' && $_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -152,7 +176,7 @@ if ($action === 'read_pdf') {
 }
 
 // 4. Role-based Navigation Guard
-if (!admin() && !member() && !in_array($action, ['home', 'admin_login', 'member_login'])) {
+if (!admin() && !member() && !in_array($action, ['home', 'admin_login', 'member_login', 'admin_forgot_password', 'process_admin_forgot_password'])) {
     go('index.php');
 }
 
@@ -1232,7 +1256,7 @@ if (admin()) {
         try {
             $ok = $stmt->execute();
             $stmt->close();
-            flash($ok ? 'Admin profile updated successfully.' : '⚠️ User ID already exists.');
+            flash($ok ? 'Librarian profile updated successfully.' : '⚠️ User ID already exists.');
         } catch (\mysqli_sql_exception $e) {
             flash('⚠️ User ID already exists in system.');
         }
@@ -2844,6 +2868,8 @@ require 'app/views/layout/header.php';
 
 if ($action === 'admin_login' || $action === 'member_login') {
     require 'app/views/login.php';
+} elseif ($action === 'admin_forgot_password') {
+    require 'app/views/admin_forgot_password.php';
 } elseif ($action === 'admin') {
     require 'app/views/admin.php';
 } elseif ($action === 'user') {
