@@ -32,7 +32,7 @@ if ($lookup !== '') {
             <div style="margin-top: 15px; padding: 15px; background: var(--bg-slate); border-radius: 10px; border:1px solid var(--border-color);">
                 <?php if ($looked): ?>
                     <?php
-                    $isExpired = strtotime($looked['end_date']) < time();
+                    $isExpired = $looked['end_date'] < date('Y-m-d');
                     if ($looked['is_active'] == 0) {
                         $statusBadge = '<span class="badge badge-red"><i class="fa-solid fa-circle-xmark"></i> Suspended / Inactive</span>';
                     } elseif ($isExpired) {

@@ -17,7 +17,7 @@ $meStmt->execute();
 $me = $meStmt->get_result()->fetch_assoc() ?: [];
 $meStmt->close();
 
-$isExpired = !empty($me['end_date']) && strtotime($me['end_date']) < strtotime(date('Y-m-d'));
+$isExpired = !empty($me['end_date']) && $me['end_date'] < date('Y-m-d');
 ?>
 
 <div class="card">
@@ -85,17 +85,22 @@ $isExpired = !empty($me['end_date']) && strtotime($me['end_date']) < strtotime(d
                 <?php else: ?>
                     <?php $count = 1; while ($row = $historyRes->fetch_assoc()): ?>
                         <?php 
-                        $isCurrent = (strtotime($row['start_date']) <= time() && strtotime($row['end_date']) >= time());
+                        $todayStr = date('Y-m-d');
+                        $startDate = $row['start_date'] ?? '';
+                        $endDate = $row['end_date'] ?? '';
+
+                        $isCurrent = (!empty($startDate) && !empty($endDate) && $startDate <= $todayStr && $endDate >= $todayStr);
+                        $isUpcoming = (!empty($startDate) && $startDate > $todayStr);
                         ?>
                         <tr style="border-bottom:1px solid var(--border-color); font-size:13px;">
                             <td style="padding:12px; color:var(--text-muted); font-weight:600;"><?= $count++ ?></td>
                             <td style="padding:12px;">
                                 <?php if ($row['action_type'] === 'Initial Joining'): ?>
-                                    <span class="badge badge-blue" style="font-size:11px; padding:4px 8px;"><i class="fa-solid fa-user-plus"></i> Initial Joining</span>
+                                    <span class="badge badge-blue" style="font-size:11px; padding:4px 10px; font-weight:600;"><i class="fa-solid fa-user-plus"></i> Initial Joining</span>
                                 <?php elseif ($row['action_type'] === 'Renewal'): ?>
-                                    <span class="badge badge-green" style="font-size:11px; padding:4px 8px;"><i class="fa-solid fa-rotate"></i> Renewal</span>
+                                    <span class="badge" style="font-size:11px; padding:4px 10px; font-weight:600; background:#dcfce7; color:#15803d; border:1px solid #bbf7d0;"><i class="fa-solid fa-rotate-right"></i> Renewal</span>
                                 <?php else: ?>
-                                    <span class="badge badge-orange" style="font-size:11px; padding:4px 8px;"><?= e($row['action_type']) ?></span>
+                                    <span class="badge badge-orange" style="font-size:11px; padding:4px 10px; font-weight:600;"><?= e($row['action_type']) ?></span>
                                 <?php endif; ?>
                             </td>
                             <td style="padding:12px;">
@@ -109,6 +114,8 @@ $isExpired = !empty($me['end_date']) && strtotime($me['end_date']) < strtotime(d
                                 <div style="margin-top:2px;">
                                     <?php if ($isCurrent): ?>
                                         <span class="badge badge-green" style="font-size:9px; padding:1px 5px;"><i class="fa-solid fa-check"></i> Current Term</span>
+                                    <?php elseif ($isUpcoming): ?>
+                                        <span class="badge badge-blue" style="font-size:9px; padding:1px 5px; background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd;"><i class="fa-solid fa-calendar-check"></i> Upcoming Term</span>
                                     <?php else: ?>
                                         <span class="badge badge-red" style="font-size:9px; padding:1px 5px;"><i class="fa-solid fa-clock"></i> Expired</span>
                                     <?php endif; ?>

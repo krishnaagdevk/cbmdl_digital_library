@@ -138,7 +138,7 @@ $pendingCount = $pendingCountRes ? $pendingCountRes->fetch_assoc()['c'] : 0;
                         <p><strong>Expiry Date:</strong> <?= date('d-m-Y', strtotime($selected['end_date'])) ?></p>
                         <p><strong>Payment ID:</strong> <?= e($selected['payment_id']) ?></p>
                         <?php 
-                            $isExpired = strtotime($selected['end_date']) < time();
+                            $isExpired = $selected['end_date'] < date('Y-m-d');
                             echo $isExpired 
                                 ? '<span class="badge badge-red" style="display:block; text-align:center; font-size:13px; padding:6px;"><i class="fa-solid fa-circle-exclamation"></i> Membership Expired</span>' 
                                 : '<span class="badge badge-green" style="display:block; text-align:center; font-size:13px; padding:6px;"><i class="fa-solid fa-circle-check"></i> Membership Active</span>';
@@ -269,7 +269,8 @@ $pendingCount = $pendingCountRes ? $pendingCountRes->fetch_assoc()['c'] : 0;
         <div>
             <div class="card">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                    <h3 style="margin:0;"><i class="fa-solid fa-users-viewfinder"></i> Member Catalog</h3>
+                    <h3 style="margin:0;"><i class="fa-solid fa-users-viewfinder"></i> Member Catalog (Latest 5)</h3>
+                    <a href="?action=admin&tab=view_members" class="btn" style="padding:4px 10px; font-size:12px; background:var(--navy-light);"><i class="fa-solid fa-list-check"></i> View All</a>
                 </div>
                 <div class="table-responsive">
                     <table id="membersTable">
@@ -285,9 +286,9 @@ $pendingCount = $pendingCountRes ? $pendingCountRes->fetch_assoc()['c'] : 0;
                         </thead>
                         <tbody>
                             <?php 
-                            $x = $db->query('SELECT * FROM members WHERE approved = 1 ORDER BY id DESC LIMIT 10');
+                            $x = $db->query('SELECT * FROM members WHERE approved = 1 ORDER BY id DESC LIMIT 5');
                             while($r = $x->fetch_assoc()) {
-                                $isExpired = strtotime($r['end_date']) < time();
+                                $isExpired = $r['end_date'] < date('Y-m-d');
                                 if ($r['is_active'] == 0) {
                                     $statusBadge = '<span class="badge badge-red" style="font-size:11px;"><i class="fa-solid fa-circle-xmark"></i> Suspended</span>';
                                 } elseif ($isExpired) {

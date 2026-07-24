@@ -14,6 +14,12 @@ final class Database {
 
         $connected = $this->tryConnect($host, $user, $pass, $name, $port);
 
+        // If host was localhost and failed, try 127.0.0.1 explicitly (resolves IPv6 ::1 vs IPv4 binding issue on Windows)
+        if (!$connected && ($host === 'localhost' || $host === '127.0.0.1')) {
+            $altHost = ($host === 'localhost') ? '127.0.0.1' : 'localhost';
+            $connected = $this->tryConnect($altHost, $user, $pass, $name, $port);
+        }
+
         // 1. If connection to database failed, try auto-creating database and importing schema
         if (!$connected) {
             $connected = $this->autoProvisionDatabase($host, $user, $pass, $name, $port);

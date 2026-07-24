@@ -81,7 +81,11 @@
                 'fa-sliders':'🧐',
                 'fa-users-rectangle':'🧾',
                 'fa-circle-plus':'➕',
-                'fa-list-check':'📋'
+                'fa-list-check':'📋',
+                'fa-box-archive':'💾',
+                'fa-database':'🗃️',
+                'fa-hard-drive':'💿',
+                'fa-calendar-check':'🔒'
             };
             
             document.querySelectorAll('i[class*="fa-"]').forEach(el => {

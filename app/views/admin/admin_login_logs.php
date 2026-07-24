@@ -10,6 +10,8 @@ if ($checkCount && (int)($checkCount->fetch_assoc()['c'] ?? 0) === 0) {
 
 $statusFilter = $_GET['status'] ?? 'all';
 $searchQuery = trim($_GET['search'] ?? '');
+$page = max(1, (int)($_GET['page'] ?? 1));
+$limit = max(5, min(100, (int)($_GET['limit'] ?? 20))); // Max 20 per page default
 
 $where = [];
 if ($statusFilter !== 'all') {
@@ -21,14 +23,22 @@ if ($searchQuery !== '') {
 }
 $whereSql = !empty($where) ? "WHERE " . implode(' AND ', $where) : "";
 
-$logsQuery = $db->query("SELECT * FROM admin_login_logs $whereSql ORDER BY id DESC LIMIT 100");
+// Count total matching logs
+$countRes = $db->query("SELECT COUNT(*) c FROM admin_login_logs $whereSql");
+$totalLogs = (int)($countRes ? ($countRes->fetch_assoc()['c'] ?? 0) : 0);
+
+$totalPages = max(1, (int)ceil($totalLogs / $limit));
+if ($page > $totalPages) $page = $totalPages;
+$offset = ($page - 1) * $limit;
+
+$logsQuery = $db->query("SELECT * FROM admin_login_logs $whereSql ORDER BY id DESC LIMIT $limit OFFSET $offset");
 ?>
 
 <div class="card" style="border-top: 4px solid var(--primary);">
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:20px; border-bottom:1px solid var(--border-color); padding-bottom:15px;">
         <div>
             <h3 style="margin:0; color:var(--navy-dark); display:flex; align-items:center; gap:8px;">
-                <i class="fa-solid fa-user-shield" style="color:var(--primary);"></i> Admin Login Audit Logs
+                <i class="fa-solid fa-user-shield" style="color:var(--primary);"></i> Admin Login Audit Logs (<?= $totalLogs ?> Entries)
             </h3>
             <p style="font-size:13px; color:var(--text-muted); margin:4px 0 0 0;">
                 Security audit trail of administrative portal login attempts and access events.
@@ -47,9 +57,19 @@ $logsQuery = $db->query("SELECT * FROM admin_login_logs $whereSql ORDER BY id DE
                 <option value="Failed Credentials" <?= $statusFilter === 'Failed Credentials' ? 'selected' : '' ?>>Failed Credentials</option>
             </select>
 
+            <select name="limit" onchange="this.form.submit()" style="margin:0; padding:6px 12px; font-size:12.5px; width:130px;" title="Entries Per Page">
+                <option value="10" <?= $limit == 10 ? 'selected' : '' ?>>10 Per Page</option>
+                <option value="20" <?= $limit == 20 ? 'selected' : '' ?>>20 Per Page</option>
+                <option value="50" <?= $limit == 50 ? 'selected' : '' ?>>50 Per Page</option>
+                <option value="100" <?= $limit == 100 ? 'selected' : '' ?>>100 Per Page</option>
+            </select>
+
             <button type="submit" class="btn btn-secondary" style="padding:6px 12px; font-size:12.5px; background:var(--bg-slate); border:1px solid var(--border-color); color:var(--text-dark);">
                 <i class="fa-solid fa-filter"></i> Filter
             </button>
+            <?php if ($searchQuery !== '' || $statusFilter !== 'all' || $limit != 20): ?>
+                <a href="?action=admin&tab=admin_login_logs" class="btn" style="padding:6px 12px; font-size:12.5px; background:var(--accent-orange); color:white;" title="Reset Filters"><i class="fa-solid fa-arrow-rotate-left"></i> Reset</a>
+            <?php endif; ?>
         </form>
     </div>
 
@@ -57,7 +77,7 @@ $logsQuery = $db->query("SELECT * FROM admin_login_logs $whereSql ORDER BY id DE
         <table>
             <thead>
                 <tr>
-                    <th style="width:60px;">ID</th>
+                    <th style="width:70px;">Sr.No.</th>
                     <th>Admin Username</th>
                     <th>IP Address</th>
                     <th>Attempt Status</th>
@@ -93,5 +113,46 @@ $logsQuery = $db->query("SELECT * FROM admin_login_logs $whereSql ORDER BY id DE
                 <?php endif; ?>
             </tbody>
         </table>
+    </div>
+
+    <!-- Always Visible Pagination Component -->
+    <?php $qSuffix = '&status=' . urlencode($statusFilter) . '&search=' . urlencode($searchQuery) . '&limit=' . $limit; ?>
+    <div class="pagination-container" style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; flex-wrap:wrap; gap:15px; border-top:1px solid var(--border-color); padding-top:15px;">
+        <div style="font-size:13px; color:var(--text-muted);">
+            <?php if ($totalLogs > 0): ?>
+                Showing <strong><?= $offset + 1 ?></strong> to <strong><?= min($offset + $limit, $totalLogs) ?></strong> of <strong><?= $totalLogs ?></strong> entries (Page <strong><?= $page ?></strong> of <strong><?= $totalPages ?></strong>)
+            <?php else: ?>
+                Showing <strong>0</strong> entries
+            <?php endif; ?>
+        </div>
+        <div class="pagination" style="display:flex; align-items:center; gap:6px;">
+            <?php if ($page > 1): ?>
+                <a href="?action=admin&tab=admin_login_logs&page=1<?= $qSuffix ?>" class="btn" style="padding:6px 10px; background:var(--bg-slate); color:var(--text-color); font-size:12px; display:inline-flex; align-items:center;" title="First Page"><i class="fa-solid fa-angles-left"></i></a>
+                <a href="?action=admin&tab=admin_login_logs&page=<?= $page - 1 ?><?= $qSuffix ?>" class="btn" style="padding:6px 10px; background:var(--bg-slate); color:var(--text-color); font-size:12px; display:inline-flex; align-items:center; gap:4px;" title="Previous Page"><i class="fa-solid fa-angle-left"></i> Prev</a>
+            <?php else: ?>
+                <span class="btn disabled" style="padding:6px 10px; background:var(--bg-slate); color:var(--text-muted); font-size:12px; cursor:not-allowed; opacity:0.6;"><i class="fa-solid fa-angles-left"></i></span>
+                <span class="btn disabled" style="padding:6px 10px; background:var(--bg-slate); color:var(--text-muted); font-size:12px; cursor:not-allowed; opacity:0.6;"><i class="fa-solid fa-angle-left"></i> Prev</span>
+            <?php endif; ?>
+
+            <?php 
+            $startP = max(1, $page - 2);
+            $endP = min($totalPages, $page + 2);
+            for ($i = $startP; $i <= $endP; $i++): 
+            ?>
+                <?php if ($i == $page): ?>
+                    <span class="btn" style="padding:6px 12px; background:var(--primary); color:white; font-size:12px; font-weight:700; border-radius:6px;"><?= $i ?></span>
+                <?php else: ?>
+                    <a href="?action=admin&tab=admin_login_logs&page=<?= $i ?><?= $qSuffix ?>" class="btn" style="padding:6px 12px; background:var(--bg-slate); color:var(--text-color); font-size:12px; border-radius:6px;"><?= $i ?></a>
+                <?php endif; ?>
+            <?php endfor; ?>
+
+            <?php if ($page < $totalPages): ?>
+                <a href="?action=admin&tab=admin_login_logs&page=<?= $page + 1 ?><?= $qSuffix ?>" class="btn" style="padding:6px 10px; background:var(--bg-slate); color:var(--text-color); font-size:12px; display:inline-flex; align-items:center; gap:4px;" title="Next Page">Next <i class="fa-solid fa-angle-right"></i></a>
+                <a href="?action=admin&tab=admin_login_logs&page=<?= $totalPages ?><?= $qSuffix ?>" class="btn" style="padding:6px 10px; background:var(--bg-slate); color:var(--text-color); font-size:12px; display:inline-flex; align-items:center;" title="Last Page"><i class="fa-solid fa-angles-right"></i></a>
+            <?php else: ?>
+                <span class="btn disabled" style="padding:6px 10px; background:var(--bg-slate); color:var(--text-muted); font-size:12px; cursor:not-allowed; opacity:0.6;">Next <i class="fa-solid fa-angle-right"></i></span>
+                <span class="btn disabled" style="padding:6px 10px; background:var(--bg-slate); color:var(--text-muted); font-size:12px; cursor:not-allowed; opacity:0.6;"><i class="fa-solid fa-angles-right"></i></span>
+            <?php endif; ?>
+        </div>
     </div>
 </div>

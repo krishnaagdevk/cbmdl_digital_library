@@ -81,7 +81,7 @@ if ($viewId) {
                     <p><strong>Expiry Date:</strong> <?= date('d-m-Y', strtotime($selected['end_date'])) ?></p>
                     <p><strong>Payment ID:</strong> <?= e($selected['payment_id']) ?></p>
                     <?php 
-                        $isExpired = strtotime($selected['end_date']) < time();
+                        $isExpired = $selected['end_date'] < date('Y-m-d');
                         if ($selected['is_active'] == 0) {
                             echo '<span class="badge badge-red" style="display:block; text-align:center; font-size:13px; padding:6px;"><i class="fa-solid fa-circle-xmark"></i> Membership Suspended/Inactive</span>';
                         } elseif ($isExpired) {
@@ -278,11 +278,11 @@ if ($viewId) {
                                     <td style="padding:10px; color:var(--text-muted);"><?= $hCount++ ?></td>
                                     <td style="padding:10px;">
                                         <?php if ($hRow['action_type'] === 'Initial Joining'): ?>
-                                            <span class="badge badge-blue" style="font-size:10px; padding:2px 6px;"><i class="fa-solid fa-user-plus"></i> Initial Joining</span>
+                                            <span class="badge badge-blue" style="font-size:10px; padding:3px 8px; font-weight:600;"><i class="fa-solid fa-user-plus"></i> Initial Joining</span>
                                         <?php elseif ($hRow['action_type'] === 'Renewal'): ?>
-                                            <span class="badge badge-green" style="font-size:10px; padding:2px 6px;"><i class="fa-solid fa-rotate"></i> Renewal</span>
+                                            <span class="badge" style="font-size:10px; padding:3px 8px; font-weight:600; background:#dcfce7; color:#15803d; border:1px solid #bbf7d0;"><i class="fa-solid fa-rotate-right"></i> Renewal</span>
                                         <?php else: ?>
-                                            <span class="badge badge-orange" style="font-size:10px; padding:2px 6px;"><?= e($hRow['action_type']) ?></span>
+                                            <span class="badge badge-orange" style="font-size:10px; padding:3px 8px; font-weight:600;"><?= e($hRow['action_type']) ?></span>
                                         <?php endif; ?>
                                     </td>
                                     <td style="padding:10px;">
@@ -369,7 +369,7 @@ if ($viewId) {
                         <i class="fa-solid fa-circle-check"></i>
                     </div>
                     <div>
-                        <span style="font-size:11px; font-weight:600; color:#15803d; text-transform:uppercase; display:block;">Active Members</span>
+                        <span style="font-size:11px; font-weight:600; color:#15803d; text-transform:uppercase; display:block;">Active Memberships</span>
                         <h3 style="margin:2px 0 0 0; font-size:20px; font-weight:700; color:#166534;"><?= $total_active ?></h3>
                     </div>
                 </div>
@@ -381,7 +381,7 @@ if ($viewId) {
                         <i class="fa-solid fa-circle-xmark"></i>
                     </div>
                     <div>
-                        <span style="font-size:11px; font-weight:600; color:#b91c1c; text-transform:uppercase; display:block;">Inactive Members</span>
+                        <span style="font-size:11px; font-weight:600; color:#b91c1c; text-transform:uppercase; display:block;">Inactive Membersships</span>
                         <h3 style="margin:2px 0 0 0; font-size:20px; font-weight:700; color:#991b1b;"><?= $total_inactive ?></h3>
                     </div>
                 </div>
@@ -393,7 +393,7 @@ if ($viewId) {
                         <i class="fa-solid fa-circle-exclamation"></i>
                     </div>
                     <div>
-                        <span style="font-size:11px; font-weight:600; color:#b45309; text-transform:uppercase; display:block;">Expired Members</span>
+                        <span style="font-size:11px; font-weight:600; color:#b45309; text-transform:uppercase; display:block;">Expired Memberships</span>
                         <h3 style="margin:2px 0 0 0; font-size:20px; font-weight:700; color:#92400e;"><?= $total_expired ?></h3>
                     </div>
                 </div>
@@ -448,7 +448,7 @@ if ($viewId) {
                         $gText = e($r['gender'] ?? 'Male');
                         if ($gText === 'Other') $gText = 'Others';
                         
-                        $isExpired = strtotime($r['end_date']) < time();
+                        $isExpired = $r['end_date'] < date('Y-m-d');
                         if ($r['is_active'] == 0) {
                             $statusBadge = '<span class="badge badge-red" style="font-size:11px;"><i class="fa-solid fa-circle-xmark"></i> Inactive</span>';
                         } elseif ($isExpired) {

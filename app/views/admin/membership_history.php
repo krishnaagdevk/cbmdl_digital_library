@@ -184,7 +184,12 @@ $totalJoins = (int)$db->query("SELECT COUNT(*) c FROM membership_history WHERE a
                 <?php else: ?>
                     <?php $count = $p_offset + 1; while ($row = $historyRes->fetch_assoc()): ?>
                         <?php 
-                        $isCurrent = (strtotime($row['start_date']) <= time() && strtotime($row['end_date']) >= time());
+                        $todayStr = date('Y-m-d');
+                        $startDate = $row['start_date'] ?? '';
+                        $endDate = $row['end_date'] ?? '';
+
+                        $isCurrent = (!empty($startDate) && !empty($endDate) && $startDate <= $todayStr && $endDate >= $todayStr);
+                        $isUpcoming = (!empty($startDate) && $startDate > $todayStr);
                         ?>
                         <tr style="border-bottom:1px solid var(--border-color); font-size:13px; font-family:inherit;">
                             <td style="padding:12px; color:var(--text-muted); font-weight:600;"><?= $count++ ?></td>
@@ -213,6 +218,8 @@ $totalJoins = (int)$db->query("SELECT COUNT(*) c FROM membership_history WHERE a
                                 <div style="margin-top:3px;">
                                     <?php if ($isCurrent): ?>
                                         <span class="badge badge-green" style="font-size:10px; padding:2px 6px;"><i class="fa-solid fa-circle-check"></i> Active Period</span>
+                                    <?php elseif ($isUpcoming): ?>
+                                        <span class="badge badge-blue" style="font-size:10px; padding:2px 6px; background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd;"><i class="fa-solid fa-calendar-check"></i> Upcoming Period</span>
                                     <?php else: ?>
                                         <span class="badge badge-red" style="font-size:10px; padding:2px 6px;"><i class="fa-solid fa-clock"></i> Expired Period</span>
                                     <?php endif; ?>
@@ -226,13 +233,13 @@ $totalJoins = (int)$db->query("SELECT COUNT(*) c FROM membership_history WHERE a
                             </td>
                             <td style="padding:12px;">
                                 <?php if ($row['action_type'] === 'Initial Joining'): ?>
-                                    <span class="badge badge-blue" style="font-size:11px; padding:4px 8px;"><i class="fa-solid fa-user-plus"></i> Initial Joining</span>
+                                    <span class="badge badge-blue" style="font-size:11px; padding:4px 10px; font-weight:600;"><i class="fa-solid fa-user-plus"></i> Initial Joining</span>
                                 <?php elseif ($row['action_type'] === 'Renewal'): ?>
-                                    <span class="badge badge-green" style="font-size:11px; padding:4px 8px;"><i class="fa-solid fa-rotate"></i> Renewal</span>
+                                    <span class="badge" style="font-size:11px; padding:4px 10px; font-weight:600; background:#dcfce7; color:#15803d; border:1px solid #bbf7d0;"><i class="fa-solid fa-rotate-right"></i> Renewal</span>
                                 <?php elseif ($row['action_type'] === 'Plan Switch'): ?>
-                                    <span class="badge badge-orange" style="font-size:11px; padding:4px 8px;"><i class="fa-solid fa-right-left"></i> Plan Switch</span>
+                                    <span class="badge badge-orange" style="font-size:11px; padding:4px 10px; font-weight:600;"><i class="fa-solid fa-right-left"></i> Plan Switch</span>
                                 <?php else: ?>
-                                    <span class="badge badge-secondary" style="font-size:11px; padding:4px 8px;"><i class="fa-solid fa-pen-to-square"></i> <?= e($row['action_type']) ?></span>
+                                    <span class="badge badge-secondary" style="font-size:11px; padding:4px 10px; font-weight:600;"><i class="fa-solid fa-pen-to-square"></i> <?= e($row['action_type']) ?></span>
                                 <?php endif; ?>
                             </td>
                             <td style="padding:12px; color:var(--text-muted); font-size:12px;">

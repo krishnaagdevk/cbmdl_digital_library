@@ -72,7 +72,7 @@ if (!defined('BASE_URL')) exit;
             <p style="margin: 0 0 6px 0; font-size:12px; color:var(--text-muted); text-transform:uppercase; font-weight:600;"><i class="fa-solid fa-circle-info"></i> Account Status</p>
             <p style="margin:0; font-size:15px; font-weight:700;">
                 <?php 
-                $isExpired = strtotime($me['end_date']) < time();
+                $isExpired = $me['end_date'] < date('Y-m-d');
                 if ($me['is_active'] == 0) {
                     echo '<span class="badge badge-red" style="font-size:12px; padding:4px 8px;"><i class="fa-solid fa-circle-xmark"></i> Suspended / Inactive</span>';
                 } elseif ($isExpired) {

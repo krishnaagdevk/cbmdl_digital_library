@@ -61,10 +61,13 @@ if ($search !== '') {
 // Expiring soon check
 $expiringSoon = false;
 $daysLeft = 0;
-$diff = strtotime($me['end_date']) - time();
-if ($diff > 0 && $diff <= 7 * 24 * 60 * 60) {
-    $expiringSoon = true;
-    $daysLeft = (int)ceil($diff / (24 * 60 * 60));
+$todayStr = date('Y-m-d');
+if (!empty($me['end_date']) && $me['end_date'] >= $todayStr) {
+    $diffDays = (int)round((strtotime($me['end_date']) - strtotime($todayStr)) / 86400);
+    if ($diffDays <= 7) {
+        $expiringSoon = true;
+        $daysLeft = $diffDays;
+    }
 }
 // Fetch active or pending e-book reading requests for member sidebar
 $active_reading_requests = [];
