@@ -255,7 +255,7 @@ class BackupService {
             }
 
             $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
-            if (!in_array($ext, ['sql', 'zip'])) {
+            if ($ext !== 'sql') {
                 continue;
             }
 

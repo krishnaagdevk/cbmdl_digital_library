@@ -20,7 +20,7 @@ final class Member {
         $member = $result->fetch_assoc();
         $stmt->close();
 
-        if (!$member || $member['is_active'] == 0 || $member['end_date'] < date('Y-m-d')) {
+        if (!$member || !active_member($member, $this->db)) {
             return null;
         }
 

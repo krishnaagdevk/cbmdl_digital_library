@@ -1,6 +1,6 @@
 -- ========================================================
 -- Cantonment Digital Library (MCB) Database Backup
--- Generated On: 2026-07-23 19:06:35 IST
+-- Generated On: 2026-07-24 16:32:35 IST
 -- Database Host: localhost via TCP/IP
 -- PHP Version: 8.2.12
 -- ========================================================
@@ -22,7 +22,7 @@ CREATE TABLE `admin_login_logs` (
   `status` varchar(30) NOT NULL DEFAULT 'Success',
   `login_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=20 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- Dumping data for table `admin_login_logs`
 INSERT INTO `admin_login_logs` VALUES("1", "admin", "192.168.1.7", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36", "Success", "2026-07-23 17:11:24");
@@ -30,6 +30,20 @@ INSERT INTO `admin_login_logs` VALUES("2", "admin", "::1", "Mozilla/5.0 (Linux; 
 INSERT INTO `admin_login_logs` VALUES("3", "admin", "192.168.1.7", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36", "Success", "2026-07-23 17:58:32");
 INSERT INTO `admin_login_logs` VALUES("4", "admin", "192.168.1.7", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36", "Success", "2026-07-23 18:30:02");
 INSERT INTO `admin_login_logs` VALUES("5", "admin", "::1", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36", "Failed Credentials", "2026-07-23 19:04:09");
+INSERT INTO `admin_login_logs` VALUES("6", "admin", "::1", "Browser/System", "Password Reset Success", "2026-07-23 21:16:48");
+INSERT INTO `admin_login_logs` VALUES("7", "admin", "::1", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36", "Password Reset Success", "2026-07-24 10:33:56");
+INSERT INTO `admin_login_logs` VALUES("8", "admin", "::1", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36", "Success", "2026-07-24 10:34:04");
+INSERT INTO `admin_login_logs` VALUES("9", "admin", "::1", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36", "Failed Credentials", "2026-07-24 10:34:29");
+INSERT INTO `admin_login_logs` VALUES("10", "admin", "::1", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36", "Success", "2026-07-24 10:34:34");
+INSERT INTO `admin_login_logs` VALUES("11", "admin", "::1", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36", "Failed Credentials", "2026-07-24 10:37:14");
+INSERT INTO `admin_login_logs` VALUES("12", "admin", "::1", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36", "Success", "2026-07-24 10:37:18");
+INSERT INTO `admin_login_logs` VALUES("13", "admin", "::1", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36", "Success", "2026-07-24 10:37:47");
+INSERT INTO `admin_login_logs` VALUES("14", "admin", "::1", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36", "Success", "2026-07-24 11:45:49");
+INSERT INTO `admin_login_logs` VALUES("15", "admin", "::1", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36", "Success", "2026-07-24 11:54:09");
+INSERT INTO `admin_login_logs` VALUES("16", "admin", "192.168.1.7", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36", "Password Reset Failed (Verific", "2026-07-24 15:18:08");
+INSERT INTO `admin_login_logs` VALUES("17", "admin", "192.168.1.7", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36", "Password Reset Success", "2026-07-24 15:18:45");
+INSERT INTO `admin_login_logs` VALUES("18", "admin", "192.168.1.7", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36", "Success", "2026-07-24 15:18:53");
+INSERT INTO `admin_login_logs` VALUES("19", "admin", "::1", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36", "Success", "2026-07-24 15:27:52");
 
 -- --------------------------------------------------------
 -- Table structure for table `admins`
@@ -39,12 +53,16 @@ CREATE TABLE `admins` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `username` varchar(60) NOT NULL,
   `password` varchar(255) NOT NULL,
+  `email` varchar(150) DEFAULT 'admin@cantonment.gov.in',
+  `recovery_pin` varchar(255) DEFAULT '1953',
+  `security_question` varchar(255) DEFAULT 'What is the Cantonment Library establishment year?',
+  `security_answer` varchar(255) DEFAULT '1953',
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Dumping data for table `admins`
-INSERT INTO `admins` VALUES("1", "admin", "$2y$10$GG5Ae.SxYw09wz/28b50SebtV84lpEi7NKqN7w2kU.UhLCRclGW0O");
+INSERT INTO `admins` VALUES("1", "admin", "$2y$10$nqqjmgOR3bo1xoY61uUvi.WaSGgLZN0OPoTdHm8PPNJonbxGbtcYy", "admin@cantonment.gov.in", "1953", "What is the Cantonment Library establishment year?", "1953");
 
 -- --------------------------------------------------------
 -- Table structure for table `categories`
@@ -56,7 +74,7 @@ CREATE TABLE `categories` (
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `name` (`name`)
-) ENGINE=InnoDB AUTO_INCREMENT=23 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=25 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Dumping data for table `categories`
 INSERT INTO `categories` VALUES("1", "UPSC", "2026-07-13 07:53:32");
@@ -75,6 +93,8 @@ INSERT INTO `categories` VALUES("18", "Technology", "2026-07-22 10:46:57");
 INSERT INTO `categories` VALUES("19", "Mathematics", "2026-07-22 10:46:57");
 INSERT INTO `categories` VALUES("21", "Business", "2026-07-23 13:15:43");
 INSERT INTO `categories` VALUES("22", "Physical Books", "2026-07-23 18:41:12");
+INSERT INTO `categories` VALUES("23", "Health Insurance", "2026-07-24 16:22:51");
+INSERT INTO `categories` VALUES("24", "Term Life", "2026-07-24 16:22:59");
 
 -- --------------------------------------------------------
 -- Table structure for table `ebooks`
@@ -91,7 +111,7 @@ CREATE TABLE `ebooks` (
   UNIQUE KEY `idx_category_title` (`category_id`,`title`),
   KEY `category_id` (`category_id`),
   CONSTRAINT `ebooks_ibfk_1` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Dumping data for table `ebooks`
 INSERT INTO `ebooks` VALUES("1", "1", "upsc title 1", "pcs, ias, ides", "book_6a544d39ab335.pdf", "2026-07-13 07:58:09");
@@ -101,6 +121,8 @@ INSERT INTO `ebooks` VALUES("10", "8", "1 gb", "gbh", "book_6a61da0f318bd.pdf", 
 INSERT INTO `ebooks` VALUES("11", "8", "yyyy", "aaa", "book_6a606671122e8.pdf", "2026-07-22 12:12:57");
 INSERT INTO `ebooks` VALUES("12", "8", "hhhh", "sss", "book_6a6066c59853a.pdf", "2026-07-22 12:14:36");
 INSERT INTO `ebooks` VALUES("13", "2", "SI Police Parikshaaa", "vivkek", "book_6a61cc2f740ab.pdf", "2026-07-22 15:43:25");
+INSERT INTO `ebooks` VALUES("14", "23", "Care Supreme", "unlimited auto restore", "book_6a63443d51495.pdf", "2026-07-24 16:23:49");
+INSERT INTO `ebooks` VALUES("15", "23", "Care Ultimate", "unlimited bonus, one claim unlimited", "book_6a63448269e92.pdf", "2026-07-24 16:24:58");
 
 -- --------------------------------------------------------
 -- Table structure for table `hold_requests`
@@ -164,7 +186,7 @@ CREATE TABLE `member_login_logs` (
   `status` varchar(50) NOT NULL DEFAULT 'Success',
   `login_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- Dumping data for table `member_login_logs`
 INSERT INTO `member_login_logs` VALUES("1", "10", "7840887205", "Pradeep kumar", "Morning", "192.168.1.7", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36", "Success", "2026-07-23 17:11:27");
@@ -176,6 +198,12 @@ INSERT INTO `member_login_logs` VALUES("6", "3", "8218772351", "Kunal", "Both", 
 INSERT INTO `member_login_logs` VALUES("7", "9", "9411067157", "Anju Garg", "Evening", "192.168.1.8", "Mozilla/5.0 (iPad; CPU OS 26_5_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/150.0.7871.51 Mobile/15E148 Safari/604.1", "Success", "2026-07-23 18:58:46");
 INSERT INTO `member_login_logs` VALUES("8", "1", "9457421088", "Abhinav Garg", "Morning", "192.168.1.7", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36", "Shift Restricted", "2026-07-23 19:00:49");
 INSERT INTO `member_login_logs` VALUES("9", "10", "7840887205", "Pradeep kumar", "Evening", "192.168.1.7", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36", "Success", "2026-07-23 19:01:36");
+INSERT INTO `member_login_logs` VALUES("10", "3", "8218772351", "Kunal", "Both", "::1", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36", "Shift Restricted", "2026-07-23 21:14:35");
+INSERT INTO `member_login_logs` VALUES("11", "10", "7840887205", "Pradeep kumar", "Evening", "::1", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36", "Shift Restricted", "2026-07-23 21:14:43");
+INSERT INTO `member_login_logs` VALUES("12", "3", "8218772351", "Kunal", "Both", "::1", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36", "Success", "2026-07-24 10:14:58");
+INSERT INTO `member_login_logs` VALUES("13", "3", "8218772351", "Kunal", "Both", "::1", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36", "Success", "2026-07-24 12:03:16");
+INSERT INTO `member_login_logs` VALUES("14", "2", "9058721088", "Vivek Kumar", "Morning", "192.168.1.8", "Mozilla/5.0 (iPad; CPU OS 26_5_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/150.0.7871.51 Mobile/15E148 Safari/604.1", "Success", "2026-07-24 15:26:20");
+INSERT INTO `member_login_logs` VALUES("15", "2", "9058721088", "Vivek Kumar", "Morning", "192.168.1.8", "Mozilla/5.0 (iPad; CPU OS 26_5_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/150.0.7871.51 Mobile/15E148 Safari/604.1", "Upcoming Membership", "2026-07-24 15:35:37");
 
 -- --------------------------------------------------------
 -- Table structure for table `members`

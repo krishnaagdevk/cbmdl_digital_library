@@ -1,6 +1,6 @@
 <?php
 /**
- * System Backups & Restore Control Center
+ * System Backups Control Center
  * Cantonment Digital Library (MCB)
  */
 
@@ -21,14 +21,12 @@ $latestBackup = !empty($backups) ? $backups[0]['created_at'] : 'None';
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:15px; margin-bottom:24px; padding-bottom:18px; border-bottom:2px solid #f1f5f9;">
         <div>
             <h2 style="margin:0; font-size:22px; font-weight:800; color:var(--navy-dark); display:flex; align-items:center; gap:10px;">
-                <i class="fa-solid fa-box-archive" style="color:var(--primary);"></i> Market-Standard System Backups & Restore
+                <i class="fa-solid fa-database" style="color:var(--primary);"></i> Market-Standard Database SQL Backups
             </h2>
             <p style="margin:4px 0 0 0; font-size:13px; color:var(--text-muted);">
-                Generate, download, schedule, and safely restore database dumps & complete system archives.
+                Generate, download, and schedule database SQL dump backups.
             </p>
         </div>
-        
-        
     </div>
 
     <!-- Quick Metrics Row -->
@@ -39,7 +37,7 @@ $latestBackup = !empty($backups) ? $backups[0]['created_at'] : 'None';
                 <i class="fa-solid fa-database"></i>
             </div>
             <div>
-                <span style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#1e40af; display:block;">Total Backups</span>
+                <span style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#1e40af; display:block;">Total SQL Backups</span>
                 <strong style="font-size:20px; color:#1e3a8a;"><?= count($backups) ?> Files</strong>
             </div>
         </div>
@@ -88,20 +86,6 @@ $latestBackup = !empty($backups) ? $backups[0]['created_at'] : 'None';
                 </button>
             </form>
 
-            <!-- Form 2: Generate Full System Backup -->
-            <form method="post" action="?action=generate_full_backup" style="margin:0;" onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').innerHTML='<i class=\"fa-solid fa-spinner fa-spin\"></i> Compressing...';">
-                <?= csrf_input() ?>
-                <button class="btn" style="background:#059669; color:white; padding:10px 18px; font-weight:600; font-size:13.5px; border-radius:8px; display:flex; align-items:center; gap:8px;">
-                    <i class="fa-solid fa-file-zipper"></i> Create Full System Backup (.zip)
-                </button>
-            </form>
-
-        </div>
-
-        <div>
-            <button class="btn" onclick="document.getElementById('uploadRestoreModal').style.display='flex';" style="background:var(--navy-dark); color:white; padding:10px 18px; font-weight:600; font-size:13.5px; border-radius:8px; display:flex; align-items:center; gap:8px;">
-                <i class="fa-solid fa-upload"></i> Restore DB from External SQL File
-            </button>
         </div>
     </div>
 
@@ -114,7 +98,7 @@ $latestBackup = !empty($backups) ? $backups[0]['created_at'] : 'None';
         <div style="text-align:center; padding:40px 20px; background:#f8fafc; border-radius:12px; border:2px dashed #cbd5e1; color:var(--text-muted);">
             <i class="fa-solid fa-box-open" style="font-size:38px; color:#cbd5e1; margin-bottom:10px; display:block;"></i>
             <strong style="font-size:15px; color:var(--navy-dark); display:block; margin-bottom:4px;">No Backup Files Found</strong>
-            <p style="margin:0; font-size:13px;">Click the buttons above to generate a fresh database dump or complete system backup archive.</p>
+            <p style="margin:0; font-size:13px;">Click the button above to generate a fresh database SQL backup dump.</p>
         </div>
     <?php else: ?>
         <div style="overflow-x:auto;">
@@ -136,26 +120,16 @@ $latestBackup = !empty($backups) ? $backups[0]['created_at'] : 'None';
                             <!-- Filename & Icon -->
                             <td style="padding:12px 14px; font-weight:600; color:var(--navy-dark);">
                                 <div style="display:flex; align-items:center; gap:10px;">
-                                    <?php if ($b['extension'] === 'sql'): ?>
-                                        <i class="fa-solid fa-file-code" style="font-size:18px; color:var(--primary);"></i>
-                                    <?php else: ?>
-                                        <i class="fa-solid fa-file-zipper" style="font-size:18px; color:#059669;"></i>
-                                    <?php endif; ?>
+                                    <i class="fa-solid fa-file-code" style="font-size:18px; color:var(--primary);"></i>
                                     <span style="font-family:monospace; font-size:12.5px;"><?= htmlspecialchars($b['filename']) ?></span>
                                 </div>
                             </td>
 
                             <!-- Type Badge -->
                             <td style="padding:12px 14px;">
-                                <?php if ($b['extension'] === 'sql'): ?>
-                                    <span style="background:#eff6ff; color:#1d4ed8; padding:4px 10px; border-radius:6px; font-size:11px; font-weight:700; border:1px solid #bfdbfe;">
-                                        Database SQL
-                                    </span>
-                                <?php else: ?>
-                                    <span style="background:#ecfdf5; color:#047857; padding:4px 10px; border-radius:6px; font-size:11px; font-weight:700; border:1px solid #a7f3d0;">
-                                        Full System ZIP
-                                    </span>
-                                <?php endif; ?>
+                                <span style="background:#eff6ff; color:#1d4ed8; padding:4px 10px; border-radius:6px; font-size:11px; font-weight:700; border:1px solid #bfdbfe;">
+                                    Database SQL
+                                </span>
                             </td>
 
                             <!-- Size -->
@@ -189,17 +163,6 @@ $latestBackup = !empty($backups) ? $backups[0]['created_at'] : 'None';
                                         <i class="fa-solid fa-download"></i> Download
                                     </a>
 
-                                    <!-- Restore Button (SQL only) -->
-                                    <?php if ($b['extension'] === 'sql'): ?>
-                                        <form method="post" action="?action=restore_backup" style="margin:0; display:inline;" onsubmit="return confirm('⚠️ WARNING: Restoring this database backup will overwrite existing database records!\n\nAn automatic pre-restore safety snapshot will be created before applying this restore.\n\nAre you sure you want to proceed?');">
-                                            <?= csrf_input() ?>
-                                            <input type="hidden" name="file" value="<?= htmlspecialchars($b['filename']) ?>">
-                                            <button type="submit" class="btn" style="background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; padding:6px 10px; font-size:12px; border-radius:6px; font-weight:600;" title="Restore Database">
-                                                <i class="fa-solid fa-rotate-left"></i> Restore
-                                            </button>
-                                        </form>
-                                    <?php endif; ?>
-
                                     <!-- Delete Button -->
                                     <form method="post" action="?action=delete_backup" style="margin:0; display:inline;" onsubmit="return confirm('Delete backup file \'<?= htmlspecialchars($b['filename']) ?>\'? This action cannot be undone.');">
                                         <?= csrf_input() ?>
@@ -219,50 +182,5 @@ $latestBackup = !empty($backups) ? $backups[0]['created_at'] : 'None';
         </div>
     <?php endif; ?>
 
-    <!-- CLI / Automated Cron Instructions Info Box -->
-    <div style="margin-top:30px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:18px;">
-        <h4 style="margin:0 0 8px 0; font-size:14px; color:var(--navy-dark); font-weight:700; display:flex; align-items:center; gap:8px;">
-            <i class="fa-solid fa-terminal" style="color:var(--primary);"></i> Automated CLI & Windows Task Scheduler Cron
-        </h4>
-        <p style="margin:0 0 10px 0; font-size:12.5px; color:var(--text-muted);">
-            To schedule automatic daily backups at midnight without manually clicking in the dashboard, configure a scheduled task running the following command:
-        </p>
-        <div style="background:#0f172a; color:#f8fafc; padding:10px 14px; border-radius:8px; font-family:monospace; font-size:12.5px; overflow-x:auto;">
-            C:\xampp\php\php.exe C:\xampp\htdocs\cbmdl\cron\backup.php full
-        </div>
-    </div>
 
-</div>
-
-<!-- Upload & Restore External File Modal -->
-<div id="uploadRestoreModal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.6); backdrop-filter:blur(3px); z-index:99999; align-items:center; justify-content:center; padding:20px;">
-    <div style="background:white; border-radius:16px; max-width:520px; width:100%; padding:24px; box-shadow:0 20px 40px rgba(0,0,0,0.2); position:relative; border:1px solid var(--border-color);">
-        <button type="button" onclick="document.getElementById('uploadRestoreModal').style.display='none';" style="position:absolute; top:16px; right:16px; background:none; border:none; font-size:22px; cursor:pointer; color:var(--text-muted);">&times;</button>
-
-        <h3 style="margin:0 0 8px 0; font-size:18px; color:var(--navy-dark); font-weight:800; display:flex; align-items:center; gap:8px;">
-            <i class="fa-solid fa-upload" style="color:var(--primary);"></i> Restore Database from SQL File
-        </h3>
-        <p style="margin:0 0 18px 0; font-size:13px; color:var(--text-muted);">
-            Upload a valid <code>.sql</code> backup dump file to restore the system database.
-        </p>
-
-        <form method="post" action="?action=restore_backup" enctype="multipart/form-data" onsubmit="return confirm('⚠️ Are you sure you want to restore the database from this uploaded file?\n\nAn automatic safety snapshot will be created before restoration.');">
-            <?= csrf_input() ?>
-            
-            <div style="margin-bottom:18px;">
-                <label style="display:block; font-size:12.5px; font-weight:700; color:var(--navy-dark); margin-bottom:6px;">Select .sql Backup File</label>
-                <input type="file" name="backup_file" accept=".sql" required style="width:100%; padding:10px; border:1px solid var(--border-color); border-radius:8px; font-size:13px; background:#f8fafc;">
-            </div>
-
-            <div style="background:#fff7ed; border:1px solid #fed7aa; border-radius:10px; padding:12px; margin-bottom:20px; font-size:12px; color:#9a3412;">
-                <strong style="display:block; margin-bottom:2px;"><i class="fa-solid fa-circle-exclamation"></i> Safety First Assurance:</strong>
-                System will automatically take a pre-restore safety snapshot before applying the file. You can rollback anytime.
-            </div>
-
-            <div style="display:flex; align-items:center; justify-content:flex-end; gap:10px;">
-                <button type="button" onclick="document.getElementById('uploadRestoreModal').style.display='none';" class="btn" style="background:#e2e8f0; color:#334155; padding:10px 16px; border-radius:8px; font-weight:600;">Cancel</button>
-                <button type="submit" class="btn" style="background:var(--accent-red); color:white; padding:10px 20px; border-radius:8px; font-weight:600;"><i class="fa-solid fa-rotate-left"></i> Start Restoration</button>
-            </div>
-        </form>
-    </div>
 </div>

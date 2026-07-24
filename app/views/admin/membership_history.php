@@ -125,34 +125,32 @@ $totalJoins = (int)$db->query("SELECT COUNT(*) c FROM membership_history WHERE a
 <!-- Search & Filter Controls -->
 <div class="card" style="margin-bottom:25px;">
     <h3 style="margin-top:0; margin-bottom:15px; font-family:inherit; font-size:16px;"><i class="fa-solid fa-filter"></i> Filter Membership History</h3>
-    <form method="get" action="" class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px; align-items:end;">
+    <form method="get" action="" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:15px; align-items:end;">
         <input type="hidden" name="action" value="admin">
         <input type="hidden" name="tab" value="membership_history">
         
         <div>
             <label for="hist_search" style="font-size:12px; font-weight:600; color:var(--text-muted); margin-bottom:6px; display:block; font-family:inherit;">Search Member / ID / Payment UTR</label>
             <div style="position:relative;">
-                <input id="hist_search" type="text" name="q" value="<?= e($search) ?>" placeholder="Search member name, ID, Payment ID..." style="width:100%; padding-left:35px; height:42px; border-radius:8px; font-family:inherit; font-size:13px; border:1px solid var(--border-color);">
+                <input id="hist_search" type="text" name="q" value="<?= e($search) ?>" placeholder="Search member name, ID, Payment ID..." style="width:100%; padding-left:35px; height:42px; border-radius:8px; font-family:inherit; font-size:13px; border:1px solid var(--border-color); margin:0; box-sizing:border-box;">
                 <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted);"></i>
             </div>
         </div>
 
         <div>
             <label for="hist_type" style="font-size:12px; font-weight:600; color:var(--text-muted); margin-bottom:6px; display:block; font-family:inherit;">Action Type</label>
-            <select id="hist_type" name="type" style="width:100%; height:42px; border-radius:8px; font-family:inherit; font-size:13px; border:1px solid var(--border-color);">
+            <select id="hist_type" name="type" style="width:100%; height:42px; border-radius:8px; font-family:inherit; font-size:13px; border:1px solid var(--border-color); margin:0; padding:0 12px; box-sizing:border-box; background:var(--bg-card); color:var(--navy-dark);">
                 <option value="">All Action Types</option>
                 <option value="Initial Joining" <?= $action_filter === 'Initial Joining' ? 'selected' : '' ?>>Initial Joining</option>
                 <option value="Renewal" <?= $action_filter === 'Renewal' ? 'selected' : '' ?>>Renewal</option>
-                <option value="Plan Switch" <?= $action_filter === 'Plan Switch' ? 'selected' : '' ?>>Plan Switch</option>
-                <option value="Manual Adjustment" <?= $action_filter === 'Manual Adjustment' ? 'selected' : '' ?>>Manual Adjustment</option>
             </select>
         </div>
 
         <div>
-            <label style="visibility:hidden; margin-bottom:6px; display:block;">Action</label>
+            <label style="visibility:hidden; margin-bottom:6px; display:block; font-size:12px; font-family:inherit;">Actions</label>
             <div style="display:flex; gap:8px;">
-                <button type="submit" class="btn" style="flex:1; height:42px; font-family:inherit; font-size:13px; font-weight:600; display:inline-flex; align-items:center; justify-content:center; gap:6px; border-radius:8px; cursor:pointer;"><i class="fa-solid fa-magnifying-glass"></i> Filter</button>
-                <a href="?action=admin&tab=membership_history" class="btn btn-secondary" style="height:42px; padding:0 16px; font-family:inherit; font-size:13px; font-weight:600; display:inline-flex; align-items:center; justify-content:center; gap:6px; background:var(--bg-slate); color:var(--text-color); border:1px solid var(--border-color); text-decoration:none; border-radius:8px;"><i class="fa-solid fa-rotate-left"></i> Reset</a>
+                <button type="submit" class="btn" style="flex:1; height:42px; padding:0 20px; font-family:inherit; font-size:13px; font-weight:600; display:inline-flex; align-items:center; justify-content:center; gap:6px; border-radius:8px; cursor:pointer; margin:0; box-sizing:border-box;"><i class="fa-solid fa-filter"></i> Filter</button>
+                <a href="?action=admin&tab=membership_history" class="btn btn-secondary" style="height:42px; padding:0 16px; font-family:inherit; font-size:13px; font-weight:600; display:inline-flex; align-items:center; justify-content:center; gap:6px; background:var(--bg-slate); color:var(--text-color); border:1px solid var(--border-color); text-decoration:none; border-radius:8px; margin:0; box-sizing:border-box;"><i class="fa-solid fa-rotate-left"></i> Reset</a>
             </div>
         </div>
     </form>

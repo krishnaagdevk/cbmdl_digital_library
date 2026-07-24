@@ -33,10 +33,13 @@ if ($lookup !== '') {
                 <?php if ($looked): ?>
                     <?php
                     $isExpired = $looked['end_date'] < date('Y-m-d');
+                    $isUpcoming = !empty($looked['start_date']) && $looked['start_date'] > date('Y-m-d');
                     if ($looked['is_active'] == 0) {
                         $statusBadge = '<span class="badge badge-red"><i class="fa-solid fa-circle-xmark"></i> Suspended / Inactive</span>';
                     } elseif ($isExpired) {
                         $statusBadge = '<span class="badge badge-red"><i class="fa-solid fa-circle-exclamation"></i> Expired</span>';
+                    } elseif ($isUpcoming) {
+                        $statusBadge = '<span class="badge badge-blue" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd;"><i class="fa-solid fa-calendar-check"></i> Upcoming Period</span>';
                     } else {
                         $statusBadge = '<span class="badge badge-green"><i class="fa-solid fa-circle-check"></i> Active</span>';
                     }

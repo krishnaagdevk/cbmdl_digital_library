@@ -382,6 +382,7 @@
         .stat-green { background: #ecfdf5; color: var(--accent-green); }
         .stat-red { background: #fef2f2; color: var(--accent-red); }
         .stat-orange { background: #fffbeb; color: var(--accent-orange); }
+        .stat-purple { background: #f3e8ff; color: #8b5cf6; }
 
         /* Login Layout & Elements */
         .login-container {

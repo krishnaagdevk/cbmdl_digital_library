@@ -387,7 +387,36 @@ function membership_end($duration, $startDate = null){
     $baseTime = $startDate ? strtotime($startDate) : time();
     return date('Y-m-d', strtotime($span, $baseTime)); 
 }
-function active_member($m){ return $m && $m['end_date'] >= date('Y-m-d') && (!isset($m['is_active']) || $m['is_active'] == 1); }
+function active_member($m, $db = null, $date = null) {
+    if (!$m || (isset($m['is_active']) && $m['is_active'] == 0) || (isset($m['approved']) && $m['approved'] == 0)) {
+        return false;
+    }
+    $targetDate = $date ?? date('Y-m-d');
+    
+    // Check if member's start_date and end_date cover targetDate
+    if (!empty($m['start_date']) && !empty($m['end_date'])) {
+        if ($m['start_date'] <= $targetDate && $m['end_date'] >= $targetDate) {
+            return true;
+        }
+    }
+    
+    // Fallback check on membership_history table for any pass active on targetDate
+    if ($db && !empty($m['id'])) {
+        $stmt = $db->prepare("SELECT id FROM membership_history WHERE member_id = ? AND start_date <= ? AND end_date >= ? LIMIT 1");
+        if ($stmt) {
+            $stmt->bind_param("iss", $m['id'], $targetDate, $targetDate);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            $hasValidPass = ($res && $res->num_rows > 0);
+            $stmt->close();
+            if ($hasValidPass) {
+                return true;
+            }
+        }
+    }
+    
+    return false;
+}
 
 if (!function_exists('number_style_format')) {
     function number_style_format($n) {

@@ -15,15 +15,10 @@ use App\Services\BackupService;
 try {
     $backupService = new BackupService($db);
 
-    $type = $argv[1] ?? ($_GET['type'] ?? 'full');
+    $type = 'db';
 
-    echo "[" . date('Y-m-d H:i:s') . "] Starting MCB Digital Library Backup ({$type})...\n";
-
-    if ($type === 'db') {
-        $result = $backupService->createDatabaseBackup();
-    } else {
-        $result = $backupService->createFullSystemBackup();
-    }
+    echo "[" . date('Y-m-d H:i:s') . "] Starting MCB Digital Library Database SQL Backup...\n";
+    $result = $backupService->createDatabaseBackup();
 
     echo "[" . date('Y-m-d H:i:s') . "] SUCCESS: Created " . $result['filename'] . " (" . $result['size_formatted'] . ")\n";
     echo "SHA-256 Checksum: " . $result['checksum'] . "\n";

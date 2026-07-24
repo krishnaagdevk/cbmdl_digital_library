@@ -62,14 +62,14 @@ if (typeof window.toggleSidebarSubmenu !== 'function') {
                 <a href="?action=admin&tab=active_plans" class="<?= ($tab === 'active_plans' || $tab === 'plans') ? 'active' : '' ?>">
                     <i class="fa-solid fa-list-check"></i> Active Membership Plans
                 </a>
-                <a href="?action=admin&tab=create_plan" class="<?= $tab === 'create_plan' ? 'active' : '' ?>">
+                <!-- <a href="?action=admin&tab=create_plan" class="<?= $tab === 'create_plan' ? 'active' : '' ?>">
                     <i class="fa-solid fa-circle-plus"></i> Create New Membership Plans
-                </a>
-                <a href="?action=admin&tab=shift_timings" class="<?= $tab === 'shift_timings' ? 'active' : '' ?>">
+                </a> -->
+                <!-- <a href="?action=admin&tab=shift_timings" class="<?= $tab === 'shift_timings' ? 'active' : '' ?>">
                     <i class="fa-solid fa-clock"></i> Library Shift Timings
-                </a>
+                </a> -->
                 <a href="?action=admin&tab=login_window" class="<?= $tab === 'login_window' ? 'active' : '' ?>">
-                    <i class="fa-solid fa-sliders"></i> Login Window Master Control
+                    <i class="fa-solid fa-sliders"></i> Shift Timings
                 </a>
                 <a href="?action=admin&tab=admin_login_logs" class="<?= $tab === 'admin_login_logs' ? 'active' : '' ?>">
                     <i class="fa-solid fa-user-shield"></i> Admin Login Logs

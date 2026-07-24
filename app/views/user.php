@@ -10,9 +10,13 @@ $stmt->execute();
 $me = $stmt->get_result()->fetch_assoc();
 $stmt->close();
 
-if (!$me || $me['is_active'] == 0 || $me['end_date'] < date('Y-m-d')) {
+if (!$me || !active_member($me, $db)) {
     unset($_SESSION['member']);
-    flash('Your membership has expired or has been suspended. Please contact the librarian.');
+    if (!empty($me['start_date']) && $me['start_date'] > date('Y-m-d')) {
+        flash('⚠️ Your membership is not active today. Your upcoming pass starts on ' . date('d M Y', strtotime($me['start_date'])) . '.');
+    } else {
+        flash('Your membership has expired or has been suspended. Please contact the librarian.');
+    }
     go('member-login');
 }
 

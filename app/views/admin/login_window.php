@@ -74,11 +74,6 @@ $now_fmt = date('h:i A');
                         <strong style="color:var(--primary);"><?= $mCount ?> Active Members</strong>
                     </div>
                 </div>
-
-                <div style="border-top:1px solid var(--border-color); padding-top:10px; margin-top:10px; display:flex; justify-content:space-between; align-items:center;">
-                    <span style="font-size:11px; color:var(--text-muted);">Enforcement Status</span>
-                    <span style="font-size:11px; font-weight:600; color:var(--accent-green);"><i class="fa-solid fa-shield-halved"></i> Strictly Enforced</span>
-                </div>
             </div>
         <?php 
             endwhile;
@@ -98,7 +93,7 @@ $now_fmt = date('h:i A');
             </div>
         </div>
         <a href="?action=admin&tab=shift_timings" class="btn" style="padding:8px 16px; font-size:13px; text-decoration:none; display:inline-flex; align-items:center; gap:6px; font-weight:600;">
-            <i class="fa-solid fa-clock"></i> Configure Shift Timings
+            <i class="fa-solid fa-clock"></i> Add New Shift Timings
         </a>
     </div>
 </div>

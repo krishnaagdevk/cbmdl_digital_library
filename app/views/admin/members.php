@@ -289,10 +289,13 @@ $pendingCount = $pendingCountRes ? $pendingCountRes->fetch_assoc()['c'] : 0;
                             $x = $db->query('SELECT * FROM members WHERE approved = 1 ORDER BY id DESC LIMIT 5');
                             while($r = $x->fetch_assoc()) {
                                 $isExpired = $r['end_date'] < date('Y-m-d');
+                                $isUpcoming = !empty($r['start_date']) && $r['start_date'] > date('Y-m-d');
                                 if ($r['is_active'] == 0) {
                                     $statusBadge = '<span class="badge badge-red" style="font-size:11px;"><i class="fa-solid fa-circle-xmark"></i> Suspended</span>';
                                 } elseif ($isExpired) {
                                     $statusBadge = '<span class="badge badge-red" style="font-size:11px;"><i class="fa-solid fa-circle-exclamation"></i> Expired</span>';
+                                } elseif ($isUpcoming) {
+                                    $statusBadge = '<span class="badge badge-blue" style="font-size:11px; background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd;"><i class="fa-solid fa-calendar-check"></i> Upcoming</span>';
                                 } else {
                                     $statusBadge = '<span class="badge badge-green" style="font-size:11px;"><i class="fa-solid fa-circle-check"></i> Active</span>';
                                 }

@@ -107,7 +107,7 @@ final class AuthController {
         } else {
             log_admin_login($this->db, $username, 'Password Reset Failed (Verification Mismatch)');
             register_failed_attempt();
-            flash('⚠️ Verification Failed: Incorrect Master Recovery PIN or Security Answer.');
+            flash('⚠️ Verification Failed: Incorrect Master Recovery PIN');
             session_write_close();
             go('?action=admin_forgot_password');
         }
@@ -162,9 +162,15 @@ final class AuthController {
                         session_write_close();
                         go('member-login');
                     }
-                    if ($member['end_date'] < date('Y-m-d')) {
-                        log_member_login($this->db, $mobile, $member['id'], $member['name'], $mShift, 'Membership Expired');
-                        flash('⚠️ Your membership has expired. Kindly contact the librarian.');
+                    $today = date('Y-m-d');
+                    if (!active_member($member, $this->db, $today)) {
+                        if (!empty($member['start_date']) && $member['start_date'] > $today) {
+                            log_member_login($this->db, $mobile, $member['id'], $member['name'], $mShift, 'Upcoming Membership');
+                            flash('⚠️ Your membership is not active today. Your upcoming pass starts on ' . date('d M Y', strtotime($member['start_date'])) . '.');
+                        } else {
+                            log_member_login($this->db, $mobile, $member['id'], $member['name'], $mShift, 'Membership Expired');
+                            flash('⚠️ Your membership has expired. Kindly contact the librarian.');
+                        }
                         session_write_close();
                         go('member-login');
                     }

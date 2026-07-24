@@ -145,7 +145,7 @@ $query_str = "SELECT r.*, m.name, m.membership_id, e.title FROM reading_requests
                             if ($hasStarted) {
                                 echo '<span style="font-size:12px; color:var(--accent-green); font-weight:700;"><i class="fa-solid fa-circle-check"></i> Completed Reading (' . date('d-m-Y h:i A', strtotime($r['expires_at'])) . ')</span>';
                             } else {
-                                echo '<span style="font-size:12px; color:#ef4444; font-weight:600;"><i class="fa-solid fa-clock-rotate-left"></i> Session Expired (Unused)</span>';
+                                echo '<span style="font-size:12px; color:#ef4444; font-weight:600;"><i class="fa-solid fa-clock-rotate-left"></i> Session Expired (Unread)</span>';
                             }
                         } else {
                             echo '<span style="font-size:12px; color:var(--accent-red); font-weight:600;"><i class="fa-solid fa-circle-xmark"></i> Permission Denied</span>';

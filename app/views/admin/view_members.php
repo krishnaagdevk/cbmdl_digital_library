@@ -326,19 +326,19 @@ if ($viewId) {
 <?php else: ?>
     <?php
     // Fetch stats
-    $total_active = (int)$db->query("SELECT COUNT(*) c FROM members WHERE approved = 1 AND is_active = 1 AND end_date >= CURDATE()")->fetch_assoc()['c'];
+    $total_active = (int)$db->query("SELECT COUNT(*) c FROM members WHERE approved = 1 AND is_active = 1 AND start_date <= CURDATE() AND end_date >= CURDATE()")->fetch_assoc()['c'];
     $total_inactive = (int)$db->query("SELECT COUNT(*) c FROM members WHERE approved = 1 AND is_active = 0")->fetch_assoc()['c'];
-    $total_expired = (int)$db->query("SELECT COUNT(*) c FROM members WHERE approved = 1 AND is_active = 1 AND end_date < CURDATE()")->fetch_assoc()['c'];
+    $total_expired = (int)$db->query("SELECT COUNT(*) c FROM members WHERE approved = 1 AND is_active = 1 AND (end_date < CURDATE() OR start_date > CURDATE())")->fetch_assoc()['c'];
     
     // Status Filter logic
     $status_filter = $_GET['status_filter'] ?? 'all';
     $whereClause = "approved = 1";
     if ($status_filter === 'active') {
-        $whereClause .= " AND is_active = 1 AND end_date >= CURDATE()";
+        $whereClause .= " AND is_active = 1 AND start_date <= CURDATE() AND end_date >= CURDATE()";
     } elseif ($status_filter === 'inactive') {
         $whereClause .= " AND is_active = 0";
     } elseif ($status_filter === 'expired') {
-        $whereClause .= " AND is_active = 1 AND end_date < CURDATE()";
+        $whereClause .= " AND is_active = 1 AND (end_date < CURDATE() OR start_date > CURDATE())";
     }
 
     // Sort logic
@@ -449,10 +449,13 @@ if ($viewId) {
                         if ($gText === 'Other') $gText = 'Others';
                         
                         $isExpired = $r['end_date'] < date('Y-m-d');
+                        $isUpcoming = !empty($r['start_date']) && $r['start_date'] > date('Y-m-d');
                         if ($r['is_active'] == 0) {
                             $statusBadge = '<span class="badge badge-red" style="font-size:11px;"><i class="fa-solid fa-circle-xmark"></i> Inactive</span>';
                         } elseif ($isExpired) {
                             $statusBadge = '<span class="badge badge-red" style="font-size:11px;"><i class="fa-solid fa-circle-exclamation"></i> Expired</span>';
+                        } elseif ($isUpcoming) {
+                            $statusBadge = '<span class="badge badge-blue" style="font-size:11px; background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd;"><i class="fa-solid fa-calendar-check"></i> Upcoming</span>';
                         } else {
                             $statusBadge = '<span class="badge badge-green" style="font-size:11px;"><i class="fa-solid fa-circle-check"></i> Active</span>';
                         }

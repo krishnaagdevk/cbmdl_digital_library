@@ -12,6 +12,10 @@ $tot_prints = (int)$db->query("SELECT COUNT(*) c FROM print_requests WHERE statu
 $tot_lent = (int)$db->query("SELECT COUNT(*) c FROM lendings WHERE returned_at IS NULL")->fetch_assoc()['c'];
 $avail_physical = max(0, $tot_physical - $tot_lent);
 
+// Additional stats till date
+$tot_ebooks_read = (int)$db->query("SELECT COUNT(*) c FROM reading_requests WHERE approved_at IS NOT NULL OR status IN ('Approved', 'Expired')")->fetch_assoc()['c'];
+$tot_physical_lend_till_date = (int)$db->query("SELECT COUNT(*) c FROM lendings")->fetch_assoc()['c'];
+
 // Calculate overdue lendings count & total fine accumulated
 $overdue_query = $db->query("SELECT due_date, returned_at FROM lendings WHERE returned_at IS NULL");
 $tot_overdue_count = 0;
@@ -112,14 +116,21 @@ if ($exp_query) {
         </div>
         <div class="stat-icon stat-blue"><i class="fa-solid fa-inbox"></i></div>
     </div>
-    <!-- Feature 4: Expiring Members KPI Card -->
-    <div class="stat-card" style="border-left: 4px solid var(--accent-orange); cursor: pointer;" onclick="switchDashboardTab('inbox');">
+    <div class="stat-card">
         <div class="stat-info">
-            <h4>Expiring Membership<br> (15 days)</h4>
-            <p style="font-size:20px; color:var(--accent-orange);"><?= $expiring_15_days_count ?></p>
-            <span style="font-size:11px; color:var(--text-muted);">Membership renewals</span>
+            <h4>Total E-Books Read</h4>
+            <p style="font-size:20px; color:var(--navy-dark); font-weight:700;"><?= $tot_ebooks_read ?></p>
+            <span style="font-size:11px; color:var(--text-muted);">Till Date</span>
         </div>
-        <div class="stat-icon" style="background: rgba(245, 158, 11, 0.1); color: var(--accent-orange); border-radius: 50%; width: 45px; height: 45px; display: flex; align-items: center; justify-content: center;"><i class="fa-solid fa-hourglass-half"></i></div>
+        <div class="stat-icon stat-green"><i class="fa-solid fa-book-open"></i></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-info">
+            <h4>Total Physical Books Lend</h4>
+            <p style="font-size:20px; color:var(--navy-dark); font-weight:700;"><?= $tot_physical_lend_till_date ?></p>
+            <span style="font-size:11px; color:var(--text-muted);">Till Date</span>
+        </div>
+        <div class="stat-icon stat-purple"><i class="fa-solid fa-hand-holding-hand"></i></div>
     </div>
 </div>
 
