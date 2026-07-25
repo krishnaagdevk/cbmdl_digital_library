@@ -173,8 +173,8 @@
             registerLiveFilter('viewMembersFilter', 'viewMembersTable');
             registerLiveFilter('lendingFilterInput', 'lendingLogTable');
 
-            // 5. Client-Side Table Pagination
-            const tablesToPaginate = ['ebooksTable', 'physicalTable', 'membersTable', 'viewMembersTable', 'lendingLogTable', 'requestsTable', 'printRequestsTable'];
+            // 5. Client-Side Table Pagination (Disabled as tables use server-side SQL pagination)
+            const tablesToPaginate = [];
             tablesToPaginate.forEach(id => {
                 paginateTable(id, 10);
             });

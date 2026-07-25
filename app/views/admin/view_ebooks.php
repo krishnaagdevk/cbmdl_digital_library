@@ -156,16 +156,17 @@ $stmt->close();
 
                 <!-- Page numbers (smart sliding window) -->
                 <?php 
-                $start_e = max(1, $e_page - 2);
-                $end_e = min($total_pages, $e_page + 2);
-                for($i = $start_e; $i <= $end_e; $i++): 
+                $pages_to_show = get_smart_pagination_items($e_page, $total_pages);
+                foreach ($pages_to_show as $p_item): 
                 ?>
-                    <?php if ($i == $e_page): ?>
-                        <span class="btn" style="padding:6px 12px; background:var(--primary); color:white; font-size:12px; font-weight:700; border-radius:6px;"><?= $i ?></span>
+                    <?php if ($p_item === '...'): ?>
+                        <span style="padding:6px 8px; color:var(--text-muted); font-size:12px; font-weight:700;">...</span>
+                    <?php elseif ($p_item == $e_page): ?>
+                        <span class="btn" style="padding:6px 12px; background:var(--primary); color:white; font-size:12px; font-weight:700; border-radius:6px;"><?= $p_item ?></span>
                     <?php else: ?>
-                        <a href="?action=admin&tab=view_ebooks&e_page=<?= $i ?><?= $query_suffix ?>" class="btn" style="padding:6px 12px; background:var(--bg-slate); color:var(--text-color); font-size:12px; border-radius:6px;"><?= $i ?></a>
+                        <a href="?action=admin&tab=view_ebooks&e_page=<?= $p_item ?><?= $query_suffix ?>" class="btn" style="padding:6px 12px; background:var(--bg-slate); color:var(--text-color); font-size:12px; border-radius:6px; text-decoration:none;"><?= $p_item ?></a>
                     <?php endif; ?>
-                <?php endfor; ?>
+                <?php endforeach; ?>
 
                 <!-- Next Page Button -->
                 <?php if ($e_page < $total_pages): ?>

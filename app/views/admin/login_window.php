@@ -35,23 +35,38 @@ $now_fmt = date('h:i A');
                 $sStart = date('h:i A', strtotime($sf['start_time']));
                 $sEnd = date('h:i A', strtotime($sf['end_time']));
                 
-                // Count active members assigned to this shift
-                $mCountStmt = $db->prepare("SELECT COUNT(*) c FROM members WHERE shift = ? AND approved = 1 AND is_active = 1");
-                $mCount = 0;
+                // Count valid and expired members assigned to this shift
+                $mCountStmt = $db->prepare("SELECT 
+                    SUM(CASE WHEN start_date <= CURDATE() AND end_date >= CURDATE() THEN 1 ELSE 0 END) as valid_cnt,
+                    SUM(CASE WHEN end_date < CURDATE() OR start_date > CURDATE() THEN 1 ELSE 0 END) as expired_cnt
+                    FROM members WHERE shift = ? AND approved = 1 AND is_active = 1");
+                $validCount = 0;
+                $expiredCount = 0;
                 if ($mCountStmt) {
                     $mCountStmt->bind_param("s", $sName);
                     $mCountStmt->execute();
-                    $mCount = (int)($mCountStmt->get_result()->fetch_assoc()['c'] ?? 0);
+                    $rowCounts = $mCountStmt->get_result()->fetch_assoc();
+                    $validCount = (int)($rowCounts['valid_cnt'] ?? 0);
+                    $expiredCount = (int)($rowCounts['expired_cnt'] ?? 0);
                     $mCountStmt->close();
                 }
 
                 // Check if shift is active right now
                 $is_active_now = is_member_within_shift_time($sName, $db);
+
+                $shift_emojis = [
+                    'Morning'  => '🌅',
+                    'Evening'  => '🌆',
+                    'Full Day' => '☀️',
+                    'Night'    => '🌙',
+                    'Both'     => '⏱️'
+                ];
+                $sEmoji = $shift_emojis[$sName] ?? '🕒';
         ?>
             <div style="background:var(--card-bg); border:1px solid var(--border-color); border-radius:12px; padding:16px; box-shadow:0 4px 12px rgba(0,0,0,0.02); position:relative; overflow:hidden;">
                 <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
                     <span style="font-weight:700; font-size:15px; color:var(--navy-dark); display:flex; align-items:center; gap:6px;">
-                        <i class="fa-solid fa-sun" style="color:<?= $is_active_now ? 'var(--accent-orange)' : 'var(--text-muted)' ?>;"></i> <?= e($sName) ?> Shift
+                        <span style="font-size:18px;"><?= $sEmoji ?></span> <?= e($sName) ?> Shift
                     </span>
                     <?php if ($is_active_now): ?>
                         <span class="badge badge-green" style="font-size:10px; padding:3px 8px;"><i class="fa-solid fa-circle-play"></i> Active Window Now</span>
@@ -69,9 +84,18 @@ $now_fmt = date('h:i A');
                         <span style="color:var(--text-muted);">Window End:</span>
                         <strong><?= $sEnd ?></strong>
                     </div>
-                    <div style="display:flex; justify-content:space-between;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
                         <span style="color:var(--text-muted);">Assigned Members:</span>
-                        <strong style="color:var(--primary);"><?= $mCount ?> Active Members</strong>
+                        <div style="text-align:right;">
+                            <a href="?action=admin&tab=view_members&shift_filter=<?= urlencode($sName) ?>&status_filter=active" style="text-decoration:none;">
+                                <strong style="color:var(--accent-green);"><?= $validCount ?> Valid Members</strong>
+                            </a>
+                            <?php if ($expiredCount > 0): ?>
+                                <a href="?action=admin&tab=view_members&shift_filter=<?= urlencode($sName) ?>&status_filter=expired" style="text-decoration:none;">
+                                    <span style="font-size:11px; color:var(--accent-orange); font-weight:600; margin-left:4px;">(<?= $expiredCount ?> Expired)</span>
+                                </a>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 </div>
             </div>

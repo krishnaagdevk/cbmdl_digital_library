@@ -4,6 +4,8 @@ if (!defined('BASE_URL')) exit;
 
 $status_filter = $_GET['status_filter'] ?? 'All';
 $search = trim($_GET['search'] ?? '');
+$from_date = $_GET['from_date'] ?? date('Y-m-01');
+$to_date = $_GET['to_date'] ?? date('Y-m-t');
 
 $where_clauses = [];
 if ($status_filter === 'Pending') {
@@ -23,12 +25,19 @@ if ($search !== '') {
     $where_clauses[] = "(m.name LIKE '%$search_escaped%' OR m.membership_id LIKE '%$search_escaped%' OR e.title LIKE '%$search_escaped%')";
 }
 
+if ($from_date !== '') {
+    $where_clauses[] = "r.requested_at >= '" . $db->real_escape_string($from_date) . " 00:00:00'";
+}
+if ($to_date !== '') {
+    $where_clauses[] = "r.requested_at <= '" . $db->real_escape_string($to_date) . " 23:59:59'";
+}
+
 $where_sql = '';
 if (count($where_clauses) > 0) {
     $where_sql = ' WHERE ' . implode(' AND ', $where_clauses);
 }
 
-$p_limit = 10;
+$p_limit = max(5, min(200, (int)($_GET['p_limit'] ?? 10)));
 $p_page = max(1, (int)($_GET['p_page'] ?? 1));
 
 $cnt_query_str = "SELECT COUNT(*) c FROM reading_requests r JOIN members m ON m.id = r.member_id JOIN ebooks e ON e.id = r.ebook_id $where_sql";
@@ -41,7 +50,7 @@ $query_str = "SELECT r.*, m.name, m.membership_id, e.title FROM reading_requests
 
 <div class="card" style="margin-bottom: 25px;">
     <h3><i class="fa-solid fa-filter"></i>Filter</h3>
-    <form method="get" class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+    <form method="get" class="grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px;">
         <input type="hidden" name="action" value="admin">
         <input type="hidden" name="tab" value="requests">
         
@@ -60,6 +69,16 @@ $query_str = "SELECT r.*, m.name, m.membership_id, e.title FROM reading_requests
                 <option value="Expired" <?= $status_filter === 'Expired' ? 'selected' : '' ?>>Session Expired Only</option>
                 <option value="Rejected" <?= $status_filter === 'Rejected' ? 'selected' : '' ?>>Permission Denied Only</option>
             </select>
+        </div>
+
+        <div>
+            <label for="req_from_date">From Date</label>
+            <input type="date" id="req_from_date" name="from_date" value="<?= e($from_date) ?>">
+        </div>
+        
+        <div>
+            <label for="req_to_date">To Date</label>
+            <input type="date" id="req_to_date" name="to_date" value="<?= e($to_date) ?>">
         </div>
         
         <div>
@@ -160,17 +179,38 @@ $query_str = "SELECT r.*, m.name, m.membership_id, e.title FROM reading_requests
     </div>
 
     <!-- Premium Pagination Component -->
-    <?php if ($total_pages > 1): ?>
+    <?php if ($total_items > 0): ?>
         <?php
         $qs = $_GET;
         unset($qs['p_page']);
         $qs_str = http_build_query($qs);
         $qs_str = $qs_str ? '&' . $qs_str : '';
+
+        // Generate smart page list with ellipses
+        $pages_to_show = get_smart_pagination_items($p_page, $total_pages);
         ?>
         <div class="pagination-container" style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; flex-wrap:wrap; gap:15px; border-top:1px solid var(--border-color); padding-top:15px;">
-            <div style="font-size:13px; color:var(--text-muted);">
-                Showing <strong><?= $p_offset + 1 ?></strong> to <strong><?= min($p_offset + $p_limit, $total_items) ?></strong> of <strong><?= $total_items ?></strong> requests
+            <div style="display:flex; align-items:center; gap:15px; flex-wrap:wrap;">
+                <div style="font-size:13px; color:var(--text-muted);">
+                    Showing <strong><?= $p_offset + 1 ?></strong> to <strong><?= min($p_offset + $p_limit, $total_items) ?></strong> of <strong><?= $total_items ?></strong> requests
+                </div>
+                <div style="display:inline-flex; align-items:center; gap:6px; font-size:13px; color:var(--text-muted);">
+                    <span>Per page:</span>
+                    <select onchange="window.location.href=this.value;" style="padding:4px 8px; font-size:12px; border-radius:6px; border:1px solid var(--border-color); background:var(--card-bg, #fff); color:var(--text-color); cursor:pointer; font-weight:600;">
+                        <?php foreach ([10, 25, 50, 100, 200] as $lim): ?>
+                            <?php
+                            $lim_qs = $_GET;
+                            $lim_qs['p_limit'] = $lim;
+                            $lim_qs['p_page'] = 1;
+                            $lim_url = '?' . http_build_query($lim_qs);
+                            ?>
+                            <option value="<?= e($lim_url) ?>" <?= $p_limit == $lim ? 'selected' : '' ?>><?= $lim ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
             </div>
+
+            <?php if ($total_pages > 1): ?>
             <div class="pagination" style="display:flex; align-items:center; gap:6px;">
                 <?php if ($p_page > 1): ?>
                     <a href="?p_page=1<?= $qs_str ?>" class="btn" style="padding:6px 10px; background:var(--bg-slate); color:var(--text-color); font-size:12px; display:inline-flex; align-items:center;" title="First Page"><i class="fa-solid fa-angles-left"></i></a>
@@ -180,17 +220,15 @@ $query_str = "SELECT r.*, m.name, m.membership_id, e.title FROM reading_requests
                     <span class="btn disabled" style="padding:6px 10px; background:var(--bg-slate); color:var(--text-muted); font-size:12px; display:inline-flex; align-items:center; gap:4px; cursor:not-allowed; opacity:0.6;"><i class="fa-solid fa-angle-left"></i> Prev</span>
                 <?php endif; ?>
 
-                <?php 
-                $start_p = max(1, $p_page - 2);
-                $end_p = min($total_pages, $p_page + 2);
-                for($i = $start_p; $i <= $end_p; $i++): 
-                ?>
-                    <?php if ($i == $p_page): ?>
-                        <span class="btn" style="padding:6px 12px; background:var(--primary); color:white; font-size:12px; font-weight:700; border-radius:6px;"><?= $i ?></span>
+                <?php foreach ($pages_to_show as $p_item): ?>
+                    <?php if ($p_item === '...'): ?>
+                        <span style="padding:6px 8px; color:var(--text-muted); font-size:12px; font-weight:700;">...</span>
+                    <?php elseif ($p_item == $p_page): ?>
+                        <span class="btn" style="padding:6px 12px; background:var(--primary); color:white; font-size:12px; font-weight:700; border-radius:6px;"><?= $p_item ?></span>
                     <?php else: ?>
-                        <a href="?p_page=<?= $i ?><?= $qs_str ?>" class="btn" style="padding:6px 12px; background:var(--bg-slate); color:var(--text-color); font-size:12px; border-radius:6px;"><?= $i ?></a>
+                        <a href="?p_page=<?= $p_item ?><?= $qs_str ?>" class="btn" style="padding:6px 12px; background:var(--bg-slate); color:var(--text-color); font-size:12px; border-radius:6px; text-decoration:none;"><?= $p_item ?></a>
                     <?php endif; ?>
-                <?php endfor; ?>
+                <?php endforeach; ?>
 
                 <?php if ($p_page < $total_pages): ?>
                     <a href="?p_page=<?= $p_page + 1 ?><?= $qs_str ?>" class="btn" style="padding:6px 10px; background:var(--bg-slate); color:var(--text-color); font-size:12px; display:inline-flex; align-items:center; gap:4px;" title="Next Page">Next <i class="fa-solid fa-angle-right"></i></a>
@@ -200,6 +238,7 @@ $query_str = "SELECT r.*, m.name, m.membership_id, e.title FROM reading_requests
                     <span class="btn disabled" style="padding:6px 10px; background:var(--bg-slate); color:var(--text-muted); font-size:12px; display:inline-flex; align-items:center; cursor:not-allowed; opacity:0.6;"><i class="fa-solid fa-angles-right"></i></span>
                 <?php endif; ?>
             </div>
+            <?php endif; ?>
         </div>
     <?php endif; ?>
 </div>

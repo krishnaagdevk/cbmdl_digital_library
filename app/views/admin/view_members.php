@@ -306,14 +306,26 @@ if ($viewId) {
     </div>
 <?php else: ?>
     <?php
+    $from_date = $_GET['from_date'] ?? date('Y-m-01');
+    $to_date = $_GET['to_date'] ?? date('Y-m-t');
+
+    // Date Filter clause
+    $dateWhere = "";
+    if ($from_date !== '') {
+        $dateWhere .= " AND created_at >= '" . $db->real_escape_string($from_date) . " 00:00:00'";
+    }
+    if ($to_date !== '') {
+        $dateWhere .= " AND created_at <= '" . $db->real_escape_string($to_date) . " 23:59:59'";
+    }
+
     // Fetch stats
-    $total_active = (int)$db->query("SELECT COUNT(*) c FROM members WHERE approved = 1 AND is_active = 1 AND start_date <= CURDATE() AND end_date >= CURDATE()")->fetch_assoc()['c'];
-    $total_inactive = (int)$db->query("SELECT COUNT(*) c FROM members WHERE approved = 1 AND is_active = 0")->fetch_assoc()['c'];
-    $total_expired = (int)$db->query("SELECT COUNT(*) c FROM members WHERE approved = 1 AND is_active = 1 AND (end_date < CURDATE() OR start_date > CURDATE())")->fetch_assoc()['c'];
+    $total_active = (int)$db->query("SELECT COUNT(*) c FROM members WHERE approved = 1 AND is_active = 1 AND start_date <= CURDATE() AND end_date >= CURDATE()" . $dateWhere)->fetch_assoc()['c'];
+    $total_inactive = (int)$db->query("SELECT COUNT(*) c FROM members WHERE approved = 1 AND is_active = 0" . $dateWhere)->fetch_assoc()['c'];
+    $total_expired = (int)$db->query("SELECT COUNT(*) c FROM members WHERE approved = 1 AND is_active = 1 AND (end_date < CURDATE() OR start_date > CURDATE())" . $dateWhere)->fetch_assoc()['c'];
     
     // Status Filter logic
     $status_filter = $_GET['status_filter'] ?? 'all';
-    $whereClause = "approved = 1";
+    $whereClause = "approved = 1" . $dateWhere;
     if ($status_filter === 'active') {
         $whereClause .= " AND is_active = 1 AND start_date <= CURDATE() AND end_date >= CURDATE()";
     } elseif ($status_filter === 'inactive') {
@@ -332,6 +344,11 @@ if ($viewId) {
             }
         }
     }
+    foreach (['Morning', 'Evening', 'Night', 'Both'] as $stdShift) {
+        if (!in_array($stdShift, $availableShifts)) {
+            $availableShifts[] = $stdShift;
+        }
+    }
 
     // Shift Filter logic (defaults to 'all' / All Shifts)
     $shift_filter = $_GET['shift_filter'] ?? 'all';
@@ -343,17 +360,57 @@ if ($viewId) {
 
     // Default order
     $orderBy = 'id DESC';
+    $dateQs = '&from_date=' . urlencode($from_date) . '&to_date=' . urlencode($to_date);
     ?>
+    
+    <div class="card" style="margin-bottom: 25px;">
+        <h3><i class="fa-solid fa-filter"></i> Filter Memberships</h3>
+        <form method="get" class="grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px;">
+            <input type="hidden" name="action" value="admin">
+            <input type="hidden" name="tab" value="view_members">
+            <input type="hidden" name="status_filter" value="<?= e($status_filter) ?>">
+            
+            <div>
+                <label for="vm_shift">Shift Filter</label>
+                <select id="vm_shift" name="shift_filter">
+                    <option value="all" <?= $shift_filter === 'all' ? 'selected' : '' ?>>All Shifts</option>
+                    <?php foreach ($availableShifts as $sName): ?>
+                        <option value="<?= e($sName) ?>" <?= $shift_filter === $sName ? 'selected' : '' ?>><?= e($sName) ?> Shift</option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div>
+                <label for="vm_from_date">Registered From Date</label>
+                <input type="date" id="vm_from_date" name="from_date" value="<?= e($from_date) ?>">
+            </div>
+            
+            <div>
+                <label for="vm_to_date">Registered To Date</label>
+                <input type="date" id="vm_to_date" name="to_date" value="<?= e($to_date) ?>">
+            </div>
+            
+            <div>
+                <label style="visibility:hidden; margin-bottom:6px; display:block;">Action</label>
+                <div style="display:flex; gap:8px;">
+                    <button type="submit" style="flex:1; padding:12px;"><i class="fa-solid fa-magnifying-glass"></i> Filter</button>
+                    <a href="?action=admin&tab=view_members" class="btn btn-secondary" style="display:flex; align-items:center; justify-content:center; padding:12px; background:var(--bg-slate); color:var(--text-color); border:1px solid var(--border-color); text-decoration:none;"><i class="fa-solid fa-rotate-left"></i> Reset</a>
+                </div>
+            </div>
+        </form>
+    </div>
+
     <div class="card">
         <h3>
             <i class="fa-solid fa-address-book"></i> Membership Details 
-            <?php if ($status_filter !== 'all' || $shift_filter !== 'all'): ?>
+            <?php if ($status_filter !== 'all' || $shift_filter !== 'all' || $from_date !== '' || $to_date !== ''): ?>
                 <span style="font-size:13px; font-weight:normal; margin-left:10px;">
                     (Filtered: 
                     <?php 
                     $labels = [];
                     if ($status_filter !== 'all') $labels[] = '<strong>' . ucfirst($status_filter) . '</strong>';
                     if ($shift_filter !== 'all') $labels[] = '<strong>' . e($shift_filter) . ' Shift</strong>';
+                    if ($from_date !== '' || $to_date !== '') $labels[] = '<strong>' . e($from_date) . ' to ' . e($to_date) . '</strong>';
                     echo implode(' | ', $labels);
                     ?>) 
                     <a href="?action=admin&tab=view_members" class="btn" style="padding:4px 8px; font-size:11px; background:var(--bg-slate); color:var(--text-color); border:1px solid var(--border-color);"><i class="fa-solid fa-filter-circle-xmark"></i> Clear Filter</a>
@@ -363,7 +420,7 @@ if ($viewId) {
         
         <!-- Member Stats Summary Cards -->
         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px;">
-            <a href="?action=admin&tab=view_members&status_filter=active<?= $shift_filter !== 'all' ? '&shift_filter='.urlencode($shift_filter) : '' ?>" style="text-decoration:none; color:inherit; display:block;">
+            <a href="?action=admin&tab=view_members&status_filter=active<?= $shift_filter !== 'all' ? '&shift_filter='.urlencode($shift_filter) : '' ?><?= $dateQs ?>" style="text-decoration:none; color:inherit; display:block;">
                 <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:12px; padding:15px; display:flex; align-items:center; gap:12px; transition: transform 0.2s, box-shadow 0.2s; <?= $status_filter === 'active' ? 'box-shadow: 0 0 0 3px #16a34a;' : '' ?>" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
                     <div style="width:40px; height:40px; border-radius:50%; background:rgba(16, 185, 129, 0.1); color:var(--accent-green); display:flex; align-items:center; justify-content:center; font-size:18px;">
                         <i class="fa-solid fa-circle-check"></i>
@@ -375,19 +432,19 @@ if ($viewId) {
                 </div>
             </a>
 
-            <a href="?action=admin&tab=view_members&status_filter=inactive<?= $shift_filter !== 'all' ? '&shift_filter='.urlencode($shift_filter) : '' ?>" style="text-decoration:none; color:inherit; display:block;">
+            <a href="?action=admin&tab=view_members&status_filter=inactive<?= $shift_filter !== 'all' ? '&shift_filter='.urlencode($shift_filter) : '' ?><?= $dateQs ?>" style="text-decoration:none; color:inherit; display:block;">
                 <div style="background:#fff1f2; border:1px solid #fecdd3; border-radius:12px; padding:15px; display:flex; align-items:center; gap:12px; transition: transform 0.2s, box-shadow 0.2s; <?= $status_filter === 'inactive' ? 'box-shadow: 0 0 0 3px #dc2626;' : '' ?>" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
                     <div style="width:40px; height:40px; border-radius:50%; background:rgba(239, 68, 68, 0.1); color:var(--accent-red); display:flex; align-items:center; justify-content:center; font-size:18px;">
                         <i class="fa-solid fa-circle-xmark"></i>
                     </div>
                     <div>
-                        <span style="font-size:11px; font-weight:600; color:#b91c1c; text-transform:uppercase; display:block;">Inactive Membersships</span>
+                        <span style="font-size:11px; font-weight:600; color:#b91c1c; text-transform:uppercase; display:block;">Inactive Memberships</span>
                         <h3 style="margin:2px 0 0 0; font-size:20px; font-weight:700; color:#991b1b;"><?= $total_inactive ?></h3>
                     </div>
                 </div>
             </a>
 
-            <a href="?action=admin&tab=view_members&status_filter=expired<?= $shift_filter !== 'all' ? '&shift_filter='.urlencode($shift_filter) : '' ?>" style="text-decoration:none; color:inherit; display:block;">
+            <a href="?action=admin&tab=view_members&status_filter=expired<?= $shift_filter !== 'all' ? '&shift_filter='.urlencode($shift_filter) : '' ?><?= $dateQs ?>" style="text-decoration:none; color:inherit; display:block;">
                 <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:12px; padding:15px; display:flex; align-items:center; gap:12px; transition: transform 0.2s, box-shadow 0.2s; <?= $status_filter === 'expired' ? 'box-shadow: 0 0 0 3px #d97706;' : '' ?>" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
                     <div style="width:40px; height:40px; border-radius:50%; background:rgba(245, 158, 11, 0.1); color:var(--accent-orange); display:flex; align-items:center; justify-content:center; font-size:18px;">
                         <i class="fa-solid fa-circle-exclamation"></i>
@@ -402,15 +459,6 @@ if ($viewId) {
 
         <div style="display:flex; justify-content:space-between; align-items:center; gap:15px; margin-bottom:15px; flex-wrap:wrap;">
             <input type="text" id="viewMembersFilter" placeholder="Instant Search Directory..." style="margin-bottom:0; flex:1; min-width:200px;">
-            <div style="display:flex; align-items:center; gap:8px;">
-                <label for="memberShiftFilter" style="margin:0; font-size:13px; font-weight:600; color:var(--text-muted); white-space:nowrap;"><i class="fa-solid fa-filter"></i> Filter Shift:</label>
-                <select id="memberShiftFilter" onchange="location.href=this.value;" style="margin:0; padding:8px 12px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-card); font-size:13px; font-weight:600; color:var(--navy-dark); cursor:pointer;">
-                    <option value="?action=admin&tab=view_members&shift_filter=all<?= $status_filter !== 'all' ? '&status_filter='.$status_filter : '' ?>" <?= $shift_filter === 'all' ? 'selected' : '' ?>>All Shifts</option>
-                    <?php foreach ($availableShifts as $sName): ?>
-                        <option value="?action=admin&tab=view_members&shift_filter=<?= urlencode($sName) ?><?= $status_filter !== 'all' ? '&status_filter='.$status_filter : '' ?>" <?= $shift_filter === $sName ? 'selected' : '' ?>><?= e($sName) ?> Shift</option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
         </div>
 
         <div class="table-responsive">
@@ -429,7 +477,7 @@ if ($viewId) {
                 </thead>
                 <tbody>
                     <?php 
-                    $p_limit = 10;
+                    $p_limit = max(5, min(200, (int)($_GET['p_limit'] ?? 10)));
                     $p_page = max(1, (int)($_GET['p_page'] ?? 1));
 
                     $cnt_res = $db->query("SELECT COUNT(*) c FROM members WHERE $whereClause");
@@ -490,17 +538,38 @@ if ($viewId) {
         </div>
 
         <!-- Premium Pagination Component -->
-        <?php if ($total_pages > 1): ?>
+        <?php if ($total_items > 0): ?>
             <?php
             $qs = $_GET;
             unset($qs['p_page']);
             $qs_str = http_build_query($qs);
             $qs_str = $qs_str ? '&' . $qs_str : '';
+
+            // Generate smart page list with ellipses
+            $pages_to_show = get_smart_pagination_items($p_page, $total_pages);
             ?>
             <div class="pagination-container" style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; flex-wrap:wrap; gap:15px; border-top:1px solid var(--border-color); padding-top:15px;">
-                <div style="font-size:13px; color:var(--text-muted);">
-                    Showing <strong><?= $p_offset + 1 ?></strong> to <strong><?= min($p_offset + $p_limit, $total_items) ?></strong> of <strong><?= $total_items ?></strong> members
+                <div style="display:flex; align-items:center; gap:15px; flex-wrap:wrap;">
+                    <div style="font-size:13px; color:var(--text-muted);">
+                        Showing <strong><?= $p_offset + 1 ?></strong> to <strong><?= min($p_offset + $p_limit, $total_items) ?></strong> of <strong><?= $total_items ?></strong> members
+                    </div>
+                    <div style="display:inline-flex; align-items:center; gap:6px; font-size:13px; color:var(--text-muted);">
+                        <span>Per page:</span>
+                        <select onchange="window.location.href=this.value;" style="padding:4px 8px; font-size:12px; border-radius:6px; border:1px solid var(--border-color); background:var(--card-bg, #fff); color:var(--text-color); cursor:pointer; font-weight:600;">
+                            <?php foreach ([10, 25, 50, 100, 200] as $lim): ?>
+                                <?php
+                                $lim_qs = $_GET;
+                                $lim_qs['p_limit'] = $lim;
+                                $lim_qs['p_page'] = 1;
+                                $lim_url = '?' . http_build_query($lim_qs);
+                                ?>
+                                <option value="<?= e($lim_url) ?>" <?= $p_limit == $lim ? 'selected' : '' ?>><?= $lim ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
                 </div>
+
+                <?php if ($total_pages > 1): ?>
                 <div class="pagination" style="display:flex; align-items:center; gap:6px;">
                     <?php if ($p_page > 1): ?>
                         <a href="?p_page=1<?= $qs_str ?>" class="btn" style="padding:6px 10px; background:var(--bg-slate); color:var(--text-color); font-size:12px; display:inline-flex; align-items:center;" title="First Page"><i class="fa-solid fa-angles-left"></i></a>
@@ -510,17 +579,15 @@ if ($viewId) {
                         <span class="btn disabled" style="padding:6px 10px; background:var(--bg-slate); color:var(--text-muted); font-size:12px; display:inline-flex; align-items:center; gap:4px; cursor:not-allowed; opacity:0.6;"><i class="fa-solid fa-angle-left"></i> Prev</span>
                     <?php endif; ?>
 
-                    <?php 
-                    $start_p = max(1, $p_page - 2);
-                    $end_p = min($total_pages, $p_page + 2);
-                    for($i = $start_p; $i <= $end_p; $i++): 
-                    ?>
-                        <?php if ($i == $p_page): ?>
-                            <span class="btn" style="padding:6px 12px; background:var(--primary); color:white; font-size:12px; font-weight:700; border-radius:6px;"><?= $i ?></span>
+                    <?php foreach ($pages_to_show as $p_item): ?>
+                        <?php if ($p_item === '...'): ?>
+                            <span style="padding:6px 8px; color:var(--text-muted); font-size:12px; font-weight:700;">...</span>
+                        <?php elseif ($p_item == $p_page): ?>
+                            <span class="btn" style="padding:6px 12px; background:var(--primary); color:white; font-size:12px; font-weight:700; border-radius:6px;"><?= $p_item ?></span>
                         <?php else: ?>
-                            <a href="?p_page=<?= $i ?><?= $qs_str ?>" class="btn" style="padding:6px 12px; background:var(--bg-slate); color:var(--text-color); font-size:12px; border-radius:6px;"><?= $i ?></a>
+                            <a href="?p_page=<?= $p_item ?><?= $qs_str ?>" class="btn" style="padding:6px 12px; background:var(--bg-slate); color:var(--text-color); font-size:12px; border-radius:6px; text-decoration:none;"><?= $p_item ?></a>
                         <?php endif; ?>
-                    <?php endfor; ?>
+                    <?php endforeach; ?>
 
                     <?php if ($p_page < $total_pages): ?>
                         <a href="?p_page=<?= $p_page + 1 ?><?= $qs_str ?>" class="btn" style="padding:6px 10px; background:var(--bg-slate); color:var(--text-color); font-size:12px; display:inline-flex; align-items:center; gap:4px;" title="Next Page">Next <i class="fa-solid fa-angle-right"></i></a>
@@ -530,6 +597,7 @@ if ($viewId) {
                         <span class="btn disabled" style="padding:6px 10px; background:var(--bg-slate); color:var(--text-muted); font-size:12px; display:inline-flex; align-items:center; cursor:not-allowed; opacity:0.6;"><i class="fa-solid fa-angles-right"></i></span>
                     <?php endif; ?>
                 </div>
+                <?php endif; ?>
             </div>
         <?php endif; ?>
         <script class="dynamic-script">

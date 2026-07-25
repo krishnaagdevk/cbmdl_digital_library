@@ -273,16 +273,17 @@ $stmt->close();
 
                 <!-- Page numbers (smart sliding window) -->
                 <?php 
-                $start_p = max(1, $p_page - 2);
-                $end_p = min($total_pages, $p_page + 2);
-                for($i = $start_p; $i <= $end_p; $i++): 
+                $pages_to_show = get_smart_pagination_items($p_page, $total_pages);
+                foreach ($pages_to_show as $p_item): 
                 ?>
-                    <?php if ($i == $p_page): ?>
-                        <span class="btn" style="padding:6px 12px; background:var(--primary); color:white; font-size:12px; font-weight:700; border-radius:6px;"><?= $i ?></span>
+                    <?php if ($p_item === '...'): ?>
+                        <span style="padding:6px 8px; color:var(--text-muted); font-size:12px; font-weight:700;">...</span>
+                    <?php elseif ($p_item == $p_page): ?>
+                        <span class="btn" style="padding:6px 12px; background:var(--primary); color:white; font-size:12px; font-weight:700; border-radius:6px;"><?= $p_item ?></span>
                     <?php else: ?>
-                        <a href="?action=admin&tab=view_physical&p_page=<?= $i ?>&p_search=<?= urlencode($p_search) ?>&p_shelf=<?= urlencode($p_shelf) ?>&p_status=<?= urlencode($p_status) ?>&p_sort=<?= urlencode($p_sort) ?>" class="btn" style="padding:6px 12px; background:var(--bg-slate); color:var(--text-color); font-size:12px; border-radius:6px;"><?= $i ?></a>
+                        <a href="?action=admin&tab=view_physical&p_page=<?= $p_item ?>&p_search=<?= urlencode($p_search) ?>&p_shelf=<?= urlencode($p_shelf) ?>&p_status=<?= urlencode($p_status) ?>&p_sort=<?= urlencode($p_sort) ?>" class="btn" style="padding:6px 12px; background:var(--bg-slate); color:var(--text-color); font-size:12px; border-radius:6px; text-decoration:none;"><?= $p_item ?></a>
                     <?php endif; ?>
-                <?php endfor; ?>
+                <?php endforeach; ?>
 
                 <!-- Next Page Button -->
                 <?php if ($p_page < $total_pages): ?>

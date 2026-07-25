@@ -4,6 +4,8 @@ if (!defined('BASE_URL')) exit;
 
 $search = trim($_GET['q'] ?? '');
 $action_filter = trim($_GET['type'] ?? '');
+$from_date = $_GET['from_date'] ?? date('Y-m-01');
+$to_date = $_GET['to_date'] ?? date('Y-m-t');
 
 // Build query
 $where = [];
@@ -24,6 +26,18 @@ if ($search !== '') {
 if ($action_filter !== '') {
     $where[] = "h.action_type = ?";
     $params[] = $action_filter;
+    $types .= "s";
+}
+
+if ($from_date !== '') {
+    $where[] = "h.created_at >= ?";
+    $params[] = "$from_date 00:00:00";
+    $types .= "s";
+}
+
+if ($to_date !== '') {
+    $where[] = "h.created_at <= ?";
+    $params[] = "$to_date 23:59:59";
     $types .= "s";
 }
 
@@ -66,11 +80,34 @@ if (!empty($paramsWithLimit)) {
 $stmt->execute();
 $historyRes = $stmt->get_result();
 
-// Summary metrics
-$totalCount = (int)$db->query("SELECT COUNT(*) c FROM membership_history")->fetch_assoc()['c'];
-$totalRevenue = (float)$db->query("SELECT SUM(membership_fee) s FROM membership_history")->fetch_assoc()['s'];
-$totalRenewals = (int)$db->query("SELECT COUNT(*) c FROM membership_history WHERE action_type = 'Renewal'")->fetch_assoc()['c'];
-$totalJoins = (int)$db->query("SELECT COUNT(*) c FROM membership_history WHERE action_type = 'Initial Joining'")->fetch_assoc()['c'];
+// Summary metrics (filtered by selected date & criteria)
+$cntStmtM = $db->prepare("SELECT COUNT(*) c, COALESCE(SUM(h.membership_fee),0) s FROM membership_history h LEFT JOIN members m ON h.member_id = m.id {$whereClause}");
+if (!empty($params)) {
+    $cntStmtM->bind_param($types, ...$params);
+}
+$cntStmtM->execute();
+$rowM = $cntStmtM->get_result()->fetch_assoc();
+$totalCount = (int)($rowM['c'] ?? 0);
+$totalRevenue = (float)($rowM['s'] ?? 0.0);
+$cntStmtM->close();
+
+$whereRenewClause = !empty($where) ? "WHERE " . implode(" AND ", $where) . " AND h.action_type = 'Renewal'" : "WHERE h.action_type = 'Renewal'";
+$cntStmtR = $db->prepare("SELECT COUNT(*) c FROM membership_history h LEFT JOIN members m ON h.member_id = m.id {$whereRenewClause}");
+if (!empty($params)) {
+    $cntStmtR->bind_param($types, ...$params);
+}
+$cntStmtR->execute();
+$totalRenewals = (int)($cntStmtR->get_result()->fetch_assoc()['c'] ?? 0);
+$cntStmtR->close();
+
+$whereJoinClause = !empty($where) ? "WHERE " . implode(" AND ", $where) . " AND h.action_type = 'Initial Joining'" : "WHERE h.action_type = 'Initial Joining'";
+$cntStmtJ = $db->prepare("SELECT COUNT(*) c FROM membership_history h LEFT JOIN members m ON h.member_id = m.id {$whereJoinClause}");
+if (!empty($params)) {
+    $cntStmtJ->bind_param($types, ...$params);
+}
+$cntStmtJ->execute();
+$totalJoins = (int)($cntStmtJ->get_result()->fetch_assoc()['c'] ?? 0);
+$cntStmtJ->close();
 ?>
 
 <div class="card" style="margin-bottom:25px;">
@@ -125,7 +162,7 @@ $totalJoins = (int)$db->query("SELECT COUNT(*) c FROM membership_history WHERE a
 <!-- Search & Filter Controls -->
 <div class="card" style="margin-bottom:25px;">
     <h3 style="margin-top:0; margin-bottom:15px; font-family:inherit; font-size:16px;"><i class="fa-solid fa-filter"></i> Filter Membership History</h3>
-    <form method="get" action="" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:15px; align-items:end;">
+    <form method="get" action="" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:15px; align-items:end;">
         <input type="hidden" name="action" value="admin">
         <input type="hidden" name="tab" value="membership_history">
         
@@ -144,6 +181,16 @@ $totalJoins = (int)$db->query("SELECT COUNT(*) c FROM membership_history WHERE a
                 <option value="Initial Joining" <?= $action_filter === 'Initial Joining' ? 'selected' : '' ?>>Initial Joining</option>
                 <option value="Renewal" <?= $action_filter === 'Renewal' ? 'selected' : '' ?>>Renewal</option>
             </select>
+        </div>
+
+        <div>
+            <label for="hist_from_date" style="font-size:12px; font-weight:600; color:var(--text-muted); margin-bottom:6px; display:block; font-family:inherit;">From Date</label>
+            <input type="date" id="hist_from_date" name="from_date" value="<?= e($from_date) ?>" style="width:100%; height:42px; border-radius:8px; font-family:inherit; font-size:13px; border:1px solid var(--border-color); margin:0; padding:0 12px; box-sizing:border-box; background:var(--bg-card); color:var(--navy-dark);">
+        </div>
+
+        <div>
+            <label for="hist_to_date" style="font-size:12px; font-weight:600; color:var(--text-muted); margin-bottom:6px; display:block; font-family:inherit;">To Date</label>
+            <input type="date" id="hist_to_date" name="to_date" value="<?= e($to_date) ?>" style="width:100%; height:42px; border-radius:8px; font-family:inherit; font-size:13px; border:1px solid var(--border-color); margin:0; padding:0 12px; box-sizing:border-box; background:var(--bg-card); color:var(--navy-dark);">
         </div>
 
         <div>

@@ -669,4 +669,41 @@ function stream_file_ranged($file, $contentType = 'application/pdf', $isPrivate 
     }
     exit;
 }
+
+/**
+ * Generates smart pagination items (e.g. [1, 2, 3, '...', 6767] or [1, '...', 3, 4, 5, '...', 6767])
+ */
+function get_smart_pagination_items(int $current_page, int $total_pages): array {
+    if ($total_pages <= 1) return [1];
+    if ($total_pages <= 5) return range(1, $total_pages);
+
+    $items = [1];
+
+    $start = max(2, $current_page - 1);
+    $end = min($total_pages - 1, $current_page + 1);
+
+    if ($current_page <= 2) {
+        $start = 2;
+        $end = 3;
+    } elseif ($current_page >= $total_pages - 1) {
+        $start = $total_pages - 2;
+        $end = $total_pages - 1;
+    }
+
+    if ($start > 2) {
+        $items[] = '...';
+    }
+
+    for ($i = $start; $i <= $end; $i++) {
+        $items[] = $i;
+    }
+
+    if ($end < $total_pages - 1) {
+        $items[] = '...';
+    }
+
+    $items[] = $total_pages;
+
+    return $items;
+}
 ?>

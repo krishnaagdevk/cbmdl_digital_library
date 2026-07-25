@@ -78,7 +78,7 @@ if ($lookup !== '') {
                 <input id="ld_tx" name="transaction_id" placeholder="Enter Transaction ID" required>
             </div>
             <div style="grid-column: span 2; display:flex; align-items:flex-end; margin-top: 10px;">
-                <button style="width:100%;"><i class="fa-solid fa-square-check"></i>Register Lending Issue</button>
+                <button style="width:100%;"><i class="fa-solid fa-square-check"></i>Register Book   Lending</button>
             </div>
         </form>
     </div>
@@ -105,9 +105,24 @@ if ($lookup !== '') {
                 $lCount = 0;
                 while($r = $x->fetch_assoc()) {
                     $lCount++;
-                    $returnCol = $r['returned_at'] 
-                        ? '<span style="font-size:12px; color:var(--text-muted); font-weight:600;"><i class="fa-solid fa-circle-check"></i> Returned ' . date('d-m-Y', strtotime($r['returned_at'])) . '</span>' 
-                        : '<form method="post" action="?action=return_book" style="display:inline; margin:0;"><input type="hidden" name="id" value="' . $r['id'] . '"><input type="hidden" name="tab" value="lending">' . csrf_input() . '<button class="btn" type="submit" style="padding:6px 12px;"><i class="fa-solid fa-right-left"></i> Register Return</button></form>';
+                    $is_late_return = false;
+                    if ($r['returned_at']) {
+                        $ret_date_str = date('Y-m-d', strtotime($r['returned_at']));
+                        $due_date_str = date('Y-m-d', strtotime($r['due_date']));
+                        if ($ret_date_str > $due_date_str) {
+                            $is_late_return = true;
+                        }
+                    }
+
+                    if ($r['returned_at']) {
+                        if ($is_late_return) {
+                            $returnCol = '<span style="font-size:12px; color:var(--accent-red, #dc2626); font-weight:700;"><i class="fa-solid fa-circle-check"></i> Returned ' . date('d-m-Y', strtotime($r['returned_at'])) . ' <small>(Late)</small></span>';
+                        } else {
+                            $returnCol = '<span style="font-size:12px; color:var(--text-muted); font-weight:600;"><i class="fa-solid fa-circle-check"></i> Returned ' . date('d-m-Y', strtotime($r['returned_at'])) . '</span>';
+                        }
+                    } else {
+                        $returnCol = '<form method="post" action="?action=return_book" style="display:inline; margin:0;"><input type="hidden" name="id" value="' . $r['id'] . '"><input type="hidden" name="tab" value="lending">' . csrf_input() . '<button class="btn" type="submit" style="padding:6px 12px;"><i class="fa-solid fa-right-left"></i> Register Return</button></form>';
+                    }
                     
                     $due_time = strtotime($r['due_date']);
                     $today_time = strtotime(date('Y-m-d'));

@@ -62,13 +62,26 @@ $x = $stmt->get_result();
                         }
                     }
                     
+                    $return_date_col = '-';
+                    if ($r['returned_at']) {
+                        $ret_date_str = date('Y-m-d', strtotime($r['returned_at']));
+                        $due_date_str = date('Y-m-d', strtotime($r['due_date']));
+                        if ($ret_date_str > $due_date_str) {
+                            $return_date_col = '<span style="color:var(--accent-red, #dc2626); font-weight:700;"><i class="fa-solid fa-box-archive"></i> ' . date('d-m-Y', strtotime($r['returned_at'])) . ' <small>(Late)</small></span>';
+                        } else {
+                            $return_date_col = '<span style="color:var(--text-muted); font-weight:600;"><i class="fa-solid fa-box-archive"></i> ' . date('d-m-Y', strtotime($r['returned_at'])) . '</span>';
+                        }
+                    } else {
+                        $return_date_col = ($days_diff < 0) ? '<span style="color:var(--accent-red); font-weight:600;"><i class="fa-solid fa-triangle-exclamation"></i> Overdue</span>' : (($days_diff <= 3) ? '<span style="color:var(--accent-orange); font-weight:600;"><i class="fa-solid fa-clock"></i> Due Soon</span>' : '<span style="color:var(--primary); font-weight:600;"><i class="fa-solid fa-hourglass-half"></i> Book with you</span>');
+                    }
+
                     echo '
                     <tr>
                         <td>' . e($r['title']) . '</td>
                         <td><code style="background:var(--bg-slate); padding:2px 6px; border-radius:4px; font-weight:700; font-size:12px; color:var(--navy-dark); border:1px solid var(--border-color);">' . e($r['book_code']) . '</code></td>
                         <td>' . date('d-m-Y', strtotime($r['lent_at'])) . '</td>
                         <td>' . $due_col_html . '</td>
-                        <td>' . ($r['returned_at'] ? date('d-m-Y', strtotime($r['returned_at'])) : ($days_diff < 0 ? '<span style="color:var(--accent-red); font-weight:600;"><i class="fa-solid fa-triangle-exclamation"></i> Overdue</span>' : ($days_diff <= 3 ? '<span style="color:var(--accent-orange); font-weight:600;"><i class="fa-solid fa-clock"></i> Due Soon</span>' : '<span style="color:var(--primary); font-weight:600;"><i class="fa-solid fa-hourglass-half"></i> Book with you</span>'))) . '</td>
+                        <td>' . $return_date_col . '</td>
                         <td>' . $badge . '</td>
                     </tr>';
                 }

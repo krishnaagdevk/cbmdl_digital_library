@@ -50,6 +50,37 @@ $exp_query = $db->query("SELECT end_date, is_active FROM members WHERE is_active
 if ($exp_query) {
     $expiring_15_days_count = $exp_query->num_rows;
 }
+
+// Fetch shift-wise member counts
+$shift_counts = [];
+$ws_res = $db->query("SELECT name FROM work_shifts ORDER BY id ASC");
+if ($ws_res) {
+    while ($ws_row = $ws_res->fetch_assoc()) {
+        $shift_counts[$ws_row['name']] = ['valid' => 0, 'expired' => 0];
+    }
+}
+// Ensure standard shifts are present
+foreach (['Morning', 'Evening', 'Night'] as $std_s) {
+    if (!isset($shift_counts[$std_s])) {
+        $shift_counts[$std_s] = ['valid' => 0, 'expired' => 0];
+    }
+}
+
+$mem_shift_res = $db->query("SELECT shift, 
+    SUM(CASE WHEN start_date <= CURDATE() AND end_date >= CURDATE() THEN 1 ELSE 0 END) as v_cnt,
+    SUM(CASE WHEN end_date < CURDATE() OR start_date > CURDATE() THEN 1 ELSE 0 END) as e_cnt
+    FROM members WHERE approved = 1 AND is_active = 1 GROUP BY shift");
+if ($mem_shift_res) {
+    while ($ms_row = $mem_shift_res->fetch_assoc()) {
+        $s_name = trim($ms_row['shift'] ?? '');
+        if (!empty($s_name)) {
+            $shift_counts[$s_name] = [
+                'valid' => (int)$ms_row['v_cnt'],
+                'expired' => (int)$ms_row['e_cnt']
+            ];
+        }
+    }
+}
 ?>
 <h3 style="margin-top:0; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
     <span><i class="fa-solid fa-gauge-high"></i> Dashboard Live Analytics & Statistics</span>
@@ -147,6 +178,10 @@ if ($exp_query) {
   
     <button id="tab-density" class="tab-btn" onclick="switchDashboardTab('density')">
         📁 e-books Density
+    </button>
+
+    <button id="tab-shifts" class="tab-btn" onclick="switchDashboardTab('shifts')">
+        👥 Shift Wise Members
     </button>
     
 </div>
@@ -357,6 +392,82 @@ if ($exp_query) {
                             <div style="background:var(--primary); width:' . max(5, $pct) . '%; height:100%; border-radius:4px; transition:width 0.5s ease;"></div>
                         </div>
                     </div>';
+                }
+            }
+            ?>
+        </div>
+    </div>
+</div>
+
+<!-- TAB 4: SHIFT WISE MEMBERS -->
+<div id="pane-shifts" class="dashboard-pane" style="display:none;">
+    <div class="card" style="margin-bottom:0;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:15px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">
+            <h3 style="margin:0;"><i class="fa-solid fa-users-viewfinder" style="color:var(--primary);"></i> Shift Wise Members Breakdown</h3>
+            <span class="badge badge-blue" style="font-size:12px; font-weight:600; padding:6px 12px;">Total Active Members: <?= $tot_members ?></span>
+        </div>
+        
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:18px; margin-top:15px;">
+            <?php 
+            $shift_emojis = [
+                'Morning'  => '🌅',
+                'Evening'  => '🌆',
+                'Full Day' => '☀️',
+                'Night'    => '🌙',
+                'Both'     => '⏱️'
+            ];
+            $shift_colors = [
+                'Morning'  => '#d97706',
+                'Evening'  => '#7c3aed',
+                'Full Day' => '#0284c7',
+                'Night'    => '#1e1b4b',
+                'Both'     => '#2563eb'
+            ];
+            $shift_bgs = [
+                'Morning'  => '#fffbeb',
+                'Evening'  => '#faf5ff',
+                'Full Day' => '#f0f9ff',
+                'Night'    => '#f1f5f9',
+                'Both'     => '#eff6ff'
+            ];
+
+            if (empty($shift_counts)) {
+                echo '<p class="muted">No shifts configured.</p>';
+            } else {
+                foreach ($shift_counts as $sName => $sData) {
+                    $vCnt = is_array($sData) ? ($sData['valid'] ?? 0) : (int)$sData;
+                    $eCnt = is_array($sData) ? ($sData['expired'] ?? 0) : 0;
+                    $sEmoji = $shift_emojis[$sName] ?? '🕒';
+                    $sColor = $shift_colors[$sName] ?? '#0284c7';
+                    $sBg = $shift_bgs[$sName] ?? '#f0f9ff';
+                    $sPct = $tot_members > 0 ? round(($vCnt / $tot_members) * 100) : 0;
+                    ?>
+                    <div style="background:<?= $sBg ?>; padding:18px; border-radius:12px; border:1px solid var(--border-color); display:flex; flex-direction:column; justify-content:space-between;">
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <div style="width:42px; height:42px; border-radius:10px; background:white; display:flex; align-items:center; justify-content:center; font-size:22px; box-shadow:0 2px 6px rgba(0,0,0,0.06); border:1px solid rgba(0,0,0,0.05);">
+                                    <?= $sEmoji ?>
+                                </div>
+                                <div>
+                                    <strong style="font-size:15px; color:var(--navy-dark); display:block;"><?= e($sName) ?> Shift</strong>
+                                    <span style="font-size:11px; color:var(--text-muted); font-weight:600;"><?= $sPct ?>% of Active Members</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display:flex; align-items:baseline; justify-content:space-between; margin-top:8px;">
+                            <div>
+                                <span style="font-size:26px; font-weight:800; color:<?= $sColor ?>;"><?= $vCnt ?> <span style="font-size:13px; font-weight:600; color:var(--text-muted);">Valid</span></span>
+                                <?php if ($eCnt > 0): ?>
+                                    <span style="font-size:12px; color:var(--accent-orange); font-weight:600; display:block; margin-top:2px;">(<?= $eCnt ?> Expired)</span>
+                                <?php endif; ?>
+                            </div>
+                            <a href="?action=admin&tab=view_members&shift_filter=<?= urlencode($sName) ?>&status_filter=active" class="btn btn-secondary" style="padding:4px 10px; font-size:11px; border-radius:6px; background:white; color:var(--text-dark); border:1px solid var(--border-color); text-decoration:none;"><i class="fa-solid fa-list-check"></i> View List</a>
+                        </div>
+                        <div style="background:#e2e8f0; height:6px; border-radius:3px; overflow:hidden; margin-top:12px;">
+                            <div style="background:<?= $sColor ?>; width:<?= max(4, $sPct) ?>%; height:100%; border-radius:3px; transition:width 0.5s ease;"></div>
+                        </div>
+                    </div>
+                    <?php
                 }
             }
             ?>

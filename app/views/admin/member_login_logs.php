@@ -13,6 +13,8 @@ if ($checkCount && (int)($checkCount->fetch_assoc()['c'] ?? 0) === 0) {
 
 $statusFilter = $_GET['status'] ?? 'all';
 $searchQuery = trim($_GET['search'] ?? '');
+$from_date = $_GET['from_date'] ?? date('Y-m-01');
+$to_date = $_GET['to_date'] ?? date('Y-m-t');
 $page = max(1, (int)($_GET['page'] ?? 1));
 $limit = max(5, min(100, (int)($_GET['limit'] ?? 20))); // Max 20 per page default
 
@@ -23,6 +25,12 @@ if ($statusFilter !== 'all') {
 if ($searchQuery !== '') {
     $sq = $db->real_escape_string($searchQuery);
     $where[] = "(lg.member_name LIKE '%$sq%' OR lg.mobile LIKE '%$sq%' OR lg.ip_address LIKE '%$sq%' OR m.membership_id LIKE '%$sq%')";
+}
+if ($from_date !== '') {
+    $where[] = "lg.login_at >= '" . $db->real_escape_string($from_date) . " 00:00:00'";
+}
+if ($to_date !== '') {
+    $where[] = "lg.login_at <= '" . $db->real_escape_string($to_date) . " 23:59:59'";
 }
 $whereSql = !empty($where) ? "WHERE " . implode(' AND ', $where) : "";
 
@@ -52,9 +60,9 @@ $logsQuery = $db->query("SELECT lg.*, m.membership_id FROM member_login_logs lg 
             <input type="hidden" name="action" value="admin">
             <input type="hidden" name="tab" value="member_login_logs">
             
-            <input type="text" name="search" value="<?= e($searchQuery) ?>" placeholder="Search name / mobile / ID..." style="margin:0; padding:6px 12px; font-size:12.5px; width:190px;">
+            <input type="text" name="search" value="<?= e($searchQuery) ?>" placeholder="Search name / mobile / ID..." style="margin:0; padding:6px 12px; font-size:12.5px; width:170px;">
             
-            <select name="status" onchange="this.form.submit()" style="margin:0; padding:6px 12px; font-size:12.5px; width:150px;">
+            <select name="status" onchange="this.form.submit()" style="margin:0; padding:6px 12px; font-size:12.5px; width:140px;">
                 <option value="all" <?= $statusFilter === 'all' ? 'selected' : '' ?>>All Statuses</option>
                 <option value="Success" <?= $statusFilter === 'Success' ? 'selected' : '' ?>>Success</option>
                 <option value="Shift Restricted" <?= $statusFilter === 'Shift Restricted' ? 'selected' : '' ?>>Shift Restricted</option>
@@ -64,17 +72,20 @@ $logsQuery = $db->query("SELECT lg.*, m.membership_id FROM member_login_logs lg 
                 <option value="Membership Expired" <?= $statusFilter === 'Membership Expired' ? 'selected' : '' ?>>Membership Expired</option>
             </select>
 
-            <select name="limit" onchange="this.form.submit()" style="margin:0; padding:6px 12px; font-size:12.5px; width:130px;" title="Entries Per Page">
-                <option value="10" <?= $limit == 10 ? 'selected' : '' ?>>10 Per Page</option>
-                <option value="20" <?= $limit == 20 ? 'selected' : '' ?>>20 Per Page</option>
-                <option value="50" <?= $limit == 50 ? 'selected' : '' ?>>50 Per Page</option>
-                <option value="100" <?= $limit == 100 ? 'selected' : '' ?>>100 Per Page</option>
+            <input type="date" name="from_date" value="<?= e($from_date) ?>" title="From Date" style="margin:0; padding:6px 10px; font-size:12.5px; width:135px;">
+            <input type="date" name="to_date" value="<?= e($to_date) ?>" title="To Date" style="margin:0; padding:6px 10px; font-size:12.5px; width:135px;">
+
+            <select name="limit" onchange="this.form.submit()" style="margin:0; padding:6px 12px; font-size:12.5px; width:120px;" title="Entries Per Page">
+                <option value="10" <?= $limit == 10 ? 'selected' : '' ?>>10 / page</option>
+                <option value="20" <?= $limit == 20 ? 'selected' : '' ?>>20 / page</option>
+                <option value="50" <?= $limit == 50 ? 'selected' : '' ?>>50 / page</option>
+                <option value="100" <?= $limit == 100 ? 'selected' : '' ?>>100 / page</option>
             </select>
 
             <button type="submit" class="btn btn-secondary" style="padding:6px 12px; font-size:12.5px; background:var(--bg-slate); border:1px solid var(--border-color); color:var(--text-dark);">
                 <i class="fa-solid fa-filter"></i> Filter
             </button>
-            <?php if ($searchQuery !== '' || $statusFilter !== 'all' || $limit != 20): ?>
+            <?php if ($searchQuery !== '' || $statusFilter !== 'all' || $from_date !== '' || $to_date !== '' || $limit != 20): ?>
                 <a href="?action=admin&tab=member_login_logs" class="btn" style="padding:6px 12px; font-size:12.5px; background:var(--accent-orange); color:white;" title="Reset Filters"><i class="fa-solid fa-arrow-rotate-left"></i> Reset</a>
             <?php endif; ?>
         </form>
@@ -167,16 +178,17 @@ $logsQuery = $db->query("SELECT lg.*, m.membership_id FROM member_login_logs lg 
             <?php endif; ?>
 
             <?php 
-            $startP = max(1, $page - 2);
-            $endP = min($totalPages, $page + 2);
-            for ($i = $startP; $i <= $endP; $i++): 
+            $pages_to_show = get_smart_pagination_items($page, $totalPages);
+            foreach ($pages_to_show as $p_item): 
             ?>
-                <?php if ($i == $page): ?>
-                    <span class="btn" style="padding:6px 12px; background:var(--primary); color:white; font-size:12px; font-weight:700; border-radius:6px;"><?= $i ?></span>
+                <?php if ($p_item === '...'): ?>
+                    <span style="padding:6px 8px; color:var(--text-muted); font-size:12px; font-weight:700;">...</span>
+                <?php elseif ($p_item == $page): ?>
+                    <span class="btn" style="padding:6px 12px; background:var(--primary); color:white; font-size:12px; font-weight:700; border-radius:6px;"><?= $p_item ?></span>
                 <?php else: ?>
-                    <a href="?action=admin&tab=member_login_logs&page=<?= $i ?><?= $qSuffix ?>" class="btn" style="padding:6px 12px; background:var(--bg-slate); color:var(--text-color); font-size:12px; border-radius:6px;"><?= $i ?></a>
+                    <a href="?action=admin&tab=member_login_logs&page=<?= $p_item ?><?= $qSuffix ?>" class="btn" style="padding:6px 12px; background:var(--bg-slate); color:var(--text-color); font-size:12px; border-radius:6px; text-decoration:none;"><?= $p_item ?></a>
                 <?php endif; ?>
-            <?php endfor; ?>
+            <?php endforeach; ?>
 
             <?php if ($page < $totalPages): ?>
                 <a href="?action=admin&tab=member_login_logs&page=<?= $page + 1 ?><?= $qSuffix ?>" class="btn" style="padding:6px 10px; background:var(--bg-slate); color:var(--text-color); font-size:12px; display:inline-flex; align-items:center; gap:4px;" title="Next Page">Next <i class="fa-solid fa-angle-right"></i></a>
