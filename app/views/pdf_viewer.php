@@ -429,6 +429,9 @@
             <button id="zoomFitBtn" class="toolbar-btn" title="Fit Page Width">
                 <span class="fa-solid fa-arrows-alt"></span> Fit
             </button>
+            <span style="font-size: 11px; color: #9ca3af; background: rgba(255, 255, 255, 0.06); padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.12); white-space: nowrap; display: inline-flex; align-items: center; gap: 5px;" title="Tip">
+                <i class="fa-solid fa-circle-info" style="color: #60a5fa;"></i> Click "Fit" if page is not rendered correctly
+            </span>
             <div class="toolbar-divider"></div>
             <button id="rotateBtn" class="toolbar-btn" title="Rotate Clockwise 90°">
                 <span class="fa-solid fa-rotate-right"></span> Rotate
@@ -458,39 +461,175 @@
         let currentScale = 1.0;
         let currentRotation = 0;
 
-        // Per-page state for the virtualized continuous-scroll viewport.
+        // Per-page state for the virtualised continuous-scroll viewport
         let pageWrappers = [];
-        const pageProxies = {};
+        const pageProxies = {};      // shared cache — used by BOTH main render & thumbnails
         const pageBaseDims = {};
         const renderedPages = new Set();
         const pendingRenders = new Set();
         const renderTasks = {};
 
-        const loader = document.getElementById('loader');
-        const loaderText = document.getElementById('loaderText');
-        const pageNumInput = document.getElementById('pageNumInput');
-        const pageCountLabel = document.getElementById('pageCount');
-        const zoomPercentLabel = document.getElementById('zoomPercent');
+        // ── Thumbnail serial queue (max 2 concurrent renders so they never
+        //    starve visible page rendering) ──────────────────────────────────
+        let thumbRunning = 0;
+        const THUMB_CONCURRENCY = 2;
+        const thumbQueue = [];        // { num, cardElement }
+
+        function thumbEnqueue(num, cardElement) {
+            thumbQueue.push({ num, cardElement });
+            thumbDrain();
+        }
+
+        function thumbDrain() {
+            while (thumbRunning < THUMB_CONCURRENCY && thumbQueue.length > 0) {
+                const { num, cardElement } = thumbQueue.shift();
+                thumbRunning++;
+                renderThumbnail(num, cardElement).finally(() => {
+                    thumbRunning--;
+                    thumbDrain();
+                });
+            }
+        }
+        // ──────────────────────────────────────────────────────────────────
+
+        const loader      = document.getElementById('loader');
+        const loaderText  = document.getElementById('loaderText');
+        const pageNumInput       = document.getElementById('pageNumInput');
+        const pageCountLabel     = document.getElementById('pageCount');
+        const zoomPercentLabel   = document.getElementById('zoomPercent');
         const viewportScrollArea = document.querySelector('.viewport-scroll-area');
 
         document.addEventListener('contextmenu', e => e.preventDefault());
         document.addEventListener('keydown', function(e) {
             if ((e.ctrlKey || e.metaKey) && ['s', 'S', 'p', 'P', 'u', 'U'].includes(e.key)) {
-                e.preventDefault();
-                return false;
+                e.preventDefault(); return false;
             }
-            if (e.key === 'F12' || ((e.ctrlKey || e.metaKey) && e.shiftKey && ['I', 'i', 'C', 'c', 'J', 'j'].includes(e.key))) {
-                e.preventDefault();
-                return false;
+            if (e.key === 'F12' || ((e.ctrlKey || e.metaKey) && e.shiftKey && ['I','i','C','c','J','j'].includes(e.key))) {
+                e.preventDefault(); return false;
             }
         });
 
-        loaderText.textContent = 'Loading pages securely...';
+        // ── IndexedDB Local Offline Cache Engine ───────────────────────────
+        const CBMDL_PDFCache = {
+            dbName: 'CBMDL_PDF_Cache',
+            storeName: 'pdf_documents',
+            dbPromise: null,
 
-        pdfjsLib.getDocument({
-            url: pdfUrl,
-            withCredentials: true
-        }).promise.then(function(doc) {
+            open() {
+                if (!this.dbPromise) {
+                    this.dbPromise = new Promise((resolve, reject) => {
+                        const request = indexedDB.open(this.dbName, 1);
+                        request.onupgradeneeded = (e) => {
+                            const db = e.target.result;
+                            if (!db.objectStoreNames.contains(this.storeName)) {
+                                db.createObjectStore(this.storeName, { keyPath: 'url' });
+                            }
+                        };
+                        request.onsuccess = (e) => resolve(e.target.result);
+                        request.onerror = (e) => reject(e.target.error);
+                    });
+                }
+                return this.dbPromise;
+            },
+
+            async get(url) {
+                try {
+                    const db = await this.open();
+                    return new Promise((resolve) => {
+                        const tx = db.transaction(this.storeName, 'readonly');
+                        const store = tx.objectStore(this.storeName);
+                        const req = store.get(url);
+                        req.onsuccess = () => {
+                            const result = req.result;
+                            if (result) {
+                                const now = Math.floor(Date.now() / 1000);
+                                if (result.expiresAt && result.expiresAt > 0 && now >= result.expiresAt) {
+                                    this.remove(url);
+                                    resolve(null);
+                                } else {
+                                    resolve(result.buffer);
+                                }
+                            } else {
+                                resolve(null);
+                            }
+                        };
+                        req.onerror = () => resolve(null);
+                    });
+                } catch (e) {
+                    console.warn('IndexedDB read error:', e);
+                    return null;
+                }
+            },
+
+            async put(url, buffer, expiresAt) {
+                try {
+                    const db = await this.open();
+                    return new Promise((resolve) => {
+                        const tx = db.transaction(this.storeName, 'readwrite');
+                        const store = tx.objectStore(this.storeName);
+                        const req = store.put({ url: url, buffer: buffer, expiresAt: expiresAt, cachedAt: Date.now() });
+                        req.onsuccess = () => resolve(true);
+                        req.onerror = () => resolve(false);
+                    });
+                } catch (e) {
+                    console.warn('IndexedDB write error:', e);
+                    return false;
+                }
+            },
+
+            async remove(url) {
+                try {
+                    const db = await this.open();
+                    return new Promise((resolve) => {
+                        const tx = db.transaction(this.storeName, 'readwrite');
+                        const store = tx.objectStore(this.storeName);
+                        const req = store.delete(url);
+                        req.onsuccess = () => resolve(true);
+                        req.onerror = () => resolve(false);
+                    });
+                } catch (e) {
+                    return false;
+                }
+            },
+
+            async clearAll() {
+                try {
+                    const db = await this.open();
+                    return new Promise((resolve) => {
+                        const tx = db.transaction(this.storeName, 'readwrite');
+                        const store = tx.objectStore(this.storeName);
+                        const req = store.clear();
+                        req.onsuccess = () => resolve(true);
+                        req.onerror = () => resolve(false);
+                    });
+                } catch (e) {
+                    try { indexedDB.deleteDatabase(this.dbName); } catch(err) {}
+                    return false;
+                }
+            }
+        };
+
+        async function loadPdfDocument() {
+            loaderText.textContent = 'Checking local offline cache...';
+            const cachedBuffer = await CBMDL_PDFCache.get(pdfUrl);
+            
+            if (cachedBuffer) {
+                loaderText.textContent = 'Loading pages from local offline cache...';
+                return pdfjsLib.getDocument({ data: new Uint8Array(cachedBuffer) }).promise;
+            } else {
+                loaderText.textContent = 'Streaming secure document from server...';
+                const response = await fetch(pdfUrl, { credentials: 'include' });
+                if (!response.ok) {
+                    throw new Error('Server HTTP status ' + response.status);
+                }
+                const buffer = await response.arrayBuffer();
+                // Cache into browser IndexedDB for instant offline access
+                CBMDL_PDFCache.put(pdfUrl, buffer, expiresAtUnix);
+                return pdfjsLib.getDocument({ data: new Uint8Array(buffer) }).promise;
+            }
+        }
+
+        loadPdfDocument().then(function(doc) {
             pdfDoc = doc;
             numPages = doc.numPages;
             pageCountLabel.textContent = numPages;
@@ -500,31 +639,39 @@
                 const originalViewport = page.getViewport({ scale: 1.0, rotation: 0 });
                 const fitWidth = viewportScrollArea.clientWidth - 80;
                 if (fitWidth > 0 && originalViewport.width > 0) {
-                    const calculatedScale = fitWidth / originalViewport.width;
-                    currentScale = Math.min(Math.max(calculatedScale, 0.8), 1.25);
+                    // Use exact fit-width scale — same as the Fit button, no clamping
+                    currentScale = fitWidth / originalViewport.width;
                     zoomPercentLabel.textContent = Math.round(currentScale * 100) + '%';
                 }
                 buildPagesLayout();
+                // Render page 1 first; only then reveal UI & start sidebar build
                 return renderPageIfNeeded(1);
             });
         }).then(function() {
             loader.style.opacity = '0';
             setTimeout(() => loader.style.display = 'none', 200);
             updateVirtualization();
-            setTimeout(() => {
-                buildThumbnailSidebar();
-            }, 100);
+            // Defer sidebar until after page-1 render completes + one paint frame
+            requestAnimationFrame(() => buildThumbnailSidebar());
         }).catch(function(err) {
             console.error('Error loading secure PDF: ', err);
+            CBMDL_PDFCache.clearAll();
             loaderText.innerHTML = '<span style="color:#ef4444;"><span class="fa-solid fa-triangle-exclamation"></span> Error accessing file content or your e-reading permission has expired.</span>';
         });
 
+        // ── Shared page proxy cache (main render + thumbnails share this) ──
         function getPageProxy(num) {
             if (!pageProxies[num]) {
                 pageProxies[num] = pdfDoc.getPage(num).then(function(page) {
                     const rot = ((page.rotate || 0) + currentRotation) % 360;
                     const base = page.getViewport({ scale: 1.0, rotation: rot });
                     pageBaseDims[num] = { width: base.width, height: base.height };
+                    // Correct wrapper size once real dims are available
+                    const wrapper = pageWrappers[num];
+                    if (wrapper && !renderedPages.has(num)) {
+                        wrapper.style.width  = Math.floor(base.width  * currentScale) + 'px';
+                        wrapper.style.height = Math.floor(base.height * currentScale) + 'px';
+                    }
                     return page;
                 });
             }
@@ -558,16 +705,18 @@
         }
 
         function applyPageSizing() {
+            // Only size pages we have real dims for. Unknown pages are left alone
+            // and corrected when getPageProxy(i) resolves — avoids applying
+            // portrait dimensions to landscape pages (mixed-orientation PDFs).
             const template = pageBaseDims[1] || { width: 800, height: 1120 };
 
             for (let i = 1; i <= numPages; i++) {
                 const wrapper = pageWrappers[i];
                 if (!wrapper) continue;
-                const dims = pageBaseDims[i] || template;
-                const w = dims.width * currentScale;
-                const h = dims.height * currentScale;
-                wrapper.style.width = Math.floor(w) + 'px';
-                wrapper.style.height = Math.floor(h) + 'px';
+                const dims = pageBaseDims[i] || (i === 1 ? template : null);
+                if (!dims) continue;   // leave unknown pages at zero — getPageProxy will fix
+                wrapper.style.width  = Math.floor(dims.width  * currentScale) + 'px';
+                wrapper.style.height = Math.floor(dims.height * currentScale) + 'px';
             }
         }
 
@@ -580,14 +729,14 @@
                 const wrapper = pageWrappers[num];
                 if (!wrapper) return;
 
-                const dpr = window.devicePixelRatio || 1;
-                const rot = ((page.rotate || 0) + currentRotation) % 360;
+                const dpr      = window.devicePixelRatio || 1;
+                const rot      = ((page.rotate || 0) + currentRotation) % 360;
                 const viewport = page.getViewport({ scale: currentScale * dpr, rotation: rot });
-                
-                const cssWidth = Math.floor(viewport.width / dpr);
+
+                const cssWidth  = Math.floor(viewport.width  / dpr);
                 const cssHeight = Math.floor(viewport.height / dpr);
 
-                wrapper.style.width = cssWidth + 'px';
+                wrapper.style.width  = cssWidth  + 'px';
                 wrapper.style.height = cssHeight + 'px';
 
                 const inner = wrapper.querySelector('.page-inner');
@@ -598,27 +747,22 @@
                     inner.appendChild(canvas);
                 }
 
-                canvas.width = Math.floor(viewport.width);
+                canvas.width  = Math.floor(viewport.width);
                 canvas.height = Math.floor(viewport.height);
-                canvas.style.width = cssWidth + 'px';
+                canvas.style.width  = cssWidth  + 'px';
                 canvas.style.height = cssHeight + 'px';
 
                 const pageCtx = canvas.getContext('2d');
                 pageCtx.imageSmoothingEnabled = true;
                 pageCtx.imageSmoothingQuality = 'high';
 
-                const renderContext = {
-                    canvasContext: pageCtx,
-                    viewport: viewport
-                };
-
-                const renderTask = page.render(renderContext);
+                const renderTask = page.render({ canvasContext: pageCtx, viewport });
                 renderTasks[num] = renderTask;
 
                 return renderTask.promise.then(function() {
                     delete renderTasks[num];
 
-                    // Apply security watermark overlay on high-res canvas
+                    // Security watermark
                     pageCtx.save();
                     pageCtx.font = 'bold ' + Math.max(16 * dpr, Math.round(canvas.width / 25)) + 'px sans-serif';
                     pageCtx.fillStyle = 'rgba(150, 150, 150, 0.18)';
@@ -634,8 +778,9 @@
                     renderedPages.add(num);
                 }).catch(function(err) {
                     delete renderTasks[num];
+                    pendingRenders.delete(num);
                     if (err && err.name !== 'RenderingCancelledException') {
-                        console.error('Page render error:', err);
+                        console.error('Page render error p' + num + ':', err);
                     }
                 });
             });
@@ -651,10 +796,10 @@
 
             const wrapper = pageWrappers[num];
             if (!wrapper) return;
-            const inner = wrapper.querySelector('.page-inner');
+            const inner  = wrapper.querySelector('.page-inner');
             const canvas = inner && inner.querySelector('canvas');
             if (canvas) {
-                canvas.width = 0;
+                canvas.width  = 0;
                 canvas.height = 0;
                 canvas.remove();
             }
@@ -670,7 +815,9 @@
         function updateVirtualization() {
             if (!pdfDoc) return;
             const containerRect = viewportScrollArea.getBoundingClientRect();
-            const buffer = Math.max(containerRect.height, 600);
+            // Tighter buffer: half a viewport ahead/behind instead of a full one.
+            // Prevents 4-6 simultaneous renders on load of tall monitors.
+            const buffer = Math.max(containerRect.height * 0.5, 300);
 
             let bestPage = currentPageNum;
             let bestVisibleArea = -1;
@@ -679,7 +826,7 @@
                 const wrapper = pageWrappers[i];
                 if (!wrapper) continue;
                 const r = wrapper.getBoundingClientRect();
-                const relTop = r.top - containerRect.top;
+                const relTop    = r.top    - containerRect.top;
                 const relBottom = r.bottom - containerRect.top;
 
                 const inBufferRange = relBottom >= -buffer && relTop <= containerRect.height + buffer;
@@ -689,9 +836,9 @@
                     unrenderPage(i);
                 }
 
-                const visibleTop = Math.max(relTop, 0);
+                const visibleTop    = Math.max(relTop, 0);
                 const visibleBottom = Math.min(relBottom, containerRect.height);
-                const visibleArea = Math.max(0, visibleBottom - visibleTop);
+                const visibleArea   = Math.max(0, visibleBottom - visibleTop);
                 if (visibleArea > bestVisibleArea) {
                     bestVisibleArea = visibleArea;
                     bestPage = i;
@@ -715,8 +862,25 @@
             });
         }, { passive: true });
 
+        let resizeTicking = false;
         window.addEventListener('resize', function() {
-            requestAnimationFrame(updateVirtualization);
+            if (resizeTicking) return;
+            resizeTicking = true;
+            requestAnimationFrame(function() {
+                resizeTicking = false;
+                if (!pdfDoc) return;
+                // Recalculate fit-width scale for the new window size, then relayout
+                getPageProxy(currentPageNum).then(function(page) {
+                    const rot = ((page.rotate || 0) + currentRotation) % 360;
+                    const ov  = page.getViewport({ scale: 1.0, rotation: rot });
+                    const fw  = viewportScrollArea.clientWidth - 80;
+                    if (fw > 0 && ov.width > 0) {
+                        currentScale = fw / ov.width;
+                        zoomPercentLabel.textContent = Math.round(currentScale * 100) + '%';
+                        relayoutAndRerender();
+                    }
+                });
+            });
         });
 
         function scrollToPage(num, smooth) {
@@ -728,11 +892,11 @@
         function relayoutAndRerender() {
             const anchorPage = currentPageNum;
 
-            // Recalculate base dimensions for all cached page proxies with currentRotation
+            // Invalidate cached dims for the new rotation/scale
             Object.keys(pageProxies).forEach(function(num) {
                 if (pageProxies[num]) {
                     pageProxies[num].then(function(page) {
-                        const rot = ((page.rotate || 0) + currentRotation) % 360;
+                        const rot  = ((page.rotate || 0) + currentRotation) % 360;
                         const base = page.getViewport({ scale: 1.0, rotation: rot });
                         pageBaseDims[num] = { width: base.width, height: base.height };
                     });
@@ -747,7 +911,7 @@
             });
             Array.from(renderedPages).forEach(function(num) {
                 const wrapper = pageWrappers[num];
-                const canvas = wrapper && wrapper.querySelector('canvas');
+                const canvas  = wrapper && wrapper.querySelector('canvas');
                 if (canvas) canvas.remove();
             });
             renderedPages.clear();
@@ -758,22 +922,26 @@
             });
         }
 
+        // ── Thumbnail sidebar ─────────────────────────────────────────────
         function buildThumbnailSidebar() {
             const listContainer = document.getElementById('thumbnailList');
             listContainer.innerHTML = '';
-            
+
+            // Tighter rootMargin (60 px, was 120 px) + threshold 0 ensures the
+            // observer fires only when the card edge actually enters the sidebar
+            // scroll area, not speculatively for all cards at once.
             const observer = new IntersectionObserver((entries) => {
                 entries.forEach(entry => {
                     if (entry.isIntersecting) {
                         const pageNum = parseInt(entry.target.dataset.page);
-                        renderThumbnail(pageNum, entry.target);
-                        observer.unobserve(entry.target);
+                        observer.unobserve(entry.target);      // stop watching immediately
+                        thumbEnqueue(pageNum, entry.target);   // through the concurrency queue
                     }
                 });
             }, {
                 root: listContainer,
-                rootMargin: '120px 0px',
-                threshold: 0.05
+                rootMargin: '60px 0px',
+                threshold: 0
             });
 
             for (let i = 1; i <= numPages; i++) {
@@ -781,19 +949,18 @@
                 card.className = 'thumbnail-card';
                 card.id = 'thumb-card-' + i;
                 card.dataset.page = i;
-                card.onclick = () => {
-                    scrollToPage(i, true);
-                };
+                card.onclick = () => scrollToPage(i, true);
 
                 const viewportDiv = document.createElement('div');
                 viewportDiv.className = 'thumbnail-viewport';
-                
+
                 const icon = document.createElement('span');
                 icon.className = 'thumbnail-placeholder fa-solid fa-file-pdf';
                 viewportDiv.appendChild(icon);
 
                 const canvas = document.createElement('canvas');
                 canvas.id = 'thumb-canvas-' + i;
+                canvas.style.display = 'none';  // hidden until painted to avoid flicker
                 viewportDiv.appendChild(canvas);
 
                 card.appendChild(viewportDiv);
@@ -806,40 +973,43 @@
                 listContainer.appendChild(card);
                 observer.observe(card);
             }
+
+            updateActiveThumbnail(1);
         }
 
+        // Returns a Promise — required for the concurrency queue's .finally()
         function renderThumbnail(num, cardElement) {
-            pdfDoc.getPage(num).then(function(page) {
+            // Reuse the shared proxy cache — zero duplicate page fetches
+            return getPageProxy(num).then(function(page) {
                 const canvas = document.getElementById('thumb-canvas-' + num);
-                const icon = cardElement.querySelector('.thumbnail-placeholder');
+                const icon   = cardElement ? cardElement.querySelector('.thumbnail-placeholder') : null;
                 if (!canvas) return;
-                
-                const thumbCtx = canvas.getContext('2d');
-                thumbCtx.imageSmoothingEnabled = true;
-                thumbCtx.imageSmoothingQuality = 'high';
-                
+
                 const originalViewport = page.getViewport({ scale: 1.0 });
                 const baseScale = 140 / originalViewport.width;
                 const dpr = window.devicePixelRatio || 1;
-
                 const viewport = page.getViewport({ scale: baseScale * dpr });
 
-                const cssWidth = Math.floor(viewport.width / dpr);
+                const cssWidth  = Math.floor(viewport.width  / dpr);
                 const cssHeight = Math.floor(viewport.height / dpr);
 
-                canvas.width = Math.floor(viewport.width);
+                canvas.width  = Math.floor(viewport.width);
                 canvas.height = Math.floor(viewport.height);
-                canvas.style.width = cssWidth + 'px';
+                canvas.style.width  = cssWidth  + 'px';
                 canvas.style.height = cssHeight + 'px';
 
-                const renderContext = {
-                    canvasContext: thumbCtx,
-                    viewport: viewport
-                };
+                const thumbCtx = canvas.getContext('2d');
+                thumbCtx.imageSmoothingEnabled = true;
+                thumbCtx.imageSmoothingQuality = 'high';
 
-                page.render(renderContext).promise.then(() => {
+                return page.render({ canvasContext: thumbCtx, viewport }).promise.then(() => {
+                    canvas.style.display = '';   // reveal only after paint is complete
                     if (icon) icon.remove();
                 });
+            }).catch(function(err) {
+                if (err && err.name !== 'RenderingCancelledException') {
+                    console.warn('Thumbnail render error p' + num + ':', err);
+                }
             });
         }
 
@@ -924,45 +1094,46 @@
             }
         });
 
-        // Live e-Reading Countdown Timer
+        // ── Live e-Reading Countdown Timer ────────────────────────────────
         const expiresAtUnix = <?= (int)$expiresAtUnix ?>;
         if (expiresAtUnix > 0) {
-            const timerText = document.getElementById('pdfTimerText');
+            const timerText  = document.getElementById('pdfTimerText');
             const timerBadge = document.getElementById('pdfTimerBadge');
 
             function updateReaderTimer() {
-                const now = Math.floor(Date.now() / 1000);
+                const now  = Math.floor(Date.now() / 1000);
                 const diff = expiresAtUnix - now;
 
                 if (diff <= 0) {
-                    if (timerText) timerText.textContent = '00m 00s Expired';
+                    if (timerText)  timerText.textContent = '00m 00s Expired';
                     if (timerBadge) {
-                        timerBadge.style.background = 'rgba(239, 68, 68, 0.4)';
+                        timerBadge.style.background  = 'rgba(239, 68, 68, 0.4)';
                         timerBadge.style.borderColor = '#ef4444';
-                        timerBadge.style.color = '#ffffff';
+                        timerBadge.style.color       = '#ffffff';
                     }
-                    alert('⏱️ Your active e-reading session time has expired.');
-                    window.close();
-                    window.location.href = '<?= BASE_URL ?>?action=user&tab=books';
+                    CBMDL_PDFCache.clearAll().finally(() => {
+                        alert('⏱️ Your active e-reading session time has expired.');
+                        window.close();
+                        window.location.href = '<?= BASE_URL ?>?action=user&tab=books';
+                    });
                     return;
                 }
 
                 const mins = Math.floor(diff / 60);
                 const secs = diff % 60;
-                const formatted = String(mins).padStart(2, '0') + 'm ' + String(secs).padStart(2, '0') + 's';
-                if (timerText) timerText.textContent = formatted;
+                if (timerText) timerText.textContent = String(mins).padStart(2, '0') + 'm ' + String(secs).padStart(2, '0') + 's';
 
                 if (diff <= 60) {
                     if (timerBadge) {
-                        timerBadge.style.background = 'rgba(220, 38, 38, 0.35)';
+                        timerBadge.style.background  = 'rgba(220, 38, 38, 0.35)';
                         timerBadge.style.borderColor = '#dc2626';
-                        timerBadge.style.color = '#fca5a5';
+                        timerBadge.style.color       = '#fca5a5';
                     }
                 } else if (diff <= 180) {
                     if (timerBadge) {
-                        timerBadge.style.background = 'rgba(245, 158, 11, 0.25)';
+                        timerBadge.style.background  = 'rgba(245, 158, 11, 0.25)';
                         timerBadge.style.borderColor = 'rgba(245, 158, 11, 0.6)';
-                        timerBadge.style.color = '#fbbf24';
+                        timerBadge.style.color       = '#fbbf24';
                     }
                 }
             }

@@ -96,7 +96,7 @@ $stmt->close();
             <i class="fa-solid fa-book-bookmark"></i>
         </div>
         <div>
-            <span style="font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; display:block;">Filtered Volume</span>
+            <span style="font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; display:block;">Total e-books</span>
             <h3 style="margin:2px 0 0 0; font-size:20px; font-weight:700; color:var(--navy-dark);"><?= number_format($total_ebooks) ?></h3>
         </div>
     </div>
@@ -126,7 +126,7 @@ $stmt->close();
             <i class="fa-solid fa-database"></i>
         </div>
         <div>
-            <span style="font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; display:block;">Grand Total Catalog</span>
+            <span style="font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; display:block;">Grand Total e-book</span>
             <h3 style="margin:2px 0 0 0; font-size:20px; font-weight:700; color:var(--text-color);"><?= number_format($grand_total) ?></h3>
         </div>
     </div>

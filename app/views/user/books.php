@@ -47,28 +47,54 @@ $coverGradients = [
 #catalogContainer.catalog-list .ebook-content-body {
     padding: 0 !important;
     display: flex !important;
+    flex-direction: row !important;
     align-items: center !important;
-    gap: 12px !important;
+    gap: 14px !important;
     flex: 1 !important;
-    flex-wrap: wrap !important;
+    flex-wrap: nowrap !important;
+}
+
+#catalogContainer.catalog-list .ebook-meta-col {
+    display: flex !important;
+    align-items: center !important;
+    margin: 0 !important;
+}
+
+#catalogContainer.catalog-list .ebook-cat-col {
+    width: 140px !important;
+    flex-shrink: 0 !important;
+}
+
+#catalogContainer.catalog-list .ebook-title-col {
+    flex: 1 !important;
+    min-width: 140px !important;
+}
+
+#catalogContainer.catalog-list .ebook-tags-col {
+    width: 180px !important;
+    flex-shrink: 0 !important;
 }
 
 #catalogContainer.catalog-list .ebook-cat-badge {
     margin: 0 !important;
     flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 140px !important;
 }
 
 #catalogContainer.catalog-list .ebook-title-heading {
     min-height: auto !important;
     margin: 0 !important;
-    font-size: 14.5px !important;
+    font-size: 14px !important;
     font-weight: 700 !important;
     color: var(--navy-dark) !important;
     display: inline-block !important;
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
-    max-width: 380px !important;
+    max-width: 320px !important;
 }
 
 #catalogContainer.catalog-list .ebook-tags-wrap {
@@ -76,6 +102,13 @@ $coverGradients = [
     display: inline-flex !important;
     align-items: center !important;
     flex-shrink: 0 !important;
+}
+
+#catalogContainer.catalog-list .ebook-tags-wrap span {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 180px !important;
 }
 
 #catalogContainer.catalog-list .ebook-actions-footer {
@@ -178,7 +211,7 @@ $coverGradients = [
         <div>
             <label for="m_sc_term" style="font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--navy-dark); margin-bottom:5px; display:block;">Search Keyword</label>
             <div style="position:relative;">
-                <i class="fa-solid fa-search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:13px;"></i>
+                <!-- <i class="fa-solid fa-search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:13px;"></i> -->
                 <input id="m_sc_term" name="search" value="<?= e($_GET['search'] ?? '') ?>" placeholder="Title, Author, Publisher" style="padding:9px 12px 9px 34px; font-size:13px; border-radius:8px; border:1px solid var(--border-color); width:100%;">
             </div>
         </div>
@@ -318,6 +351,18 @@ $link_base = "?action=user&tab=books&search=" . urlencode($p_search) . "&cat=" .
     </div>
 </div>
 
+<!-- Interactive Catalog List Header Bar (Visible only in List View) -->
+<div id="catalogListHeader" style="display:none; justify-content:space-between; align-items:center; padding:10px 18px; background:#f8fafc; border-radius:10px; border:1px solid var(--border-color); font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px; gap:16px;">
+    <div style="display:flex; align-items:center; gap:14px; flex:1; min-width:0;">
+        <div style="width:140px; flex-shrink:0;"><i class="fa-solid fa-folder-open"></i> Category</div>
+        <div style="flex:1; min-width:140px;"><i class="fa-solid fa-heading"></i> Title</div>
+        <div style="width:180px; flex-shrink:0;"><i class="fa-solid fa-tags"></i> Author (Publisher)</div>
+    </div>
+    <div style="display:flex; align-items:center; justify-content:flex-end; gap:10px; flex-shrink:0; min-width:420px;">
+        <span><i class="fa-solid fa-gears"></i> Action & Print Request</span>
+    </div>
+</div>
+
 <!-- Interactive Catalog Container (Grid / List format) -->
 <div id="catalogContainer" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:22px;">
     <?php 
@@ -369,51 +414,47 @@ $link_base = "?action=user&tab=books&search=" . urlencode($p_search) . "&cat=" .
         </form>';
         
         echo '
-        <div class="ebook-card-item" style="background:#ffffff; border-radius:16px; border:1px solid var(--border-color); overflow:hidden; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 6px 18px rgba(15,23,42,0.03); transition:all 0.25s ease;" onmouseover="this.style.transform=\'translateY(-2px)\'; this.style.boxShadow=\'0 8px 20px rgba(15,23,42,0.06)\'; this.style.borderColor=\'var(--primary)\';" onmouseout="this.style.transform=\'translateY(0)\'; this.style.boxShadow=\'0 6px 18px rgba(15,23,42,0.03)\'; this.style.borderColor=\'var(--border-color)\';" data-ebook-id="' . $r['id'] . '">
+        <div class="ebook-card-item" style="background:#ffffff; border-radius:14px; border:1px solid var(--border-color); overflow:hidden; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 14px rgba(15,23,42,0.03); transition:all 0.25s ease;" onmouseover="this.style.transform=\'translateY(-2px)\'; this.style.boxShadow=\'0 8px 20px rgba(15,23,42,0.06)\'; this.style.borderColor=\'var(--primary)\';" onmouseout="this.style.transform=\'translateY(0)\'; this.style.boxShadow=\'0 4px 14px rgba(15,23,42,0.03)\'; this.style.borderColor=\'var(--border-color)\';" data-ebook-id="' . $r['id'] . '">
             
-            <!-- Stylized 3D E-Book Cover Header (Visible in Grid View) -->
-            <div class="ebook-cover-header" style="background:' . $grad . '; height:120px; padding:14px 16px; position:relative; display:flex; flex-direction:column; justify-content:space-between; color:white; overflow:hidden;">
-                
-                <!-- Decorative Background Watermark Icon -->
-                <i class="fa-solid fa-book-open" style="position:absolute; right:-15px; bottom:-15px; font-size:90px; color:rgba(255,255,255,0.12); pointer-events:none;"></i>
-                
-                <div style="display:flex; justify-content:space-between; align-items:flex-start; position:relative; z-index:2;">
-                    <span style="background:rgba(255,255,255,0.22); backdrop-filter:blur(4px); color:white; padding:4px 10px; border-radius:20px; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; border:1px solid rgba(255,255,255,0.3);">
-                        ' . e($r['category']) . '
+            <!-- Stylized E-Book Cover Header -->
+            <div class="ebook-cover-header" style="background:' . $grad . '; height:42px; padding:8px 14px; position:relative; display:flex; align-items:center; justify-content:space-between; color:white; overflow:hidden;">
+                <div style="display:flex; justify-content:space-between; align-items:center; width:100%; position:relative; z-index:2;">
+                    <span style="background:rgba(255,255,255,0.22); backdrop-filter:blur(4px); color:white; padding:3px 9px; border-radius:20px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; border:1px solid rgba(255,255,255,0.3); display:inline-flex; align-items:center; gap:4px;">
+                        <i class="fa-solid fa-book"></i> Digital e-Book
                     </span>
-                    <span style="background:rgba(15,23,42,0.4); color:white; padding:3px 8px; border-radius:6px; font-size:11px; font-family:monospace; font-weight:600;">
+                    <span style="background:rgba(15,23,42,0.4); color:white; padding:3px 8px; border-radius:6px; font-size:10.5px; font-family:monospace; font-weight:600;">
                         <i class="fa-solid fa-file-pdf"></i> PDF
                     </span>
-                </div>
-
-                <div style="display:flex; align-items:center; gap:8px; position:relative; z-index:2;">
-                    <div style="width:32px; height:32px; border-radius:8px; background:rgba(255,255,255,0.25); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; font-size:16px; color:white; flex-shrink:0;">
-                        <i class="fa-solid fa-book-bookmark"></i>
-                    </div>
-                    <span style="font-size:11px; font-weight:600; opacity:0.9; text-transform:uppercase; letter-spacing:0.5px;">Digital E-Book</span>
                 </div>
             </div>
 
             <!-- Book Details Content Body -->
-            <div class="ebook-content-body" style="padding:16px 18px 10px 18px;">
-                <span class="badge badge-blue ebook-cat-badge" style="font-size:10.5px; padding:3px 9px; text-transform:uppercase; letter-spacing:0.5px; font-weight:700; border-radius:6px;">
-                    ' . e($r['category']) . '
-                </span>
-
-                <h3 class="ebook-title-heading" style="margin:8px 0 8px 0; font-size:16px; font-weight:800; line-height:1.35; color:var(--navy-dark); min-height:42px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;" title="' . e($r['title']) . '">
-                    ' . e($r['title']) . '
-                </h3>
-                
-                ' . (!empty($r['keywords']) ? '
-                <div class="ebook-tags-wrap" style="margin-bottom:10px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-                    <span style="font-size:11.5px; color:var(--text-muted); background:#f1f5f9; padding:3px 8px; border-radius:6px; border:1px solid #e2e8f0; display:inline-flex; align-items:center; gap:4px;">
-                        <i class="fa-solid fa-tags" style="color:var(--primary); font-size:10px;"></i> ' . e($r['keywords']) . '
+            <div class="ebook-content-body" style="padding:14px 16px 10px 16px; display:flex; flex-direction:column; gap:8px;">
+                <!-- Category Mention -->
+                <div class="ebook-meta-col ebook-cat-col">
+                    <span class="badge badge-blue ebook-cat-badge" style="font-size:11px; padding:4px 10px; font-weight:700; border-radius:6px; display:inline-flex; align-items:center; gap:5px;">
+                        <i class="fa-solid fa-folder-open" style="font-size:10px;"></i> ' . e($r['category']) . '
                     </span>
-                </div>' : '') . '
+                </div>
+
+                <!-- Title Mention -->
+                <div class="ebook-meta-col ebook-title-col">
+                    <h3 class="ebook-title-heading" style="margin:0; font-size:15px; font-weight:800; line-height:1.35; color:var(--navy-dark); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;" title="' . e($r['title']) . '">
+                        ' . e($r['title']) . '
+                    </h3>
+                </div>
+                
+                <!-- Keywords Mention -->
+                <div class="ebook-meta-col ebook-tags-col ebook-tags-wrap" style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                    ' . (!empty($r['keywords']) ? '
+                    <span style="font-size:11px; color:var(--text-muted); background:#f1f5f9; padding:4px 9px; border-radius:6px; border:1px solid #e2e8f0; display:inline-flex; align-items:center; gap:5px;">
+                        <i class="fa-solid fa-tags" style="color:var(--primary); font-size:10px;"></i> ' . e($r['keywords']) . '
+                    </span>' : '<span style="font-size:11px; color:var(--text-muted); opacity:0.5; font-style:italic;">N/A</span>') . '
+                </div>
             </div>
             
-            <!-- Actions Footer (1 Single Line in List View) -->
-            <div class="ebook-actions-footer" style="padding:0 18px 18px 18px; display:flex; flex-direction:column; gap:10px;">
+            <!-- Actions Footer -->
+            <div class="ebook-actions-footer" style="padding:0 16px 14px 16px; display:flex; flex-direction:column; gap:10px; margin-top:auto;">
                 <div id="action-btn-container-' . $r['id'] . '" class="action-btn-wrap">
                     ' . $cardAction . '
                 </div>
@@ -515,8 +556,10 @@ $link_base = "?action=user&tab=books&search=" . urlencode($p_search) . "&cat=" .
         const btnList = document.getElementById('btnListView');
         if (!container) return;
 
+        const header = document.getElementById('catalogListHeader');
         if (mode === 'list') {
             container.classList.add('catalog-list');
+            if (header) header.style.display = 'flex';
             if (btnList) {
                 btnList.style.background = '#ffffff';
                 btnList.style.color = 'var(--primary)';
@@ -532,6 +575,7 @@ $link_base = "?action=user&tab=books&search=" . urlencode($p_search) . "&cat=" .
             localStorage.setItem('cbmdl_catalog_view', 'list');
         } else {
             container.classList.remove('catalog-list');
+            if (header) header.style.display = 'none';
             if (btnGrid) {
                 btnGrid.style.background = '#ffffff';
                 btnGrid.style.color = 'var(--primary)';

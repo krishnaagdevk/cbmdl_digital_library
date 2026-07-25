@@ -66,14 +66,15 @@ function stream_file_ranged($file, $contentType = 'application/pdf', $isPrivate 
     header('Content-Disposition: inline');
     header('X-Content-Type-Options: nosniff');
     
-    // Stream requested byte range in optimal 64KB chunks
+    // Stream requested byte range in optimal 256 KB chunks
     $fp = fopen($file, 'rb');
     if ($fp) {
         fseek($fp, $start);
         $remaining = $length;
         while ($remaining > 0 && !feof($fp)) {
-            $chunk = min(65536, $remaining); // 64KB chunks
+            $chunk = min(262144, $remaining); // 256 KB chunks — 4x fewer round-trips
             echo fread($fp, $chunk);
+            flush();
             $remaining -= $chunk;
             if (connection_aborted()) break;
         }

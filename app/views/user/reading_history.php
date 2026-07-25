@@ -17,7 +17,7 @@ $stmt->execute();
 $x = $stmt->get_result();
 ?>
 <div class="card">
-    <h3><i class="fa-solid fa-clock-rotate-left"></i> My E-Book Reading Approvals History</h3>
+    <h3><i class="fa-solid fa-clock-rotate-left"></i> My e-Books Reading History</h3>
     <div class="table-responsive">
         <table>
             <thead>

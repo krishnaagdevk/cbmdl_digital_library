@@ -96,7 +96,7 @@ $stmtR->close();
             <i class="fa-solid fa-book-bookmark"></i>
         </div>
         <div>
-            <span style="font-size:12px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; display:block;">Total E-Books</span>
+            <span style="font-size:12px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; display:block;">Total E-Books Available in Library</span>
             <h3 style="margin:2px 0 0 0; font-size:22px; font-weight:700; color:var(--navy-dark);"><?= $totCatalogEbooks ?></h3>
         </div>
     </div>
@@ -124,7 +124,7 @@ $stmtR->close();
             <i class="fa-solid fa-book-atlas"></i>
         </div>
         <div>
-            <span style="font-size:12px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; display:block;">Total Physical Books</span>
+            <span style="font-size:12px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; display:block;">Total Physical Books Available In Library</span>
             <h3 style="margin:2px 0 0 0; font-size:22px; font-weight:700; color:var(--navy-dark);"><?= $totCatalogPhysical ?></h3>
         </div>
     </div>
@@ -161,7 +161,7 @@ $stmtR->close();
     <!-- Recent Physical Book Lending History -->
     <div class="card">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-            <h3 style="margin:0;"><i class="fa-solid fa-clipboard-list" style="color:var(--primary);"></i> Physical Book Lending History</h3>
+            <h3 style="margin:0;"><i class="fa-solid fa-clipboard-list" style="color:var(--primary);"></i> Last 5 Physical Book Lending History</h3>
             <a href="?action=user&tab=lending" class="btn" style="padding:5px 12px; font-size:12px; background:var(--bg-slate); color:var(--navy-dark); border:1px solid var(--border-color);"><i class="fa-solid fa-arrow-right"></i> View Full History</a>
         </div>
         
@@ -218,7 +218,7 @@ $stmtR->close();
     <!-- Recent E-Book Reading History -->
     <div class="card">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-            <h3 style="margin:0;"><i class="fa-solid fa-book-open" style="color:var(--accent-green);"></i> Recent E-Book Reading Requests</h3>
+            <h3 style="margin:0;"><i class="fa-solid fa-book-open" style="color:var(--accent-green);"></i> Last 5 e-Book Reading Requests</h3>
             <a href="?action=user&tab=reading_history" class="btn" style="padding:5px 12px; font-size:12px; background:var(--bg-slate); color:var(--navy-dark); border:1px solid var(--border-color);"><i class="fa-solid fa-arrow-right"></i> View All Requests</a>
         </div>
 
