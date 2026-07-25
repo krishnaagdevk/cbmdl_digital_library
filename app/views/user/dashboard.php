@@ -96,7 +96,7 @@ $stmtR->close();
             <i class="fa-solid fa-book-bookmark"></i>
         </div>
         <div>
-            <span style="font-size:12px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; display:block;">Total E-Books Available in Library</span>
+            <span style="font-size:12px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; display:block;">Total E-Books in Library</span>
             <h3 style="margin:2px 0 0 0; font-size:22px; font-weight:700; color:var(--navy-dark);"><?= $totCatalogEbooks ?></h3>
         </div>
     </div>
@@ -124,7 +124,7 @@ $stmtR->close();
             <i class="fa-solid fa-book-atlas"></i>
         </div>
         <div>
-            <span style="font-size:12px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; display:block;">Total Physical Books Available In Library</span>
+            <span style="font-size:12px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; display:block;">Total Physical Books In Library</span>
             <h3 style="margin:2px 0 0 0; font-size:22px; font-weight:700; color:var(--navy-dark);"><?= $totCatalogPhysical ?></h3>
         </div>
     </div>
