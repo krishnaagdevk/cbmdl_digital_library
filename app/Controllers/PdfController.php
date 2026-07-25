@@ -66,11 +66,19 @@ final class PdfController {
         } elseif ($source === 'member') {
             if (!member()) exit('Unauthorized');
             $mid = (int)$_SESSION['member'];
-            $stmt = $this->db->prepare("SELECT r.id, r.duration_minutes, r.started_reading_at, r.expires_at, e.title, e.pdf_file FROM reading_requests r JOIN ebooks e ON e.id = r.ebook_id WHERE (r.id = ? OR r.ebook_id = ?) AND r.member_id = ? AND r.status = 'Approved' AND (r.started_reading_at IS NULL OR r.expires_at > NOW()) ORDER BY r.id DESC LIMIT 1");
-            $stmt->bind_param("iii", $id, $id, $mid);
+            $stmt = $this->db->prepare("SELECT r.id, r.duration_minutes, r.started_reading_at, r.expires_at, e.title, e.pdf_file FROM reading_requests r JOIN ebooks e ON e.id = r.ebook_id WHERE r.id = ? AND r.member_id = ? AND r.status = 'Approved' AND (r.started_reading_at IS NULL OR r.expires_at > DATE_SUB(NOW(), INTERVAL 10 SECOND)) LIMIT 1");
+            $stmt->bind_param("ii", $id, $mid);
             $stmt->execute();
             $r = $stmt->get_result()->fetch_assoc();
             $stmt->close();
+            
+            if (!$r) {
+                $stmt = $this->db->prepare("SELECT r.id, r.duration_minutes, r.started_reading_at, r.expires_at, e.title, e.pdf_file FROM reading_requests r JOIN ebooks e ON e.id = r.ebook_id WHERE r.ebook_id = ? AND r.member_id = ? AND r.status = 'Approved' AND (r.started_reading_at IS NULL OR r.expires_at > DATE_SUB(NOW(), INTERVAL 10 SECOND)) ORDER BY r.id DESC LIMIT 1");
+                $stmt->bind_param("ii", $id, $mid);
+                $stmt->execute();
+                $r = $stmt->get_result()->fetch_assoc();
+                $stmt->close();
+            }
             
             if (!$r || empty($r['pdf_file'])) {
                 exit('<div style="font-family:system-ui, sans-serif; text-align:center; padding:60px 20px; color:#ef4444; background:#0b0f19; height:100vh; box-sizing:border-box;"><h2 style="font-size:24px; margin-bottom:12px;">⚠️ Permission Expired or Book Not Found</h2><p style="color:#9ca3af; font-size:15px; max-width:500px; margin:0 auto 20px;">Your e-reading request for this book is either not approved or your active reading session has expired.</p><a href="' . BASE_URL . '?action=user&tab=books" style="display:inline-block; padding:10px 20px; background:#3b82f6; color:#fff; text-decoration:none; border-radius:8px; font-weight:600;">Return to Dashboard</a></div>');
@@ -146,11 +154,19 @@ final class PdfController {
         $mid = (int)$_SESSION['member'];
         $rid = (int)($_GET['id'] ?? 0);
         
-        $stmt = $this->db->prepare("SELECT r.*, e.pdf_file, e.title FROM reading_requests r JOIN ebooks e ON e.id = r.ebook_id WHERE (r.id = ? OR r.ebook_id = ?) AND r.member_id = ? AND r.status = 'Approved' AND (r.started_reading_at IS NULL OR r.expires_at > NOW()) ORDER BY r.id DESC LIMIT 1");
-        $stmt->bind_param("iii", $rid, $rid, $mid);
+        $stmt = $this->db->prepare("SELECT r.*, e.pdf_file, e.title FROM reading_requests r JOIN ebooks e ON e.id = r.ebook_id WHERE r.id = ? AND r.member_id = ? AND r.status = 'Approved' AND (r.started_reading_at IS NULL OR r.expires_at > DATE_SUB(NOW(), INTERVAL 10 SECOND)) LIMIT 1");
+        $stmt->bind_param("ii", $rid, $mid);
         $stmt->execute();
         $r = $stmt->get_result()->fetch_assoc();
         $stmt->close();
+        
+        if (!$r) {
+            $stmt = $this->db->prepare("SELECT r.*, e.pdf_file, e.title FROM reading_requests r JOIN ebooks e ON e.id = r.ebook_id WHERE r.ebook_id = ? AND r.member_id = ? AND r.status = 'Approved' AND (r.started_reading_at IS NULL OR r.expires_at > DATE_SUB(NOW(), INTERVAL 10 SECOND)) ORDER BY r.id DESC LIMIT 1");
+            $stmt->bind_param("ii", $rid, $mid);
+            $stmt->execute();
+            $r = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+        }
         
         if (!$r || empty($r['pdf_file'])) {
             exit('<div style="font-family:system-ui, sans-serif; text-align:center; padding:60px 20px; color:#ef4444; background:#0b0f19; height:100vh; box-sizing:border-box;"><h2 style="font-size:24px; margin-bottom:12px;">⚠️ Permission Expired or Book Not Found</h2><p style="color:#9ca3af; font-size:15px; max-width:500px; margin:0 auto 20px;">Your e-reading request for this book is either not approved or your active reading session has expired.</p><a href="' . BASE_URL . '?action=user&tab=books" style="display:inline-block; padding:10px 20px; background:#3b82f6; color:#fff; text-decoration:none; border-radius:8px; font-weight:600;">Return to Dashboard</a></div>');
@@ -172,11 +188,19 @@ final class PdfController {
         $mid = (int)$_SESSION['member'];
         $rid = (int)($_GET['id'] ?? 0);
         
-        $stmt = $this->db->prepare("SELECT r.id, r.duration_minutes, r.started_reading_at, r.expires_at, e.pdf_file FROM reading_requests r JOIN ebooks e ON e.id = r.ebook_id WHERE (r.id = ? OR r.ebook_id = ?) AND r.member_id = ? AND r.status = 'Approved' AND (r.started_reading_at IS NULL OR r.expires_at > NOW()) ORDER BY r.id DESC LIMIT 1");
-        $stmt->bind_param("iii", $rid, $rid, $mid);
+        $stmt = $this->db->prepare("SELECT r.id, r.duration_minutes, r.started_reading_at, r.expires_at, e.pdf_file FROM reading_requests r JOIN ebooks e ON e.id = r.ebook_id WHERE r.id = ? AND r.member_id = ? AND r.status = 'Approved' AND (r.started_reading_at IS NULL OR r.expires_at > DATE_SUB(NOW(), INTERVAL 10 SECOND)) LIMIT 1");
+        $stmt->bind_param("ii", $rid, $mid);
         $stmt->execute();
         $r = $stmt->get_result()->fetch_assoc();
         $stmt->close();
+        
+        if (!$r) {
+            $stmt = $this->db->prepare("SELECT r.id, r.duration_minutes, r.started_reading_at, r.expires_at, e.pdf_file FROM reading_requests r JOIN ebooks e ON e.id = r.ebook_id WHERE r.ebook_id = ? AND r.member_id = ? AND r.status = 'Approved' AND (r.started_reading_at IS NULL OR r.expires_at > DATE_SUB(NOW(), INTERVAL 10 SECOND)) ORDER BY r.id DESC LIMIT 1");
+            $stmt->bind_param("ii", $rid, $mid);
+            $stmt->execute();
+            $r = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+        }
         
         if ($r && !empty($r['pdf_file'])) {
             if (empty($r['started_reading_at'])) {

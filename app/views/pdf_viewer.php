@@ -454,7 +454,8 @@
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = '<?= BASE_URL ?>js/pdf.worker.min.js';
 
-        const pdfUrl = '<?= $streamUrl ?>';
+        const pdfUrl        = '<?= $streamUrl ?>';
+        const expiresAtUnix = <?= (int)$expiresAtUnix ?>;
         let pdfDoc = null;
         let numPages = 0;
         let currentPageNum = 1;
@@ -656,7 +657,7 @@
         }).catch(function(err) {
             console.error('Error loading secure PDF: ', err);
             CBMDL_PDFCache.clearAll();
-            loaderText.innerHTML = '<span style="color:#ef4444;"><span class="fa-solid fa-triangle-exclamation"></span> Error accessing file content or your e-reading permission has expired.</span>';
+            loaderText.innerHTML = '<div style="text-align:center; padding:24px 16px; background:rgba(239, 68, 68, 0.12); border:1px solid rgba(239, 68, 68, 0.35); border-radius:12px; margin:20px auto; max-width:460px;"><h3 style="color:#ef4444; margin:0 0 8px 0; font-size:17px;"><span class="fa-solid fa-clock-rotate-left"></span> e-Reading Permission Expired</h3><p style="color:#d1d5db; font-size:13px; margin:0 0 16px 0; line-height:1.5;">Your allocated reading session time for this book has expired or permission was revoked. Please request a new reading pass from your portal.</p><a href="<?= BASE_URL ?>?action=user&tab=books" style="display:inline-flex; align-items:center; gap:8px; background:#3b82f6; color:#ffffff; font-weight:600; font-size:13px; padding:10px 18px; border-radius:8px; text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Return to Books Catalog</a></div>';
         });
 
         // ── Shared page proxy cache (main render + thumbnails share this) ──
@@ -1095,16 +1096,13 @@
         });
 
         // ── Live e-Reading Countdown Timer ────────────────────────────────
-        const expiresAtUnix = <?= (int)$expiresAtUnix ?>;
+        let remainingSeconds = <?= max(0, $expiresAtUnix - time()) ?>;
         if (expiresAtUnix > 0) {
             const timerText  = document.getElementById('pdfTimerText');
             const timerBadge = document.getElementById('pdfTimerBadge');
 
             function updateReaderTimer() {
-                const now  = Math.floor(Date.now() / 1000);
-                const diff = expiresAtUnix - now;
-
-                if (diff <= 0) {
+                if (remainingSeconds <= 0) {
                     if (timerText)  timerText.textContent = '00m 00s Expired';
                     if (timerBadge) {
                         timerBadge.style.background  = 'rgba(239, 68, 68, 0.4)';
@@ -1119,23 +1117,24 @@
                     return;
                 }
 
-                const mins = Math.floor(diff / 60);
-                const secs = diff % 60;
+                const mins = Math.floor(remainingSeconds / 60);
+                const secs = remainingSeconds % 60;
                 if (timerText) timerText.textContent = String(mins).padStart(2, '0') + 'm ' + String(secs).padStart(2, '0') + 's';
 
-                if (diff <= 60) {
+                if (remainingSeconds <= 60) {
                     if (timerBadge) {
                         timerBadge.style.background  = 'rgba(220, 38, 38, 0.35)';
                         timerBadge.style.borderColor = '#dc2626';
                         timerBadge.style.color       = '#fca5a5';
                     }
-                } else if (diff <= 180) {
+                } else if (remainingSeconds <= 180) {
                     if (timerBadge) {
                         timerBadge.style.background  = 'rgba(245, 158, 11, 0.25)';
                         timerBadge.style.borderColor = 'rgba(245, 158, 11, 0.6)';
                         timerBadge.style.color       = '#fbbf24';
                     }
                 }
+                remainingSeconds--;
             }
 
             updateReaderTimer();
