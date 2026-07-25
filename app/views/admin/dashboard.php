@@ -403,7 +403,7 @@ if ($mem_shift_res) {
 <div id="pane-shifts" class="dashboard-pane" style="display:none;">
     <div class="card" style="margin-bottom:0;">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:15px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">
-            <h3 style="margin:0;"><i class="fa-solid fa-users-viewfinder" style="color:var(--primary);"></i> Shift Wise Members Breakdown</h3>
+            <h3 style="margin:0;"><i class="fa-solid fa-users-viewfinder" style="color:var(--primary);"></i> Shift Wise Members Details</h3>
             <span class="badge badge-blue" style="font-size:12px; font-weight:600; padding:6px 12px;">Total Active Members: <?= $tot_members ?></span>
         </div>
         
@@ -457,9 +457,6 @@ if ($mem_shift_res) {
                         <div style="display:flex; align-items:baseline; justify-content:space-between; margin-top:8px;">
                             <div>
                                 <span style="font-size:26px; font-weight:800; color:<?= $sColor ?>;"><?= $vCnt ?> <span style="font-size:13px; font-weight:600; color:var(--text-muted);">Valid</span></span>
-                                <?php if ($eCnt > 0): ?>
-                                    <span style="font-size:12px; color:var(--accent-orange); font-weight:600; display:block; margin-top:2px;">(<?= $eCnt ?> Expired)</span>
-                                <?php endif; ?>
                             </div>
                             <a href="?action=admin&tab=view_members&shift_filter=<?= urlencode($sName) ?>&status_filter=active" class="btn btn-secondary" style="padding:4px 10px; font-size:11px; border-radius:6px; background:white; color:var(--text-dark); border:1px solid var(--border-color); text-decoration:none;"><i class="fa-solid fa-list-check"></i> View List</a>
                         </div>

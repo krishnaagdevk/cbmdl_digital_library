@@ -179,7 +179,7 @@ $coverGradients = [
             <label for="m_sc_term" style="font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--navy-dark); margin-bottom:5px; display:block;">Search Keyword</label>
             <div style="position:relative;">
                 <i class="fa-solid fa-search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:13px;"></i>
-                <input id="m_sc_term" name="search" value="<?= e($_GET['search'] ?? '') ?>" placeholder="Title or topic..." style="padding:9px 12px 9px 34px; font-size:13px; border-radius:8px; border:1px solid var(--border-color); width:100%;">
+                <input id="m_sc_term" name="search" value="<?= e($_GET['search'] ?? '') ?>" placeholder="Title, Author, Publisher" style="padding:9px 12px 9px 34px; font-size:13px; border-radius:8px; border:1px solid var(--border-color); width:100%;">
             </div>
         </div>
         
@@ -199,9 +199,9 @@ $coverGradients = [
         <div>
             <label for="m_sc_sort" style="font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--navy-dark); margin-bottom:5px; display:block;">Sort Order</label>
             <select id="m_sc_sort" name="sort" style="padding:9px 12px; font-size:13px; border-radius:8px; border:1px solid var(--border-color); width:100%;">
+                <option value="category_asc" <?= $sort === 'category_asc' ? 'selected' : '' ?>>Category & Book Title (A-Z)</option>
                 <option value="title_asc" <?= $sort === 'title_asc' ? 'selected' : '' ?>>Title (A-Z)</option>
                 <option value="title_desc" <?= $sort === 'title_desc' ? 'selected' : '' ?>>Title (Z-A)</option>
-                <option value="category_asc" <?= $sort === 'category_asc' ? 'selected' : '' ?>>Category (A-Z)</option>
                 <option value="category_desc" <?= $sort === 'category_desc' ? 'selected' : '' ?>>Category (Z-A)</option>
                 <option value="id_desc" <?= $sort === 'id_desc' ? 'selected' : '' ?>>Newest Uploads</option>
                 <option value="id_asc" <?= $sort === 'id_asc' ? 'selected' : '' ?>>Oldest Uploads</option>

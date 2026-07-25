@@ -10,7 +10,7 @@ $now_fmt = date('h:i A');
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:15px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">
         <div>
             <h3 style="margin:0; color:var(--navy-dark); display:flex; align-items:center; gap:8px;">
-                <i class="fa-solid fa-sliders" style="color:var(--primary);"></i> Login Window Master Control
+                <i class="fa-solid fa-sliders" style="color:var(--primary);"></i> Shift Timing Master Control
             </h3>
             <p style="font-size:13px; color:var(--text-muted); margin:4px 0 0 0;">
                 Live shift window access restrictions & member login window enforcement status.
@@ -20,7 +20,7 @@ $now_fmt = date('h:i A');
             <i class="fa-solid fa-clock" style="color:var(--primary); font-size:16px;"></i>
             <div>
                 <span style="font-size:11px; color:var(--text-muted); display:block; line-height:1;">Server Time (Kolkata)</span>
-                <strong style="font-size:13px; color:var(--navy-dark);"><?= $now_fmt ?> (<?= date('d M Y') ?>)</strong>
+                <strong style="font-size:13px; color:var(--navy-dark);"><?= $now_fmt ?> (<?= date('d-m-Y') ?>)</strong>
             </div>
         </div>
     </div>
@@ -90,11 +90,6 @@ $now_fmt = date('h:i A');
                             <a href="?action=admin&tab=view_members&shift_filter=<?= urlencode($sName) ?>&status_filter=active" style="text-decoration:none;">
                                 <strong style="color:var(--accent-green);"><?= $validCount ?> Valid Members</strong>
                             </a>
-                            <?php if ($expiredCount > 0): ?>
-                                <a href="?action=admin&tab=view_members&shift_filter=<?= urlencode($sName) ?>&status_filter=expired" style="text-decoration:none;">
-                                    <span style="font-size:11px; color:var(--accent-orange); font-weight:600; margin-left:4px;">(<?= $expiredCount ?> Expired)</span>
-                                </a>
-                            <?php endif; ?>
                         </div>
                     </div>
                 </div>

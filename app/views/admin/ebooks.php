@@ -24,7 +24,7 @@ $latest_ebooks_result = $db->query("SELECT e.*, c.name category FROM ebooks e JO
                 <?= csrf_input() ?>
                 <input type="hidden" name="id" value="<?= $editBook['id'] ?>">
                 
-                <label for="eb_category">Category Class</label>
+                <label for="eb_category">Category</label>
                 <select id="eb_category" name="category_id" required>
                     <option value="">Choose Catalog Category</option>
                     <?php 
@@ -39,7 +39,7 @@ $latest_ebooks_result = $db->query("SELECT e.*, c.name category FROM ebooks e JO
                 <label for="eb_title">E-Book Title</label>
                 <input id="eb_title" name="title" value="<?= e($editBook['title']) ?>" placeholder="Full volume/book title" required>
                 
-                <label for="eb_keywords">Keywords (comma separated)</label>
+                <label for="eb_keywords">Author (Publisher)</label>
                 <input id="eb_keywords" name="keywords" value="<?= e($editBook['keywords']) ?>" placeholder="e.g. upsc, mathematics, calculus">
                 
                 <label for="eb_pdf">Replace E-Book PDF Document (leave blank to keep current PDF)</label>
@@ -55,7 +55,7 @@ $latest_ebooks_result = $db->query("SELECT e.*, c.name category FROM ebooks e JO
             <form id="ebFormAdd" onsubmit="handleChunkedSubmit(event, false)">
                 <?= csrf_input() ?>
                 
-                <label for="eb_category">Category Class</label>
+                <label for="eb_category">Select Category</label>
                 <select id="eb_category" name="category_id" required>
                     <option value="">Choose Catalog Category</option>
                     <?php 
@@ -67,10 +67,10 @@ $latest_ebooks_result = $db->query("SELECT e.*, c.name category FROM ebooks e JO
                 </select>
                 
                 <label for="eb_title">E-Book Title</label>
-                <input id="eb_title" name="title" placeholder="Full volume/book title" required>
+                <input id="eb_title" name="title" placeholder="Enter e-book title" required>
                 
-                <label for="eb_keywords">Keywords (comma separated)</label>
-                <input id="eb_keywords" name="keywords" placeholder="e.g. upsc, mathematics, calculus">
+                <label for="eb_keywords">Author (Publisher)</label>
+                <input id="eb_keywords" name="keywords" placeholder="e.g. H.C. Verma (Arihant Publications)">
                 
                 <label for="eb_pdf">Choose E-Book PDF Document</label>
                 <input id="eb_pdf" type="file" name="pdf" accept="application/pdf" required>
@@ -109,8 +109,8 @@ $latest_ebooks_result = $db->query("SELECT e.*, c.name category FROM ebooks e JO
             <thead>
                 <tr>
                     <th>E-Book Title</th>
+                    <th>Author (Publisher)</th>
                     <th>Category</th>
-                    <th>Keywords</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -126,8 +126,8 @@ $latest_ebooks_result = $db->query("SELECT e.*, c.name category FROM ebooks e JO
                     <?php while($r = $latest_ebooks_result->fetch_assoc()): ?>
                         <tr>
                             <td style="font-weight:600; color:var(--navy-dark);"><?= e($r['title']) ?></td>
-                            <td><span class="badge badge-blue" style="font-size:11px; padding:3px 8px; font-weight:600;"><?= e($r['category']) ?></span></td>
                             <td style="font-size:12px; color:var(--text-secondary);"><?= e($r['keywords'] ?: '—') ?></td>
+                            <td><span class="badge badge-blue" style="font-size:11px; padding:3px 8px; font-weight:600;"><?= e($r['category']) ?></span></td>
                             <td>
                                 <div style="display:flex; gap:5px;">
                                     <a class="btn" style="background:var(--navy-light); padding:6px 12px; font-size:12px; display:inline-flex; align-items:center; gap:4px;" href="?action=view_pdf_content&id=<?= $r['id'] ?>" target="_blank"><i class="fa-solid fa-eye"></i> View PDF</a> 

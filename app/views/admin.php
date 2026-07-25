@@ -161,7 +161,7 @@ if (typeof window.toggleSidebarSubmenu !== 'function') {
                 <div style="display:flex; align-items:center; gap:12px; border-left:1px solid var(--border-color); padding-left:15px;">
                     <div style="display:flex; align-items:center; gap:8px;">
                         <div style="width:32px; height:32px; border-radius:50%; background:var(--primary); color:white; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px;"><i class="fa-solid fa-user-tie"></i></div>
-                        <span style="font-size:13px; font-weight:600; color:var(--navy-dark);"><?= e($_SESSION['admin_user'] ?? 'Librarian') ?></span>
+                        <span style="font-size:13px; font-weight:600; color:var(--navy-dark);"><?= e($_SESSION['admin_user'] ?? 'Admin') ?></span>
                     </div>
                     <a href="?action=logout" class="btn btn-danger" style="padding:6px 12px; font-size:12px; border-radius:6px; text-decoration:none; display:inline-flex; align-items:center; gap:5px; font-weight:600;"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
                 </div>

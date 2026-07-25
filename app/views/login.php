@@ -71,28 +71,28 @@
         <div class="login-section" style="background:#fff; padding:26px 28px; border-radius:14px; box-shadow:0 8px 25px rgba(15,23,42,0.05); border:1px solid var(--border-color);">
             <?php if ($action === 'admin_login'): ?>
                 <h3 style="text-align:center; border:none; margin-bottom:20px; font-size:18px;"><i class="fa-solid fa-user-shield" style="color:var(--primary);"></i> Librarian Login</h3>
-                <form method="post" action="?action=admin_login">
+                <form method="post" action="?action=admin_login" autocomplete="off">
                     <?= csrf_input() ?>
                     <label for="admin_uid" style="font-size:12.5px; font-weight:600; margin-bottom:5px; display:block;"><i class="fa-solid fa-user"></i> User ID</label>
-                    <input id="admin_uid" name="username" required placeholder="Librarian Username" style="padding:11px 14px; margin-bottom:12px; font-size:13.5px;">
+                    <input id="admin_uid" name="username" required placeholder="Librarian Username" autocomplete="off" readonly onfocus="this.removeAttribute('readonly');" style="padding:11px 14px; margin-bottom:12px; font-size:13.5px;">
                     
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
                         <label for="admin_pwd" style="font-size:12.5px; font-weight:600; margin:0;"><i class="fa-solid fa-key"></i> Password</label>
                         <a href="admin-forgot-password" style="font-size:12px; color:var(--primary); font-weight:600; text-decoration:none;"><i class="fa-solid fa-unlock-keyhole"></i> Forgot Password?</a>
                     </div>
-                    <input id="admin_pwd" type="password" name="password" required placeholder="Enter password" maxlength="15" style="padding:11px 14px; margin-bottom:16px; font-size:13.5px;">
+                    <input id="admin_pwd" type="password" name="password" required placeholder="Enter password" maxlength="15" autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly');" style="padding:11px 14px; margin-bottom:16px; font-size:13.5px;">
                     
                     <button style="width:100%; padding:13px; margin-top:4px; font-weight:600; font-size:14px;"><i class="fa-solid fa-shield-halved"></i> Verify & Authorize</button>
                 </form>
             <?php else: ?>
                 <h3 style="text-align:center; border:none; margin-bottom:20px; font-size:18px;"><i class="fa-solid fa-user-graduate" style="color:var(--primary);"></i> Member Login</h3>
-                <form method="post" action="?action=member_login">
+                <form method="post" action="?action=member_login" autocomplete="off">
                     <?= csrf_input() ?>
                     <label for="member_mob" style="font-size:12.5px; font-weight:600; margin-bottom:5px; display:block;"><i class="fa-solid fa-phone"></i> Mobile Number</label>
-                    <input id="member_mob" name="mobile" required placeholder="Registered Mobile No" style="padding:11px 14px; margin-bottom:12px; font-size:13.5px;">
+                    <input id="member_mob" name="mobile" required placeholder="Registered Mobile No" autocomplete="off" readonly onfocus="this.removeAttribute('readonly');" style="padding:11px 14px; margin-bottom:12px; font-size:13.5px;">
                     
                     <label for="member_pwd" style="font-size:12.5px; font-weight:600; margin-bottom:5px; display:block;"><i class="fa-solid fa-key"></i> Password</label>
-                    <input id="member_pwd" type="password" name="password" required placeholder="Enter password" maxlength="15" style="padding:11px 14px; margin-bottom:16px; font-size:13.5px;">
+                    <input id="member_pwd" type="password" name="password" required placeholder="Enter password" maxlength="15" autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly');" style="padding:11px 14px; margin-bottom:16px; font-size:13.5px;">
                     
                     <button style="width:100%; padding:13px; margin-top:4px; font-weight:600; font-size:14px;"><i class="fa-solid fa-right-to-bracket"></i> Login Account</button>
                 </form>
@@ -197,10 +197,20 @@
 
     resetSlideTimer();
 
-    // Ensure web browser storage is clean on login page render
+    // Ensure web browser storage is clean on login page render & disable autofill
     try {
         sessionStorage.clear();
         localStorage.clear();
     } catch(e) {}
+
+    document.querySelectorAll('.login-section input').forEach(function(input) {
+        input.setAttribute('autocomplete', input.type === 'password' ? 'new-password' : 'off');
+        input.addEventListener('click', function() {
+            this.removeAttribute('readonly');
+        });
+        input.addEventListener('focus', function() {
+            this.removeAttribute('readonly');
+        });
+    });
 })();
 </script>

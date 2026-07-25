@@ -130,6 +130,11 @@ final class AuthController {
             $stmt->close();
             
             if ($member) {
+                $mShift = $member['shift'] ?? 'Full Day';
+                if ($mShift === 'Both' || $mShift === 'both' || $mShift === '') {
+                    $mShift = 'Full Day';
+                }
+
                 // Verify password
                 $pwdCorrect = false;
                 if (password_verify($password, $member['password'])) {
@@ -148,7 +153,6 @@ final class AuthController {
                 }
                 
                 if ($pwdCorrect) {
-                    $mShift = $member['shift'] ?? 'Both';
                     // Check approval / active status / expiry
                     if ($member['approved'] == 0) {
                         log_member_login($this->db, $mobile, $member['id'], $member['name'], $mShift, 'Pending Approval');
@@ -166,7 +170,7 @@ final class AuthController {
                     if (!active_member($member, $this->db, $today)) {
                         if (!empty($member['start_date']) && $member['start_date'] > $today) {
                             log_member_login($this->db, $mobile, $member['id'], $member['name'], $mShift, 'Upcoming Membership');
-                            flash('⚠️ Your membership is not active today. Your upcoming pass starts on ' . date('d M Y', strtotime($member['start_date'])) . '.');
+                            flash('⚠️ Your membership is not active today. Your upcoming pass starts on ' . date('d-m-Y', strtotime($member['start_date'])) . '.');
                         } else {
                             log_member_login($this->db, $mobile, $member['id'], $member['name'], $mShift, 'Membership Expired');
                             flash('⚠️ Your membership has expired. Kindly contact the librarian.');
@@ -194,10 +198,18 @@ final class AuthController {
                     flash('Welcome back! Logged in successfully.');
                     session_write_close();
                     go('?action=user');
+                } else {
+                    // Password incorrect for registered member
+                    log_member_login($this->db, $mobile, $member['id'], $member['name'], $mShift, 'Failed Credentials');
+                    register_failed_attempt();
+                    flash('⚠️ Invalid login credentials.');
+                    session_write_close();
+                    go('member-login');
                 }
             }
         }
         
+        // Mobile number NOT registered in DB
         log_member_login($this->db, $mobile, null, null, null, 'Failed Credentials');
         register_failed_attempt();
         flash('⚠️ Invalid login credentials.');

@@ -5,9 +5,21 @@ if (!defined('BASE_URL')) exit;
 $status_filter = $_GET['status_filter'] ?? 'All';
 $search = trim($_GET['search'] ?? '');
 $from_date = $_GET['from_date'] ?? date('Y-m-01');
-$to_date = $_GET['to_date'] ?? date('Y-m-t');
+$to_date = $_GET['to_date'] ?? date('Y-m-d');
+
+// Global print stats within current month for summary metrics
+$m_start = date('Y-m-01 00:00:00');
+$m_end = date('Y-m-t 23:59:59');
+
+$total_m_prt = (int)($db->query("SELECT COUNT(*) c FROM print_requests WHERE requested_at >= '$m_start' AND requested_at <= '$m_end'")->fetch_assoc()['c'] ?? 0);
+$pending_m_prt = (int)($db->query("SELECT COUNT(*) c FROM print_requests WHERE status = 'Pending' AND requested_at >= '$m_start' AND requested_at <= '$m_end'")->fetch_assoc()['c'] ?? 0);
+$completed_m_prt = (int)($db->query("SELECT COUNT(*) c FROM print_requests WHERE status = 'Completed' AND requested_at >= '$m_start' AND requested_at <= '$m_end'")->fetch_assoc()['c'] ?? 0);
+$rejected_m_prt = (int)($db->query("SELECT COUNT(*) c FROM print_requests WHERE status = 'Rejected' AND requested_at >= '$m_start' AND requested_at <= '$m_end'")->fetch_assoc()['c'] ?? 0);
 
 $where_clauses = [];
+$params = [];
+$types = "";
+
 if ($status_filter === 'Pending') {
     $where_clauses[] = "p.status = 'Pending'";
 } elseif ($status_filter === 'Completed') {
@@ -17,15 +29,21 @@ if ($status_filter === 'Pending') {
 }
 
 if ($search !== '') {
-    $search_escaped = $db->real_escape_string($search);
-    $where_clauses[] = "(m.name LIKE '%$search_escaped%' OR m.membership_id LIKE '%$search_escaped%' OR e.title LIKE '%$search_escaped%' OR p.pages LIKE '%$search_escaped%')";
+    $where_clauses[] = "(m.name LIKE ? OR m.membership_id LIKE ? OR e.title LIKE ? OR p.pages LIKE ?)";
+    $like_search = '%' . $search . '%';
+    $params = array_merge($params, [$like_search, $like_search, $like_search, $like_search]);
+    $types .= "ssss";
 }
 
 if ($from_date !== '') {
-    $where_clauses[] = "p.requested_at >= '" . $db->real_escape_string($from_date) . " 00:00:00'";
+    $where_clauses[] = "p.requested_at >= ?";
+    $params[] = $from_date . ' 00:00:00';
+    $types .= "s";
 }
 if ($to_date !== '') {
-    $where_clauses[] = "p.requested_at <= '" . $db->real_escape_string($to_date) . " 23:59:59'";
+    $where_clauses[] = "p.requested_at <= ?";
+    $params[] = $to_date . ' 23:59:59';
+    $types .= "s";
 }
 
 $where_sql = '';
@@ -36,13 +54,79 @@ if (count($where_clauses) > 0) {
 $p_limit = max(5, min(200, (int)($_GET['p_limit'] ?? 10)));
 $p_page = max(1, (int)($_GET['prt_page'] ?? 1));
 
-$cnt_query_str = "SELECT COUNT(*) c FROM print_requests p JOIN members m ON m.id = p.member_id JOIN ebooks e ON e.id = p.ebook_id $where_sql";
-$total_items = (int)($db->query($cnt_query_str)->fetch_assoc()['c'] ?? 0);
+// Count total matching items using Prepared Statement
+if (!empty($where_clauses)) {
+    $cnt_stmt = $db->prepare("SELECT COUNT(*) c FROM print_requests p JOIN members m ON m.id = p.member_id JOIN ebooks e ON e.id = p.ebook_id $where_sql");
+    $cnt_stmt->bind_param($types, ...$params);
+    $cnt_stmt->execute();
+    $total_items = (int)($cnt_stmt->get_result()->fetch_assoc()['c'] ?? 0);
+    $cnt_stmt->close();
+} else {
+    $total_items = (int)($db->query("SELECT COUNT(*) c FROM print_requests p JOIN members m ON m.id = p.member_id JOIN ebooks e ON e.id = p.ebook_id")->fetch_assoc()['c'] ?? 0);
+}
+
 $total_pages = ceil($total_items / $p_limit);
+if ($total_pages < 1) $total_pages = 1;
+if ($p_page > $total_pages) $p_page = $total_pages;
 $p_offset = ($p_page - 1) * $p_limit;
 
-$query_str = "SELECT p.*, m.name, m.membership_id, e.title FROM print_requests p JOIN members m ON m.id = p.member_id JOIN ebooks e ON e.id = p.ebook_id $where_sql ORDER BY p.requested_at DESC LIMIT $p_limit OFFSET $p_offset";
+// Fetch dataset using Prepared Statement
+if (!empty($where_clauses)) {
+    $stmt = $db->prepare("SELECT p.*, m.name, m.membership_id, e.title FROM print_requests p JOIN members m ON m.id = p.member_id JOIN ebooks e ON e.id = p.ebook_id $where_sql ORDER BY p.requested_at DESC LIMIT ? OFFSET ?");
+    $types_limit = $types . "ii";
+    $bind_params = array_merge($params, [$p_limit, $p_offset]);
+    $stmt->bind_param($types_limit, ...$bind_params);
+} else {
+    $stmt = $db->prepare("SELECT p.*, m.name, m.membership_id, e.title FROM print_requests p JOIN members m ON m.id = p.member_id JOIN ebooks e ON e.id = p.ebook_id ORDER BY p.requested_at DESC LIMIT ? OFFSET ?");
+    $stmt->bind_param("ii", $p_limit, $p_offset);
+}
+$stmt->execute();
+$prints_result = $stmt->get_result();
+$stmt->close();
 ?>
+
+<!-- Quick Executive Summary Metric Cards -->
+<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px; margin-bottom:20px;">
+    <div style="background:#fff; border:1px solid var(--border-color); border-radius:12px; padding:15px; display:flex; align-items:center; gap:12px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+        <div style="width:42px; height:40px; border-radius:10px; background:rgba(37, 99, 235, 0.1); color:var(--primary); display:flex; align-items:center; justify-content:center; font-size:18px;">
+            <i class="fa-solid fa-print"></i>
+        </div>
+        <div>
+            <span style="font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; display:block;">Total Requests Received</span>
+            <h3 style="margin:2px 0 0 0; font-size:20px; font-weight:700; color:var(--navy-dark);"><?= number_format($total_m_prt) ?></h3>
+        </div>
+    </div>
+
+    <div style="background:#fff; border:1px solid #fde68a; border-radius:12px; padding:15px; display:flex; align-items:center; gap:12px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+        <div style="width:42px; height:40px; border-radius:10px; background:rgba(245, 158, 11, 0.15); color:var(--accent-orange); display:flex; align-items:center; justify-content:center; font-size:18px;">
+            <i class="fa-solid fa-hourglass-half"></i>
+        </div>
+        <div>
+            <span style="font-size:11px; font-weight:600; color:#b45309; text-transform:uppercase; display:block;">Pending Request</span>
+            <h3 style="margin:2px 0 0 0; font-size:20px; font-weight:700; color:#92400e;"><?= number_format($pending_m_prt) ?></h3>
+        </div>
+    </div>
+
+    <div style="background:#fff; border:1px solid #bbf7d0; border-radius:12px; padding:15px; display:flex; align-items:center; gap:12px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+        <div style="width:42px; height:40px; border-radius:10px; background:rgba(16, 185, 129, 0.15); color:var(--accent-green, #10b981); display:flex; align-items:center; justify-content:center; font-size:18px;">
+            <i class="fa-solid fa-circle-check"></i>
+        </div>
+        <div>
+            <span style="font-size:11px; font-weight:600; color:#15803d; text-transform:uppercase; display:block;">Completed Jobs</span>
+            <h3 style="margin:2px 0 0 0; font-size:20px; font-weight:700; color:#166534;"><?= number_format($completed_m_prt) ?></h3>
+        </div>
+    </div>
+
+    <div style="background:#fff; border:1px solid #fecaca; border-radius:12px; padding:15px; display:flex; align-items:center; gap:12px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+        <div style="width:42px; height:40px; border-radius:10px; background:rgba(239, 68, 68, 0.1); color:#ef4444; display:flex; align-items:center; justify-content:center; font-size:18px;">
+            <i class="fa-solid fa-circle-xmark"></i>
+        </div>
+        <div>
+            <span style="font-size:11px; font-weight:600; color:#b91c1c; text-transform:uppercase; display:block;">Rejected Jobs</span>
+            <h3 style="margin:2px 0 0 0; font-size:20px; font-weight:700; color:#991b1b;"><?= number_format($rejected_m_prt) ?></h3>
+        </div>
+    </div>
+</div>
 
 <div class="card" style="margin-bottom: 25px;">
     <h3><i class="fa-solid fa-filter"></i> Filter Print Requests</h3>
@@ -86,26 +170,25 @@ $query_str = "SELECT p.*, m.name, m.membership_id, e.title FROM print_requests p
 </div>
 
 <div class="card">
-    <h3><i class="fa-solid fa-print"></i> PDF Page Printing Queue</h3>
+    <h3><i class="fa-solid fa-print"></i> PDF Page Printing (<?= number_format($total_items) ?> Records)</h3>
     <div class="table-responsive">
         <table id="printRequestsTable">
             <thead>
                 <tr>
-                    <th>Member ID</th>
-                    <th>Member Name</th>
-                    <th>E-Book Title</th>
-                    <th>Pages Target</th>
-                    <th>Request Timestamp</th>
-                    <th>Job Status</th>
+                    <th style="vertical-align:middle;">Member ID</th>
+                    <th style="vertical-align:middle;">Member Name</th>
+                    <th style="vertical-align:middle;">E-Book Title</th>
+                    <th style="vertical-align:middle;">Pages Target</th>
+                    <th style="vertical-align:middle;">Request Timestamp</th>
+                    <th style="vertical-align:middle;">Job Status & Actions</th>
                 </tr>
             </thead>
             <tbody>
                 <?php 
-                $x = $db->query($query_str);
-                if (!$x || $x->num_rows === 0) {
+                if (!$prints_result || $prints_result->num_rows === 0) {
                     echo '<tr><td colspan="6" style="text-align:center; padding:30px; color:var(--text-muted);"><i class="fa-solid fa-circle-info" style="font-size:20px; margin-bottom:10px; display:block; color:var(--primary);"></i> No print requests match the selected filters.</td></tr>';
                 } else {
-                    while($r = $x->fetch_assoc()) {
+                    while($r = $prints_result->fetch_assoc()) {
                         $badgeClass = $r['status'] === 'Pending' ? 'badge-orange' : ($r['status'] === 'Completed' ? 'badge-green' : 'badge-red');
                         $actionBtn = '';
                         if ($r['status'] === 'Pending') {
@@ -114,12 +197,12 @@ $query_str = "SELECT p.*, m.name, m.membership_id, e.title FROM print_requests p
                         }
                         echo '
                         <tr>
-                            <td><code>' . e($r['membership_id']) . '</code></td>
-                            <td><strong style="color:var(--navy-dark);">' . e($r['name']) . '</strong></td>
-                            <td>' . e($r['title']) . '</td>
-                            <td><span style="font-weight:600;">' . e($r['pages']) . '</span></td>
-                            <td>' . date('d-m-Y h:i A', strtotime($r['requested_at'])) . '</td>
-                            <td>
+                            <td style="vertical-align:middle;"><code>' . e($r['membership_id']) . '</code></td>
+                            <td style="vertical-align:middle;"><strong style="color:var(--navy-dark);">' . e($r['name']) . '</strong></td>
+                            <td style="vertical-align:middle;">' . e($r['title']) . '</td>
+                            <td style="vertical-align:middle;"><span style="font-weight:600;">' . e($r['pages']) . '</span></td>
+                            <td style="vertical-align:middle;">' . date('d-m-Y h:i A', strtotime($r['requested_at'])) . '</td>
+                            <td style="vertical-align:middle;">
                                 <span class="badge ' . $badgeClass . '">' . e($r['status']) . '</span>
                                 ' . $actionBtn . '
                             </td>
@@ -145,7 +228,7 @@ $query_str = "SELECT p.*, m.name, m.membership_id, e.title FROM print_requests p
         <div class="pagination-container" style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; flex-wrap:wrap; gap:15px; border-top:1px solid var(--border-color); padding-top:15px;">
             <div style="display:flex; align-items:center; gap:15px; flex-wrap:wrap;">
                 <div style="font-size:13px; color:var(--text-muted);">
-                    Showing <strong><?= $p_offset + 1 ?></strong> to <strong><?= min($p_offset + $p_limit, $total_items) ?></strong> of <strong><?= $total_items ?></strong> print jobs
+                    Showing <strong><?= $p_offset + 1 ?></strong> to <strong><?= min($p_offset + $p_limit, $total_items) ?></strong> of <strong><?= number_format($total_items) ?></strong> print jobs
                 </div>
                 <div style="display:inline-flex; align-items:center; gap:6px; font-size:13px; color:var(--text-muted);">
                     <span>Per page:</span>

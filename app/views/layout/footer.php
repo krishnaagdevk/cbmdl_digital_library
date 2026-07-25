@@ -85,7 +85,13 @@
                 'fa-box-archive':'💾',
                 'fa-database':'🗃️',
                 'fa-hard-drive':'💿',
-                'fa-calendar-check':'🔒'
+                'fa-calendar-check':'🔒',
+                'fa-rotate-right': '🔄',
+                'fa-rotate': '🔄',
+                'fa-rotate-left': '🔄',
+                'fa-arrows-rotate': '🔄',
+                'fa-right-left': '🔀',
+                'fa-pen-to-square': '✏️'
             };
             
             document.querySelectorAll('i[class*="fa-"]').forEach(el => {

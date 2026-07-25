@@ -13,7 +13,7 @@ $stmt->close();
 if (!$me || !active_member($me, $db)) {
     unset($_SESSION['member']);
     if (!empty($me['start_date']) && $me['start_date'] > date('Y-m-d')) {
-        flash('⚠️ Your membership is not active today. Your upcoming pass starts on ' . date('d M Y', strtotime($me['start_date'])) . '.');
+        flash('⚠️ Your membership is not active today. Your upcoming pass starts on ' . date('d-m-Y', strtotime($me['start_date'])) . '.');
     } else {
         flash('Your membership has expired or has been suspended. Please contact the librarian.');
     }
@@ -33,15 +33,17 @@ if (!is_member_within_shift_time($shift, $db)) {
 $tab = $_GET['tab'] ?? 'dashboard';
 $search = trim($_GET['search'] ?? '');
 $cat = (int)($_GET['cat'] ?? 0);
-$sort = $_GET['sort'] ?? 'title_asc';
+$sort = $_GET['sort'] ?? 'category_asc';
 
-$orderBy = 'e.title ASC';
-if ($sort === 'title_desc') {
+$orderBy = 'c.name ASC, e.title ASC';
+if ($sort === 'title_asc') {
+    $orderBy = 'c.name ASC, e.title ASC';
+} elseif ($sort === 'title_desc') {
     $orderBy = 'e.title DESC';
 } elseif ($sort === 'category_asc') {
-    $orderBy = 'c.name ASC';
+    $orderBy = 'c.name ASC, e.title ASC';
 } elseif ($sort === 'category_desc') {
-    $orderBy = 'c.name DESC';
+    $orderBy = 'c.name DESC, e.title ASC';
 } elseif ($sort === 'id_desc') {
     $orderBy = 'e.id DESC';
 } elseif ($sort === 'id_asc') {
@@ -57,9 +59,12 @@ if ($cat) {
     $types .= 'i';
 }
 if ($search !== '') {
-    $whereStr .= " AND e.title LIKE ?";
-    $params[] = '%' . $search . '%';
-    $types .= 's';
+    $whereStr .= " AND (e.title LIKE ? OR e.keywords LIKE ? OR c.name LIKE ?)";
+    $like = '%' . $search . '%';
+    $params[] = $like;
+    $params[] = $like;
+    $params[] = $like;
+    $types .= 'sss';
 }
 
 // Expiring soon check

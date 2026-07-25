@@ -5,7 +5,7 @@ if (!defined('BASE_URL')) exit;
 $search = trim($_GET['q'] ?? '');
 $action_filter = trim($_GET['type'] ?? '');
 $from_date = $_GET['from_date'] ?? date('Y-m-01');
-$to_date = $_GET['to_date'] ?? date('Y-m-t');
+$to_date = $_GET['to_date'] ?? date('Y-m-d');
 
 // Build query
 $where = [];
@@ -44,8 +44,8 @@ if ($to_date !== '') {
 $whereClause = !empty($where) ? "WHERE " . implode(" AND ", $where) : "";
 
 // Pagination setup
-$p_limit = 10;
-$p_page = max(1, (int)($_GET['p'] ?? 1));
+$p_limit = max(5, min(200, (int)($_GET['p_limit'] ?? 10)));
+$p_page = max(1, (int)($_GET['p'] ?? $_GET['p_page'] ?? 1));
 
 // Count total matching items
 $cntSql = "SELECT COUNT(*) c FROM membership_history h LEFT JOIN members m ON h.member_id = m.id {$whereClause}";
@@ -209,13 +209,13 @@ $cntStmtJ->close();
         <table class="table" style="width:100%; border-collapse:collapse; font-family:inherit;">
             <thead>
                 <tr style="background:var(--bg-slate); text-align:left; font-size:12px; color:var(--text-muted);">
-                    <th style="padding:12px;">#</th>
-                    <th style="padding:12px;">Member Details</th>
-                    <th style="padding:12px;">Membership Plan</th>
-                    <th style="padding:12px;">Validity Period</th>
-                    <th style="padding:12px;">Fee & Transaction</th>
-                    <th style="padding:12px;">Action Type</th>
-                    <th style="padding:12px;">Date Logged</th>
+                    <th style="padding:12px; text-align:center; width:45px; vertical-align:middle;">#</th>
+                    <th style="padding:12px; vertical-align:middle;">Member Details</th>
+                    <th style="padding:12px; vertical-align:middle;">Membership Plan</th>
+                    <th style="padding:12px; vertical-align:middle;">Validity Period</th>
+                    <th style="padding:12px; vertical-align:middle;">Fee & Transaction</th>
+                    <th style="padding:12px; text-align:center; min-width:140px; vertical-align:middle;">Action Type</th>
+                    <th style="padding:12px; vertical-align:middle;">Date Logged</th>
                 </tr>
             </thead>
             <tbody>
@@ -237,8 +237,8 @@ $cntStmtJ->close();
                         $isUpcoming = (!empty($startDate) && $startDate > $todayStr);
                         ?>
                         <tr style="border-bottom:1px solid var(--border-color); font-size:13px; font-family:inherit;">
-                            <td style="padding:12px; color:var(--text-muted); font-weight:600;"><?= $count++ ?></td>
-                            <td style="padding:12px;">
+                            <td style="padding:12px; color:var(--text-muted); font-weight:600; text-align:center; vertical-align:middle;"><?= $count++ ?></td>
+                            <td style="padding:12px; vertical-align:middle;">
                                 <a href="?action=admin&tab=view_members&view=<?= $row['member_id'] ?>" style="font-weight:700; color:var(--primary); text-decoration:none; display:inline-flex; align-items:center; gap:5px; font-family:inherit;">
                                     <i class="fa-solid fa-user"></i> <?= e($row['member_name'] ?? 'Member #' . $row['member_id']) ?>
                                 </a>
@@ -249,15 +249,15 @@ $cntStmtJ->close();
                                     <?php endif; ?>
                                 </div>
                             </td>
-                            <td style="padding:12px;">
+                            <td style="padding:12px; vertical-align:middle;">
                                 <strong style="color:var(--navy-dark); font-family:inherit;"><?= e(!empty($row['duration']) ? $row['duration'] : $row['plan_name']) ?></strong>
                                 <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">
                                     <span><i class="fa-solid fa-sun"></i> <?= e($row['shift']) ?> Shift</span>
                                 </div>
                             </td>
-                            <td style="padding:12px;">
+                            <td style="padding:12px; vertical-align:middle;">
                                 <div style="font-size:12px; font-weight:600; font-family:inherit;">
-                                    <?= date('d M Y', strtotime($row['start_date'])) ?> &rarr; <?= date('d M Y', strtotime($row['end_date'])) ?>
+                                    <?= date('d-m-Y', strtotime($row['start_date'])) ?> &rarr; <?= date('d-m-Y', strtotime($row['end_date'])) ?>
                                 </div>
                                 <div style="margin-top:3px;">
                                     <?php if ($isCurrent): ?>
@@ -269,25 +269,25 @@ $cntStmtJ->close();
                                     <?php endif; ?>
                                 </div>
                             </td>
-                            <td style="padding:12px;">
+                            <td style="padding:12px; vertical-align:middle;">
                                 <strong style="color:#16a34a; font-size:14px; font-family:inherit;">₹<?= number_format($row['membership_fee'], 2) ?></strong>
                                 <div style="font-size:11px; color:var(--text-muted); margin-top:2px;" title="Transaction ID">
                                     <i class="fa-solid fa-hashtag"></i> <?= e($row['payment_id'] ?? 'N/A') ?>
                                 </div>
                             </td>
-                            <td style="padding:12px;">
+                            <td style="padding:12px; text-align:center; vertical-align:middle;">
                                 <?php if ($row['action_type'] === 'Initial Joining'): ?>
-                                    <span class="badge badge-blue" style="font-size:11px; padding:4px 10px; font-weight:600;"><i class="fa-solid fa-user-plus"></i> Initial Joining</span>
+                                    <span class="badge badge-blue" style="font-size:11px; padding:5px 12px; font-weight:600; border:1px solid #bfdbfe; display:inline-flex; align-items:center; justify-content:center; min-width:120px; box-shadow:0 1px 2px rgba(0,0,0,0.03);"><i class="fa-solid fa-user-plus"></i> Initial Joining</span>
                                 <?php elseif ($row['action_type'] === 'Renewal'): ?>
-                                    <span class="badge" style="font-size:11px; padding:4px 10px; font-weight:600; background:#dcfce7; color:#15803d; border:1px solid #bbf7d0;"><i class="fa-solid fa-rotate-right"></i> Renewal</span>
+                                    <span class="badge" style="font-size:11px; padding:5px 12px; font-weight:600; background:#dcfce7; color:#15803d; border:1px solid #bbf7d0; display:inline-flex; align-items:center; justify-content:center; min-width:120px; box-shadow:0 1px 2px rgba(0,0,0,0.03);"><i class="fa-solid fa-rotate-right"></i> Renewal</span>
                                 <?php elseif ($row['action_type'] === 'Plan Switch'): ?>
-                                    <span class="badge badge-orange" style="font-size:11px; padding:4px 10px; font-weight:600;"><i class="fa-solid fa-right-left"></i> Plan Switch</span>
+                                    <span class="badge badge-orange" style="font-size:11px; padding:5px 12px; font-weight:600; border:1px solid #fde68a; display:inline-flex; align-items:center; justify-content:center; min-width:120px; box-shadow:0 1px 2px rgba(0,0,0,0.03);"><i class="fa-solid fa-right-left"></i> Plan Switch</span>
                                 <?php else: ?>
-                                    <span class="badge badge-secondary" style="font-size:11px; padding:4px 10px; font-weight:600;"><i class="fa-solid fa-pen-to-square"></i> <?= e($row['action_type']) ?></span>
+                                    <span class="badge" style="font-size:11px; padding:5px 12px; font-weight:600; background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; display:inline-flex; align-items:center; justify-content:center; min-width:120px; box-shadow:0 1px 2px rgba(0,0,0,0.03);"><i class="fa-solid fa-pen-to-square"></i> <?= e($row['action_type']) ?></span>
                                 <?php endif; ?>
                             </td>
-                            <td style="padding:12px; color:var(--text-muted); font-size:12px;">
-                                <i class="fa-regular fa-calendar"></i> <?= date('d M Y, h:i A', strtotime($row['created_at'])) ?>
+                            <td style="padding:12px; color:var(--text-muted); font-size:12px; vertical-align:middle;">
+                                <i class="fa-regular fa-calendar"></i> <?= date('d-m-Y h:i A', strtotime($row['created_at'])) ?>
                             </td>
                         </tr>
                     <?php endwhile; ?>
@@ -297,30 +297,64 @@ $cntStmtJ->close();
     </div>
 
     <!-- Pagination Controls -->
-    <?php if ($total_pages > 1): ?>
+    <?php if ($total_items > 0): ?>
+    <?php
+    $qs = $_GET;
+    unset($qs['p'], $qs['p_page']);
+    $qs_str = http_build_query($qs);
+    $qs_str = $qs_str ? '&' . $qs_str : '';
+    $pages_to_show = get_smart_pagination_items($p_page, $total_pages);
+    ?>
     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:15px; margin-top:25px; padding-top:15px; border-top:1px solid var(--border-color); font-family:inherit;">
-        <div style="font-size:13px; color:var(--text-muted);">
-            Showing <strong><?= $total_items > 0 ? $p_offset + 1 : 0 ?></strong> to <strong><?= min($total_items, $p_offset + $p_limit) ?></strong> of <strong><?= number_format($total_items) ?></strong> history logs
+        <div style="display:flex; align-items:center; gap:15px; flex-wrap:wrap;">
+            <div style="font-size:13px; color:var(--text-muted);">
+                Showing <strong><?= $p_offset + 1 ?></strong> to <strong><?= min($p_offset + $p_limit, $total_items) ?></strong> of <strong><?= number_format($total_items) ?></strong> history logs
+            </div>
+            <div style="display:inline-flex; align-items:center; gap:6px; font-size:13px; color:var(--text-muted);">
+                <span>Per page:</span>
+                <select onchange="window.location.href=this.value;" style="padding:4px 8px; font-size:12px; border-radius:6px; border:1px solid var(--border-color); background:var(--card-bg, #fff); color:var(--text-color); cursor:pointer; font-weight:600;">
+                    <?php foreach ([10, 25, 50, 100, 200] as $lim): ?>
+                        <?php
+                        $lim_qs = $_GET;
+                        $lim_qs['p_limit'] = $lim;
+                        $lim_qs['p'] = 1;
+                        $lim_url = '?' . http_build_query($lim_qs);
+                        ?>
+                        <option value="<?= e($lim_url) ?>" <?= $p_limit == $lim ? 'selected' : '' ?>><?= $lim ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
         </div>
-        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+
+        <?php if ($total_pages > 1): ?>
+        <div style="display:flex; gap:6px; align-items:center;">
             <?php if ($p_page > 1): ?>
-                <a href="?<?= http_build_query(array_merge($_GET, ['p' => 1])) ?>" class="btn btn-secondary" style="padding:6px 12px; font-size:12px; font-family:inherit;"><i class="fa-solid fa-angles-left"></i> First</a>
-                <a href="?<?= http_build_query(array_merge($_GET, ['p' => $p_page - 1])) ?>" class="btn btn-secondary" style="padding:6px 12px; font-size:12px; font-family:inherit;"><i class="fa-solid fa-chevron-left"></i> Prev</a>
+                <a href="?p=1<?= $qs_str ?>" class="btn btn-secondary" style="padding:6px 10px; font-size:12px; font-family:inherit;" title="First Page"><i class="fa-solid fa-angles-left"></i></a>
+                <a href="?p=<?= $p_page - 1 ?><?= $qs_str ?>" class="btn btn-secondary" style="padding:6px 10px; font-size:12px; font-family:inherit;" title="Previous Page"><i class="fa-solid fa-chevron-left"></i> Prev</a>
+            <?php else: ?>
+                <span class="btn disabled" style="padding:6px 10px; background:var(--bg-slate); color:var(--text-muted); font-size:12px; cursor:not-allowed; opacity:0.6;"><i class="fa-solid fa-angles-left"></i></span>
+                <span class="btn disabled" style="padding:6px 10px; background:var(--bg-slate); color:var(--text-muted); font-size:12px; cursor:not-allowed; opacity:0.6;"><i class="fa-solid fa-chevron-left"></i> Prev</span>
             <?php endif; ?>
 
-            <?php
-            $start_p = max(1, $p_page - 2);
-            $end_p = min($total_pages, $p_page + 2);
-            for ($i = $start_p; $i <= $end_p; $i++):
-            ?>
-                <a href="?<?= http_build_query(array_merge($_GET, ['p' => $i])) ?>" class="btn <?= $i === $p_page ? '' : 'btn-secondary' ?>" style="padding:6px 12px; font-size:12px; font-family:inherit; <?= $i === $p_page ? 'font-weight:700;' : '' ?>"><?= $i ?></a>
-            <?php endfor; ?>
+            <?php foreach ($pages_to_show as $p_item): ?>
+                <?php if ($p_item === '...'): ?>
+                    <span style="padding:6px 8px; color:var(--text-muted); font-size:12px; font-weight:700;">...</span>
+                <?php elseif ($p_item == $p_page): ?>
+                    <span class="btn" style="padding:6px 12px; background:var(--primary); color:white; font-size:12px; font-weight:700; border-radius:6px;"><?= $p_item ?></span>
+                <?php else: ?>
+                    <a href="?p=<?= $p_item ?><?= $qs_str ?>" class="btn btn-secondary" style="padding:6px 12px; font-size:12px; font-family:inherit; border-radius:6px; text-decoration:none;"><?= $p_item ?></a>
+                <?php endif; ?>
+            <?php endforeach; ?>
 
             <?php if ($p_page < $total_pages): ?>
-                <a href="?<?= http_build_query(array_merge($_GET, ['p' => $p_page + 1])) ?>" class="btn btn-secondary" style="padding:6px 12px; font-size:12px; font-family:inherit;">Next <i class="fa-solid fa-chevron-right"></i></a>
-                <a href="?<?= http_build_query(array_merge($_GET, ['p' => $total_pages])) ?>" class="btn btn-secondary" style="padding:6px 12px; font-size:12px; font-family:inherit;">Last <i class="fa-solid fa-angles-right"></i></a>
+                <a href="?p=<?= $p_page + 1 ?><?= $qs_str ?>" class="btn btn-secondary" style="padding:6px 10px; font-size:12px; font-family:inherit;" title="Next Page">Next <i class="fa-solid fa-chevron-right"></i></a>
+                <a href="?p=<?= $total_pages ?><?= $qs_str ?>" class="btn btn-secondary" style="padding:6px 10px; font-size:12px; font-family:inherit;" title="Last Page"><i class="fa-solid fa-angles-right"></i></a>
+            <?php else: ?>
+                <span class="btn disabled" style="padding:6px 10px; background:var(--bg-slate); color:var(--text-muted); font-size:12px; cursor:not-allowed; opacity:0.6;">Next <i class="fa-solid fa-chevron-right"></i></span>
+                <span class="btn disabled" style="padding:6px 10px; background:var(--bg-slate); color:var(--text-muted); font-size:12px; cursor:not-allowed; opacity:0.6;"><i class="fa-solid fa-angles-right"></i></span>
             <?php endif; ?>
         </div>
+        <?php endif; ?>
     </div>
     <?php endif; ?>
 </div>

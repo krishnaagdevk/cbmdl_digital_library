@@ -33,14 +33,14 @@ $isExpired = !empty($me['end_date']) && $me['end_date'] < date('Y-m-d');
         <table class="table" style="width:100%; border-collapse:collapse;">
             <thead>
                 <tr style="background:var(--bg-slate); text-align:left; font-size:12px; color:var(--text-muted);">
-                    <th style="padding:12px;">#</th>
-                    <th style="padding:12px;">Action Type</th>
-                    <th style="padding:12px;">Plan & Duration</th>
-                    <th style="padding:12px;">Validity Term</th>
-                    <th style="padding:12px;">Shift</th>
-                    <th style="padding:12px;">Fee Paid</th>
-                    <th style="padding:12px;">Payment Ref ID</th>
-                    <th style="padding:12px;">Issue Date</th>
+                    <th style="padding:12px; text-align:center; width:45px; vertical-align:middle;">#</th>
+                    <th style="padding:12px; text-align:center; min-width:130px; vertical-align:middle;">Action Type</th>
+                    <th style="padding:12px; vertical-align:middle;">Plan & Duration</th>
+                    <th style="padding:12px; vertical-align:middle;">Validity Term</th>
+                    <th style="padding:12px; vertical-align:middle;">Shift</th>
+                    <th style="padding:12px; vertical-align:middle;">Fee Paid</th>
+                    <th style="padding:12px; vertical-align:middle;">Payment Ref ID</th>
+                    <th style="padding:12px; vertical-align:middle;">Issue Date</th>
                 </tr>
             </thead>
             <tbody>
@@ -62,22 +62,22 @@ $isExpired = !empty($me['end_date']) && $me['end_date'] < date('Y-m-d');
                         $isUpcoming = (!empty($startDate) && $startDate > $todayStr);
                         ?>
                         <tr style="border-bottom:1px solid var(--border-color); font-size:13px;">
-                            <td style="padding:12px; color:var(--text-muted); font-weight:600;"><?= $count++ ?></td>
-                            <td style="padding:12px;">
+                            <td style="padding:12px; color:var(--text-muted); font-weight:600; text-align:center; vertical-align:middle;"><?= $count++ ?></td>
+                            <td style="padding:12px; text-align:center; vertical-align:middle;">
                                 <?php if ($row['action_type'] === 'Initial Joining'): ?>
-                                    <span class="badge badge-blue" style="font-size:11px; padding:4px 10px; font-weight:600;"><i class="fa-solid fa-user-plus"></i> Initial Joining</span>
+                                    <span class="badge badge-blue" style="font-size:11px; padding:5px 12px; font-weight:600; border:1px solid #bfdbfe; display:inline-flex; align-items:center; justify-content:center; min-width:115px; box-shadow:0 1px 2px rgba(0,0,0,0.03);"><i class="fa-solid fa-user-plus"></i> Initial Joining</span>
                                 <?php elseif ($row['action_type'] === 'Renewal'): ?>
-                                    <span class="badge" style="font-size:11px; padding:4px 10px; font-weight:600; background:#dcfce7; color:#15803d; border:1px solid #bbf7d0;"><i class="fa-solid fa-rotate-right"></i> Renewal</span>
+                                    <span class="badge" style="font-size:11px; padding:5px 12px; font-weight:600; background:#dcfce7; color:#15803d; border:1px solid #bbf7d0; display:inline-flex; align-items:center; justify-content:center; min-width:115px; box-shadow:0 1px 2px rgba(0,0,0,0.03);"><i class="fa-solid fa-rotate-right"></i> Renewal</span>
                                 <?php else: ?>
-                                    <span class="badge badge-orange" style="font-size:11px; padding:4px 10px; font-weight:600;"><?= e($row['action_type']) ?></span>
+                                    <span class="badge badge-orange" style="font-size:11px; padding:5px 12px; font-weight:600; border:1px solid #fde68a; display:inline-flex; align-items:center; justify-content:center; min-width:115px; box-shadow:0 1px 2px rgba(0,0,0,0.03);"><i class="fa-solid fa-right-left"></i> <?= e($row['action_type']) ?></span>
                                 <?php endif; ?>
                             </td>
-                            <td style="padding:12px;">
+                            <td style="padding:12px; vertical-align:middle;">
                                 <strong style="color:var(--navy-dark);"><?= e(!empty($row['duration']) ? $row['duration'] : $row['plan_name']) ?></strong>
                             </td>
-                            <td style="padding:12px;">
+                            <td style="padding:12px; vertical-align:middle;">
                                 <div style="font-weight:600; font-size:12px;">
-                                    <?= date('d M Y', strtotime($row['start_date'])) ?> &rarr; <?= date('d M Y', strtotime($row['end_date'])) ?>
+                                    <?= date('d-m-Y', strtotime($row['start_date'])) ?> &rarr; <?= date('d-m-Y', strtotime($row['end_date'])) ?>
                                 </div>
                                 <div style="margin-top:2px;">
                                     <?php if ($isCurrent): ?>
@@ -89,15 +89,15 @@ $isExpired = !empty($me['end_date']) && $me['end_date'] < date('Y-m-d');
                                     <?php endif; ?>
                                 </div>
                             </td>
-                            <td style="padding:12px; font-size:12px;"><?= e($row['shift']) ?> Shift</td>
-                            <td style="padding:12px;">
+                            <td style="padding:12px; font-size:12px; vertical-align:middle;"><?= e($row['shift']) ?> Shift</td>
+                            <td style="padding:12px; vertical-align:middle;">
                                 <strong style="color:#16a34a; font-size:14px;">₹<?= number_format($row['membership_fee'], 2) ?></strong>
                             </td>
-                            <td style="padding:12px; font-family:monospace; font-size:12px; color:var(--text-muted);">
+                            <td style="padding:12px; font-family:monospace; font-size:12px; color:var(--text-muted); vertical-align:middle;">
                                 <?= e($row['payment_id'] ?? 'N/A') ?>
                             </td>
-                            <td style="padding:12px; color:var(--text-muted); font-size:12px;">
-                                <?= date('d M Y, h:i A', strtotime($row['created_at'])) ?>
+                            <td style="padding:12px; color:var(--text-muted); font-size:12px; vertical-align:middle;">
+                                <?= date('d-m-Y h:i A', strtotime($row['created_at'])) ?>
                             </td>
                         </tr>
                     <?php endwhile; ?>

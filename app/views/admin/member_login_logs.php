@@ -14,7 +14,7 @@ if ($checkCount && (int)($checkCount->fetch_assoc()['c'] ?? 0) === 0) {
 $statusFilter = $_GET['status'] ?? 'all';
 $searchQuery = trim($_GET['search'] ?? '');
 $from_date = $_GET['from_date'] ?? date('Y-m-01');
-$to_date = $_GET['to_date'] ?? date('Y-m-t');
+$to_date = $_GET['to_date'] ?? date('Y-m-d');
 $page = max(1, (int)($_GET['page'] ?? 1));
 $limit = max(5, min(100, (int)($_GET['limit'] ?? 20))); // Max 20 per page default
 
@@ -121,12 +121,16 @@ $logsQuery = $db->query("SELECT lg.*, m.membership_id FROM member_login_logs lg 
                                 <?php endif; ?>
                             </td>
                             <td>
-                                <?php 
-                                $shiftDisp = ($log['shift'] === 'Both' || $log['shift'] === 'both' || empty($log['shift'])) ? 'Full Day' : $log['shift'];
-                                ?>
-                                <span class="badge badge-blue" style="font-size:11px; padding:3px 8px;">
-                                    <i class="fa-solid fa-sun"></i> <?= e($shiftDisp) ?>
-                                </span>
+                                <?php if (!empty($log['shift'])): ?>
+                                    <?php 
+                                    $shiftDisp = ($log['shift'] === 'Both' || $log['shift'] === 'both') ? 'Full Day' : $log['shift'];
+                                    ?>
+                                    <span class="badge badge-blue" style="font-size:11px; padding:3px 8px;">
+                                        <i class="fa-solid fa-sun"></i> <?= e($shiftDisp) ?>
+                                    </span>
+                                <?php else: ?>
+                                    <span style="color:var(--text-muted); font-size:12px;">—</span>
+                                <?php endif; ?>
                             </td>
                             <td><code style="background:var(--bg-slate); padding:2px 6px; border-radius:4px; font-size:12px; font-family:monospace; color:var(--navy-dark);"><?= e($log['ip_address']) ?></code></td>
                             <td>
@@ -142,7 +146,7 @@ $logsQuery = $db->query("SELECT lg.*, m.membership_id FROM member_login_logs lg 
                                 ?>
                             </td>
                             <td style="font-size:12px; color:var(--text-color);">
-                                <i class="fa-solid fa-clock" style="color:var(--text-muted); margin-right:4px;"></i> <?= date('d M Y, h:i A', strtotime($log['login_at'])) ?>
+                                <i class="fa-solid fa-clock" style="color:var(--text-muted); margin-right:4px;"></i> <?= date('d-m-Y h:i A', strtotime($log['login_at'])) ?>
                             </td>
                         </tr>
                     <?php endwhile; ?>

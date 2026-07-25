@@ -11,7 +11,7 @@ if ($checkCount && (int)($checkCount->fetch_assoc()['c'] ?? 0) === 0) {
 $statusFilter = $_GET['status'] ?? 'all';
 $searchQuery = trim($_GET['search'] ?? '');
 $from_date = $_GET['from_date'] ?? date('Y-m-01');
-$to_date = $_GET['to_date'] ?? date('Y-m-t');
+$to_date = $_GET['to_date'] ?? date('Y-m-d');
 $page = max(1, (int)($_GET['page'] ?? 1));
 $limit = max(5, min(100, (int)($_GET['limit'] ?? 20))); // Max 20 per page default
 
@@ -110,7 +110,7 @@ $logsQuery = $db->query("SELECT * FROM admin_login_logs $whereSql ORDER BY id DE
                                 <?php endif; ?>
                             </td>
                             <td style="font-size:12px; color:var(--text-color);">
-                                <i class="fa-solid fa-clock" style="color:var(--text-muted); margin-right:4px;"></i> <?= date('d M Y, h:i A', strtotime($log['login_at'])) ?>
+                                <i class="fa-solid fa-clock" style="color:var(--text-muted); margin-right:4px;"></i> <?= date('d-m-Y h:i A', strtotime($log['login_at'])) ?>
                             </td>
                         </tr>
                     <?php endwhile; ?>

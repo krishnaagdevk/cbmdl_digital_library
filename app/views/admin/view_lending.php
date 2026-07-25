@@ -5,7 +5,7 @@ if (!defined('BASE_URL')) exit;
 $status = $_GET['status'] ?? 'all';
 $search = trim($_GET['search'] ?? '');
 $from_date = $_GET['from_date'] ?? date('Y-m-01');
-$to_date = $_GET['to_date'] ?? date('Y-m-t');
+$to_date = $_GET['to_date'] ?? date('Y-m-d');
 
 $where = [];
 if ($status === 'returned') {

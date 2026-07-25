@@ -45,7 +45,7 @@ if ($viewId) {
                     <textarea id="upd_address" name="address" required style="width:100%; min-height:80px; font-family:inherit; resize:vertical;"><?= e($selected['address']) ?></textarea>
                     
                     <label for="upd_aadhar">Aadhar ID No. *</label>
-                    <input id="upd_aadhar" name="aadhar_no" value="<?= e($selected['aadhar_no']) ?>" required>
+                    <input id="upd_aadhar" name="aadhar_no" value="<?= e($selected['aadhar_no']) ?>" required maxlength="12" pattern="\d{12}" inputmode="numeric" title="Aadhar ID must be exactly 12 digits (numbers only)" placeholder="12 Digit ID">
                     
                     <label for="upd_shift">Library Work Shift *</label>
                     <select id="upd_shift" name="shift" required>
@@ -76,10 +76,10 @@ if ($viewId) {
             <div>
                 <div style="background:var(--bg-slate); padding:20px; border-radius:12px; border:1px solid var(--border-color); margin-bottom: 25px;">
                     <h4 style="margin-top:0;"><i class="fa-solid fa-calendar-days"></i> Membership Scope</h4>
-                    <p><strong>Tier duration:</strong> <span class="badge badge-blue"><?= e($selected['duration']) ?></span></p>
                     <p><strong>Start Date:</strong> <?= date('d-m-Y', strtotime($selected['start_date'])) ?></p>
                     <p><strong>Expiry Date:</strong> <?= date('d-m-Y', strtotime($selected['end_date'])) ?></p>
                     <p><strong>Payment ID:</strong> <?= e($selected['payment_id']) ?></p>
+                    <p><strong>Fee Paid:</strong> ₹<?= number_format((float)($selected['membership_fee'] ?? 0), 2) ?></p>
                     <?php 
                         $isExpired = $selected['end_date'] < date('Y-m-d');
                         if ($selected['is_active'] == 0) {
@@ -254,14 +254,14 @@ if ($viewId) {
                 <table class="table" style="width:100%; border-collapse:collapse; font-size:12px;">
                     <thead>
                         <tr style="background:var(--bg-slate); text-align:left; color:var(--text-muted);">
-                            <th style="padding:10px;">#</th>
-                            <th style="padding:10px;">Action Type</th>
-                            <th style="padding:10px;">Plan & Term</th>
-                            <th style="padding:10px;">Validity Period</th>
-                            <th style="padding:10px;">Shift</th>
-                            <th style="padding:10px;">Fee Paid</th>
-                            <th style="padding:10px;">Payment Ref ID</th>
-                            <th style="padding:10px;">Logged On</th>
+                            <th style="padding:10px; text-align:center; width:35px; vertical-align:middle;">#</th>
+                            <th style="padding:10px; text-align:center; min-width:120px; vertical-align:middle;">Action Type</th>
+                            <th style="padding:10px; vertical-align:middle;">Plan & Term</th>
+                            <th style="padding:10px; vertical-align:middle;">Validity Period</th>
+                            <th style="padding:10px; vertical-align:middle;">Shift</th>
+                            <th style="padding:10px; vertical-align:middle;">Fee Paid</th>
+                            <th style="padding:10px; vertical-align:middle;">Payment Ref ID</th>
+                            <th style="padding:10px; vertical-align:middle;">Logged On</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -274,26 +274,26 @@ if ($viewId) {
                         <?php else: ?>
                             <?php $hCount = 1; while ($hRow = $mHistRes->fetch_assoc()): ?>
                                 <tr style="border-bottom:1px solid var(--border-color);">
-                                    <td style="padding:10px; color:var(--text-muted);"><?= $hCount++ ?></td>
-                                    <td style="padding:10px;">
+                                    <td style="padding:10px; color:var(--text-muted); text-align:center; vertical-align:middle;"><?= $hCount++ ?></td>
+                                    <td style="padding:10px; text-align:center; vertical-align:middle;">
                                         <?php if ($hRow['action_type'] === 'Initial Joining'): ?>
-                                            <span class="badge badge-blue" style="font-size:10px; padding:3px 8px; font-weight:600;"><i class="fa-solid fa-user-plus"></i> Initial Joining</span>
+                                            <span class="badge badge-blue" style="font-size:10px; padding:4px 10px; font-weight:600; border:1px solid #bfdbfe; display:inline-flex; align-items:center; justify-content:center; min-width:110px;"><i class="fa-solid fa-user-plus"></i> Initial Joining</span>
                                         <?php elseif ($hRow['action_type'] === 'Renewal'): ?>
-                                            <span class="badge" style="font-size:10px; padding:3px 8px; font-weight:600; background:#dcfce7; color:#15803d; border:1px solid #bbf7d0;"><i class="fa-solid fa-rotate-right"></i> Renewal</span>
+                                            <span class="badge" style="font-size:10px; padding:4px 10px; font-weight:600; background:#dcfce7; color:#15803d; border:1px solid #bbf7d0; display:inline-flex; align-items:center; justify-content:center; min-width:110px;"><i class="fa-solid fa-rotate-right"></i> Renewal</span>
                                         <?php else: ?>
-                                            <span class="badge badge-orange" style="font-size:10px; padding:3px 8px; font-weight:600;"><?= e($hRow['action_type']) ?></span>
+                                            <span class="badge badge-orange" style="font-size:10px; padding:4px 10px; font-weight:600; border:1px solid #fde68a; display:inline-flex; align-items:center; justify-content:center; min-width:110px;"><i class="fa-solid fa-right-left"></i> <?= e($hRow['action_type']) ?></span>
                                         <?php endif; ?>
                                     </td>
-                                    <td style="padding:10px;">
+                                    <td style="padding:10px; vertical-align:middle;">
                                         <strong><?= e(!empty($hRow['duration']) ? $hRow['duration'] : $hRow['plan_name']) ?></strong>
                                     </td>
-                                    <td style="padding:10px;">
+                                    <td style="padding:10px; vertical-align:middle;">
                                         <?= date('d-m-Y', strtotime($hRow['start_date'])) ?> &rarr; <?= date('d-m-Y', strtotime($hRow['end_date'])) ?>
                                     </td>
-                                    <td style="padding:10px;"><?= e($hRow['shift']) ?></td>
-                                    <td style="padding:10px; font-weight:700; color:#16a34a;">₹<?= number_format($hRow['membership_fee'], 2) ?></td>
-                                    <td style="padding:10px; font-family:monospace;"><?= e($hRow['payment_id'] ?? 'N/A') ?></td>
-                                    <td style="padding:10px; color:var(--text-muted);"><?= date('d M Y, H:i', strtotime($hRow['created_at'])) ?></td>
+                                    <td style="padding:10px; vertical-align:middle;"><?= e($hRow['shift']) ?></td>
+                                    <td style="padding:10px; font-weight:700; color:#16a34a; vertical-align:middle;">₹<?= number_format($hRow['membership_fee'], 2) ?></td>
+                                    <td style="padding:10px; font-family:monospace; vertical-align:middle;"><?= e($hRow['payment_id'] ?? 'N/A') ?></td>
+                                    <td style="padding:10px; color:var(--text-muted); vertical-align:middle;"><?= date('d-m-Y h:i A', strtotime($hRow['created_at'])) ?></td>
                                 </tr>
                             <?php endwhile; ?>
                         <?php endif; ?>
@@ -307,7 +307,7 @@ if ($viewId) {
 <?php else: ?>
     <?php
     $from_date = $_GET['from_date'] ?? date('Y-m-01');
-    $to_date = $_GET['to_date'] ?? date('Y-m-t');
+    $to_date = $_GET['to_date'] ?? date('Y-m-d');
 
     // Date Filter clause
     $dateWhere = "";
@@ -410,7 +410,7 @@ if ($viewId) {
                     $labels = [];
                     if ($status_filter !== 'all') $labels[] = '<strong>' . ucfirst($status_filter) . '</strong>';
                     if ($shift_filter !== 'all') $labels[] = '<strong>' . e($shift_filter) . ' Shift</strong>';
-                    if ($from_date !== '' || $to_date !== '') $labels[] = '<strong>' . e($from_date) . ' to ' . e($to_date) . '</strong>';
+                    if ($from_date !== '' || $to_date !== '') $labels[] = '<strong>' . date('d-m-Y', strtotime($from_date)) . ' to ' . date('d-m-Y', strtotime($to_date)) . '</strong>';
                     echo implode(' | ', $labels);
                     ?>) 
                     <a href="?action=admin&tab=view_members" class="btn" style="padding:4px 8px; font-size:11px; background:var(--bg-slate); color:var(--text-color); border:1px solid var(--border-color);"><i class="fa-solid fa-filter-circle-xmark"></i> Clear Filter</a>
@@ -603,6 +603,22 @@ if ($viewId) {
         <script class="dynamic-script">
         (function() {
             function initViewMembersScript() {
+                const aadharInput = document.getElementById('upd_aadhar');
+                if (aadharInput) {
+                    aadharInput.addEventListener('input', function() {
+                        let cleanVal = this.value.replace(/\D/g, '');
+                        if (cleanVal.length > 12) {
+                            cleanVal = cleanVal.substring(0, 12);
+                        }
+                        this.value = cleanVal;
+                    });
+                    aadharInput.addEventListener('keypress', function(e) {
+                        if (e.key < '0' || e.key > '9') {
+                            e.preventDefault();
+                        }
+                    });
+                }
+
                 const filterInput = document.getElementById('viewMembersFilter');
                 const membersTable = document.getElementById('viewMembersTable');
                 if (filterInput && membersTable) {

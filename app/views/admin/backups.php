@@ -70,7 +70,7 @@ $latestBackup = $latestBackupRaw ? date('d-m-Y H:i:s', strtotime($latestBackupRa
         <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
             
             <!-- Form 1: Generate Database Backup -->
-            <form method="post" action="?action=generate_db_backup" style="margin:0;" onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').innerHTML='<i class=\"fa-solid fa-spinner fa-spin\"></i> Generating...';">
+            <form method="post" action="?action=generate_db_backup" style="margin:0;" onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').innerHTML='<i class=\'fa-solid fa-spinner fa-spin\'></i> Generating...';">
                 <?= csrf_input() ?>
                 <button class="btn" style="background:var(--primary); color:white; padding:10px 18px; font-weight:600; font-size:13.5px; border-radius:8px; display:flex; align-items:center; gap:8px;">
                     <i class="fa-solid fa-database"></i> Create DB Backup (.sql)

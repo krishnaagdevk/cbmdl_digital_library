@@ -943,26 +943,6 @@ $is_login_view = in_array($_GET['action'] ?? '', ['admin-login', 'member-login',
         </script>
     <?php endif; ?>
 
-    <!-- Navigation Bar -->
-    <!-- <nav>
-        <div class="logo-area">
-            <i class="fa-solid fa-book-bookmark"></i>
-            <span>CBMDL e-Library</span>
-        </div>
-        <div class="nav-links">
-            <?php if (admin() && $action !== 'admin_login' && $action !== 'member_login'): ?>
-                <a href="?action=admin" class="<?= $action === 'admin' ? 'active' : '' ?>"><i class="fa-solid fa-house-chimney"></i> Dashboard <span id="headerUploadBadge" style="display:none; margin-left:6px;"></span></a>
-                <a href="?action=logout" class="logout-btn"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
-            <?php elseif (member() && $action !== 'admin_login' && $action !== 'member_login'): ?>
-                <a href="?action=user" class="<?= $action === 'user' ? 'active' : '' ?>"><i class="fa-solid fa-house-chimney"></i> My Portal</a>
-                <a href="?action=logout" class="logout-btn"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
-            <?php else: ?>
-                <a href="member-login" class="<?= $action === 'member_login' ? 'active' : '' ?>"><i class="fa-solid fa-user"></i> Member Login</a>
-                <a href="admin-login" class="<?= $action === 'admin_login' ? 'active' : '' ?>"><i class="fa-solid fa-user-tie"></i> Librarian Login</a>
-            <?php endif; ?>
-        </div>
-    </nav> -->
-
     <!-- Header Branding -->
     <div class="header-logo">
         <img src="<?= BASE_URL ?>images/header_banner.png" alt="Branding Left" />

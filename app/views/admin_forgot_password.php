@@ -25,7 +25,7 @@ $sysPin = get_admin_master_pin();
             </div>
         </div>
 
-        <form method="post" action="?action=process_admin_forgot_password">
+        <form method="post" action="?action=process_admin_forgot_password" autocomplete="off">
             <?= csrf_input() ?>
             
             <label for="recovery_username" style="font-size:12.5px; font-weight:600; margin-bottom:5px; display:block;">

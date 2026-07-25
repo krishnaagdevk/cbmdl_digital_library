@@ -121,7 +121,7 @@ if ($lookup !== '') {
                             $returnCol = '<span style="font-size:12px; color:var(--text-muted); font-weight:600;"><i class="fa-solid fa-circle-check"></i> Returned ' . date('d-m-Y', strtotime($r['returned_at'])) . '</span>';
                         }
                     } else {
-                        $returnCol = '<form method="post" action="?action=return_book" style="display:inline; margin:0;"><input type="hidden" name="id" value="' . $r['id'] . '"><input type="hidden" name="tab" value="lending">' . csrf_input() . '<button class="btn" type="submit" style="padding:6px 12px;"><i class="fa-solid fa-right-left"></i> Register Return</button></form>';
+                        $returnCol = '<form method="post" action="?action=return_book" style="display:inline; margin:0;"><input type="hidden" name="id" value="' . $r['id'] . '"><input type="hidden" name="tab" value="lending">' . csrf_input() . '<button class="btn" type="submit" style="padding:6px 12px;"><i class="fa-solid fa-right-left"></i>Tag Return</button></form>';
                     }
                     
                     $due_time = strtotime($r['due_date']);
