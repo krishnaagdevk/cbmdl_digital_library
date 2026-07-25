@@ -92,12 +92,11 @@ if ($viewId) {
                     ?>
                 </div>
 
-                <!-- DOUBLE SIDED PRINT BLOCK FOR ADMIN -->
-                <div style="background:var(--bg-slate); padding:20px; border-radius:12px; border:1px solid var(--border-color); margin-bottom: 25px; text-align:center;">
+                <!-- DOUBLE SIDED PRINT ID Card BLOCK FOR ADMIN -->
+                <!-- <div style="background:var(--bg-slate); padding:20px; border-radius:12px; border:1px solid var(--border-color); margin-bottom: 25px; text-align:center;">
                     <h4 style="margin-top:0; text-align:left;"><i class="fa-solid fa-print"></i> Issue Library ID Card</h4>
                     <p style="font-size:12px; color:var(--text-muted); text-align:left; margin-bottom:15px;">Generate a printable double-sided card aligned to CR80 specifications.</p>
                     
-                    <!-- HIDDEN PRINT CARD ELEMENTS -->
                     <div id="m-card-print-area" style="display:none;">
                         <style>
                             @media print {
@@ -115,13 +114,12 @@ if ($viewId) {
                                 }
                             }
                         </style>
-                        <!-- FRONT CARD -->
                         <div style="width: 340px; height: 215px; border: 1px solid #222; border-radius: 12px; background: white; overflow:hidden; font-family:\'Inter\', sans-serif; display:flex; flex-direction:column; justify-content:space-between; box-sizing:border-box;">
                             <div style="background: #0f172a; color: white; padding: 10px; text-align: center; border-bottom: 2px solid #2563eb; display:flex; align-items:center; gap:8px; justify-content:center;">
                                 <div style="font-size:16px;">🏛️</div>
                                 <div>
                                     <h4 style="margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-weight:700;">Meerut Cantonment Board</h4>
-                                    <p style="margin: 1px 0 0 0; font-size: 8px; opacity: 0.9;">P.L.C.L. Digital e-Library</p>
+                                    <p style="margin: 1px 0 0 0; font-size: 8px; opacity: 0.9;">P.L.C.L. Digital Library</p>
                                 </div>
                             </div>
                             <div style="padding: 12px; display: flex; gap: 12px; align-items: center; flex-grow:1;">
@@ -150,7 +148,6 @@ if ($viewId) {
                             <div style="background: #0f172a; color: white; padding: 4px; text-align: center; font-size: 8px; font-weight:600;">100% SECURE OFFLINE DIGITAL PASS</div>
                         </div>
 
-                        <!-- BACK CARD -->
                         <div style="width: 340px; height: 215px; border: 1px solid #222; border-radius: 12px; background: white; overflow:hidden; font-family:\'Inter\', sans-serif; display:flex; flex-direction:column; justify-content:space-between; padding: 12px 15px; box-sizing:border-box;">
                             <div>
                                 <h5 style="margin: 0 0 6px 0; font-size: 10px; text-transform: uppercase; color: #0f172a; font-weight: 700; border-bottom:1px solid #e2e8f0; padding-bottom:3px; text-align:center;">Library Instructions & Terms</h5>
@@ -185,9 +182,8 @@ if ($viewId) {
                         </div>
                     </div>
 
-                    <!-- TRIGGER BUTTON -->
                     <button class="btn" style="background:var(--primary); width:100%;" onclick="window.print()"><i class="fa-solid fa-print"></i> Print Member ID Card</button>
-                </div>
+                </div> -->
 
                 <div style="background:var(--bg-slate); padding:20px; border-radius:12px; border:1px solid var(--border-color); margin-bottom: 25px;">
                     <h4 style="margin-top:0;"><i class="fa-solid fa-rotate-right"></i> Renew Membership</h4>
