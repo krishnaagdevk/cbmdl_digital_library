@@ -1339,6 +1339,13 @@ final class AdminController {
         $author = trim($_POST['author'] ?? '');
         $publisher = trim($_POST['publisher'] ?? '');
         
+        if ($shelf_number !== '') {
+            if (!preg_match('/^[0-9]+$/', $shelf_number) || (int)$shelf_number > 99) {
+                flash('⚠️ Invalid Shelf Number: Must be numbers only up to 99.');
+                go('?action=admin&tab=physical&edit=' . $id);
+            }
+        }
+
         try {
             $stmt = $this->db->prepare("UPDATE physical_books SET shelf_number = ?, title = ?, book_code = ?, price = ?, author = ?, publisher = ? WHERE id = ?");
             $stmt->bind_param("sssdssi", $shelf_number, $title, $book_code, $price, $author, $publisher, $id);
@@ -1360,6 +1367,13 @@ final class AdminController {
         $author = trim($_POST['author'] ?? '');
         $publisher = trim($_POST['publisher'] ?? '');
         
+        if ($shelf_number !== '') {
+            if (!preg_match('/^[0-9]+$/', $shelf_number) || (int)$shelf_number > 99) {
+                flash('⚠️ Invalid Shelf Number: Must be numbers only up to 99.');
+                go('?action=admin&tab=physical');
+            }
+        }
+
         try {
             $stmt = $this->db->prepare("INSERT INTO physical_books (shelf_number, title, book_code, price, author, publisher) VALUES (?, ?, ?, ?, ?, ?)");
             $stmt->bind_param("sssdss", $shelf_number, $title, $book_code, $price, $author, $publisher);

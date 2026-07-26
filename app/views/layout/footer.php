@@ -34,7 +34,7 @@
 
     <!-- Footer Area -->
     <footer>
-        &copy; <?= date('Y') ?> <strong>MCB e-Library</strong> · All Rights Reserved. Designed & Developed by <strong>KD Technologies</strong>
+        &copy; 2026-<?= date('Y') ?> <strong>MCB e-Library</strong> · All Rights Reserved. Designed & Developed by <strong>KD Technologies</strong>
     </footer>
 
     <!-- Client-Side JavaScript Logic -->
@@ -886,22 +886,22 @@
             })
             .then(({ data, rawRedirectUrl }) => {
                 const cleanUrl = rawRedirectUrl.replace(/([?&])spa=1(&|$)/, '$1').replace(/[?&]$/, '');
-                if (data && data.success && data.content) {
+                const contentTarget = document.querySelector('.admin-content') || document.querySelector('#admin-content');
+                const isLoginAction = actionLower.includes('login') || cleanUrl.includes('action=user') || cleanUrl.includes('action=admin');
+
+                if (data && data.success && data.content && contentTarget && !isLoginAction) {
                     if (window.history && window.history.pushState) {
                         window.history.pushState({ url: cleanUrl }, '', cleanUrl);
                     }
-                    const contentTarget = document.querySelector('.admin-content') || document.querySelector('#admin-content');
-                    if (contentTarget) {
-                        contentTarget.innerHTML = data.content;
-                        // Re-trigger dynamic inline scripts (such as toast alerts)
-                        const scripts = contentTarget.querySelectorAll('script');
-                        scripts.forEach(oldScript => {
-                            const newScript = document.createElement('script');
-                            Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
-                            newScript.appendChild(document.createTextNode(oldScript.textContent));
-                            oldScript.parentNode.replaceChild(newScript, oldScript);
-                        });
-                    }
+                    contentTarget.innerHTML = data.content;
+                    // Re-trigger dynamic inline scripts (such as toast alerts)
+                    const scripts = contentTarget.querySelectorAll('script');
+                    scripts.forEach(oldScript => {
+                        const newScript = document.createElement('script');
+                        Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+                        newScript.appendChild(document.createTextNode(oldScript.textContent));
+                        oldScript.parentNode.replaceChild(newScript, oldScript);
+                    });
                     if (data.sidebar) {
                         const sidebarTarget = document.querySelector('.sidebar');
                         if (sidebarTarget) {
@@ -918,7 +918,7 @@
                     if (data.title) document.title = data.title;
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 } else {
-                    navigateToUrl(cleanUrl, true, false);
+                    window.location.href = cleanUrl;
                 }
             })
             .catch(err => {

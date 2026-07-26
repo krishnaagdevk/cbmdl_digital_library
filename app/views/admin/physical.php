@@ -24,8 +24,8 @@ $latest_physical_result = $db->query("SELECT p.*, EXISTS(SELECT 1 FROM lendings 
                 <?= csrf_input() ?>
                 <input type="hidden" name="id" value="<?= $editBook['id'] ?>">
                 
-                <label for="shelf_number"><i class="fa-solid fa-layer-group"></i> Shelf Number</label>
-                <input id="shelf_number" name="shelf_number" value="<?= e($editBook['shelf_number'] ?? '') ?>" placeholder="Input Shelf Number">
+                <label for="shelf_number"><i class="fa-solid fa-layer-group"></i> Shelf Number <small style="color:var(--text-muted); font-weight:normal;">(Numbers only, Max 99)</small></label>
+                <input type="number" id="shelf_number" name="shelf_number" min="1" max="99" value="<?= e($editBook['shelf_number'] ?? '') ?>" placeholder="Input Shelf Number (1-99)" oninput="this.value = this.value.replace(/[^0-9]/g, ''); if(this.value.length > 2) this.value = this.value.slice(0, 2); if(parseInt(this.value) > 99) this.value = '99';" onkeydown="if(event.key === 'e' || event.key === 'E' || event.key === '+' || event.key === '-') event.preventDefault();">
 
                 <label for="book_code"><i class="fa-solid fa-barcode"></i> Bar Code / Book ID *</label>
                 <input id="book_code" name="book_code" value="<?= e($editBook['book_code']) ?>" placeholder="Input Book Code" required>
@@ -51,8 +51,8 @@ $latest_physical_result = $db->query("SELECT p.*, EXISTS(SELECT 1 FROM lendings 
             <h3><i class="fa-solid fa-square-plus"></i> Add Physical Books</h3>
             <form method="post" action="?action=add_physical">
                 <?= csrf_input() ?>
-                <label for="shelf_number"><i class="fa-solid fa-layer-group"></i> Shelf Number</label>
-                <input id="shelf_number" name="shelf_number" placeholder="Input Shelf Number">
+                <label for="shelf_number"><i class="fa-solid fa-layer-group"></i> Shelf Number <small style="color:var(--text-muted); font-weight:normal;">(Numbers only, Max 99)</small></label>
+                <input type="number" id="shelf_number" name="shelf_number" min="1" max="99" placeholder="Input Shelf Number (1-99)" oninput="this.value = this.value.replace(/[^0-9]/g, ''); if(this.value.length > 2) this.value = this.value.slice(0, 2); if(parseInt(this.value) > 99) this.value = '99';" onkeydown="if(event.key === 'e' || event.key === 'E' || event.key === '+' || event.key === '-') event.preventDefault();">
 
                 <label for="book_code"><i class="fa-solid fa-barcode"></i> Bar Code / Book ID *</label>
                 <input id="book_code" name="book_code" placeholder="Input Book Code" required>

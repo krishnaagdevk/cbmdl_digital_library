@@ -17,7 +17,89 @@ if (is_spa_request()) {
         'admin_login_logs', 'member_login_logs', 'lending', 'view_lending', 'profile', 'backups'
     ];
     
+    $bell_reqs = $side_req_count;
+    $bell_prints = $side_prt_count;
+    $bell_total = $bell_reqs + $bell_prints;
+
     ob_start();
+    ?>
+    <!-- Persistent Top Header & Notification Bar -->
+    <div style="background:var(--card-bg); border:1px solid var(--border-color); border-radius:12px; padding:12px 24px; margin-bottom:25px; display:flex; align-items:center; justify-content:space-between; box-shadow: 0 4px 10px rgba(0,0,0,0.03);">
+        <div style="display:flex; align-items:center; gap:10px;">
+            <span style="font-size:18px; font-weight:700; color:var(--navy-dark);"><i class="fa-solid fa-user-shield" style="color:var(--primary);"></i> Librarian Panel</span>
+            <span class="badge badge-green" style="font-size:11px; padding:4px 8px;"><i class="fa-solid fa-circle-check"></i> Connected</span>
+        </div>
+        
+        <div style="display:flex; align-items:center; gap:20px;">
+            <!-- Notification Bell Component -->
+            <div style="position:relative; display:inline-block;" id="adminNotificationBellContainer">
+                <button id="bellBtn" class="notification-bell-btn" style="background:none; border:none; padding:8px; cursor:pointer; position:relative; display:flex; align-items:center; justify-content:center; color:var(--text-color); transition:color 0.2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-color)'">
+                    <i id="bellIcon" class="fa-solid fa-bell" style="font-size:20px; <?= $bell_total > 0 ? 'animation: bellRing 1.5s ease infinite;' : '' ?>"></i>
+                    <span id="bellBadge" class="notification-badge" style="position:absolute; top:-2px; right:-2px; background:var(--accent-red); color:white; border-radius:50%; width:18px; height:18px; font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center; border:2px solid var(--card-bg); <?= $bell_total > 0 ? '' : 'display:none;' ?>"><?= $bell_total ?></span>
+                </button>
+                
+                <!-- Dropdown Menu -->
+                <div id="bellDropdown" style="display:none; position:absolute; right:0; top:42px; background:var(--card-bg); border:1px solid var(--border-color); border-radius:12px; width:300px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index:999; padding:15px; font-size:13px; text-align:left;">
+                    <h4 style="margin:0 0 10px 0; padding-bottom:8px; border-bottom:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between; font-size:14px;">
+                        <span><i class="fa-solid fa-bell"></i> Pending Requests</span>
+                        <span class="badge badge-blue" style="font-size:10px;"><span id="bellDropdownCount"><?= $bell_total ?></span> New</span>
+                    </h4>
+                    <div id="bellDropdownList" style="max-height:220px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;">
+                        <?php if ($bell_total === 0): ?>
+                            <p style="margin:10px 0; text-align:center; color:var(--text-muted);"><i class="fa-solid fa-circle-check" style="color:var(--accent-green);"></i> All caught up! No pending requests.</p>
+                        <?php else: ?>
+                            <?php if ($side_req_count > 0): ?>
+                                <a href="?action=admin&tab=requests" style="display:flex; align-items:center; gap:10px; padding:8px 12px; border-radius:8px; background:var(--bg-slate); text-decoration:none; color:var(--text-color); transition:background 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='var(--bg-slate)'">
+                                    <span style="font-size:18px; color:var(--primary);"><i class="fa-solid fa-book-open"></i></span>
+                                    <div>
+                                        <strong style="display:block; font-size:12px;">e-Reading Requests (<?= $side_req_count ?>)</strong>
+                                        <span style="font-size:11px; color:var(--text-muted);">Awaiting permission grant</span>
+                                    </div>
+                                </a>
+                            <?php endif; ?>
+                            <?php if ($side_prt_count > 0): ?>
+                                <a href="?action=admin&tab=prints" style="display:flex; align-items:center; gap:10px; padding:8px 12px; border-radius:8px; background:var(--bg-slate); text-decoration:none; color:var(--text-color); transition:background 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='var(--bg-slate)'">
+                                    <span style="font-size:18px; color:var(--accent-orange);"><i class="fa-solid fa-print"></i></span>
+                                    <div>
+                                        <strong style="display:block; font-size:12px;">Page Print Jobs (<?= $side_prt_count ?>)</strong>
+                                        <span style="font-size:11px; color:var(--text-muted);">Awaiting printing handout</span>
+                                    </div>
+                                </a>
+                            <?php endif; ?>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Profile Label & Logout -->
+            <div style="display:flex; align-items:center; gap:12px; border-left:1px solid var(--border-color); padding-left:15px;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <div style="width:32px; height:32px; border-radius:50%; background:var(--primary); color:white; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px;"><i class="fa-solid fa-user-tie"></i></div>
+                    <span style="font-size:13px; font-weight:600; color:var(--navy-dark);"><?= e($_SESSION['admin_user'] ?? 'Admin') ?></span>
+                </div>
+                <a href="?action=logout" class="btn btn-danger" style="padding:6px 12px; font-size:12px; border-radius:6px; text-decoration:none; display:inline-flex; align-items:center; gap:5px; font-weight:600;"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+            </div>
+        </div>
+    </div>
+
+    <script class="dynamic-script">
+    (function() {
+        const bellBtn = document.getElementById('bellBtn');
+        const bellDropdown = document.getElementById('bellDropdown');
+        if (bellBtn && bellDropdown) {
+            bellBtn.onclick = function(e) {
+                e.stopPropagation();
+                bellDropdown.style.display = bellDropdown.style.display === 'none' ? 'block' : 'none';
+            };
+            document.onclick = function(e) {
+                if (!bellDropdown.contains(e.target) && e.target !== bellBtn && !bellBtn.contains(e.target)) {
+                    bellDropdown.style.display = 'none';
+                }
+            };
+        }
+    })();
+    </script>
+    <?php
     if (in_array($tab, $allowed_tabs)) {
         require __DIR__ . "/admin/{$tab}.php";
     } else {

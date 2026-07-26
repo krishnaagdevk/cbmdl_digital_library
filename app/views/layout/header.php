@@ -939,9 +939,9 @@ $is_login_view = in_array($_GET['action'] ?? '', ['admin-login', 'member-login',
 
     <!-- Header Branding -->
     <div class="header-logo">
-        <img src="<?= BASE_URL ?>images/header_banner.png" alt="Branding Left" />
+        <img src="<?= BASE_URL ?>images/mcb.png" alt="Branding Left" />
         <h1>श्री प्यारे लाल चिरन्जी लाल<br><span class="header-sub-text">कैन्टोनमेन्ट पुस्तकालय मेरठ</span></h1>
-        <img src="<?= BASE_URL ?>images/2022111817.png" alt="Branding Right" />
+        <img src="<?= BASE_URL ?>images/deo.png" alt="Branding Right" />
     </div>
 
     <!-- Main Content Area -->
