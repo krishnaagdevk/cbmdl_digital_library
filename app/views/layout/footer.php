@@ -7,6 +7,21 @@
                 <h3 id="pdfModalTitle">📖 e-Library Interactive Secure Reader</h3>
                 <div style="display:flex; align-items:center; gap:10px;">
                     <span id="pdfTimerBadge" class="badge badge-orange" style="font-size:12px; font-weight:600; padding:6px 12px; display:none;">⏱️ 00m 00s remaining</span>
+                    
+                    <!-- Zoom Controls -->
+                    <div style="display:inline-flex; align-items:center; gap:6px; background:#f1f5f9; padding:4px 8px; border-radius:8px; border:1px solid var(--border-color);">
+                        <button type="button" class="btn" style="padding:4px 10px; font-size:13px; font-weight:700; background:#ffffff !important; color:#0f172a !important; border:1px solid #cbd5e1 !important; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; box-shadow:0 1px 2px rgba(0,0,0,0.06);" onclick="zoomPdfModal(-0.15)" title="Zoom Out">
+                            <i class="fa-solid fa-magnifying-glass-minus"></i>
+                        </button>
+                        <span id="pdfModalZoomVal" style="font-size:12px; font-weight:700; color:#0f172a; min-width:42px; text-align:center;">100%</span>
+                        <button type="button" class="btn" style="padding:4px 10px; font-size:13px; font-weight:700; background:#ffffff !important; color:#0f172a !important; border:1px solid #cbd5e1 !important; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; box-shadow:0 1px 2px rgba(0,0,0,0.06);" onclick="zoomPdfModal(0.15)" title="Zoom In">
+                            <i class="fa-solid fa-magnifying-glass-plus"></i>
+                        </button>
+                        <button type="button" class="btn" style="padding:4px 10px; font-size:13px; font-weight:700; background:#ffffff !important; color:#0f172a !important; border:1px solid #cbd5e1 !important; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; box-shadow:0 1px 2px rgba(0,0,0,0.06);" onclick="resetPdfModalZoom()" title="Reset Zoom">
+                            <i class="fa-solid fa-rotate-left"></i>
+                        </button>
+                    </div>
+
                     <button id="pdfFullscreenBtn" class="btn" style="padding:6px 12px; font-size:12px; background:var(--primary);" onclick="togglePdfFullscreen()"><i class="fa-solid fa-expand"></i> Fullscreen</button>
                     <button class="pdf-modal-close" onclick="closePdfModal()">&times;</button>
                 </div>
@@ -79,6 +94,7 @@
                 'fa-user-master': '👮‍♂️',
                 'fa-id-card-clip': '📜',
                 'fa-sliders':'🧐',
+                'fa-circle-info':'ℹ️',
                 'fa-users-rectangle':'🧾',
                 'fa-circle-plus':'➕',
                 'fa-list-check':'📋',
@@ -91,14 +107,20 @@
                 'fa-rotate-left': '🔄',
                 'fa-arrows-rotate': '🔄',
                 'fa-right-left': '🔀',
-                'fa-pen-to-square': '✏️'
+                'fa-pen-to-square': '✏️',
+                'fa-magnifying-glass-minus': '🔍-',
+                'fa-magnifying-glass-plus': '🔍+',
+                'fa-expand': '⛶',
+                'fa-arrows-alt': '⤢'
             };
             
-            document.querySelectorAll('i[class*="fa-"]').forEach(el => {
+            document.querySelectorAll('i[class*="fa-"], span[class*="fa-"]').forEach(el => {
                 const classes = el.className.split(' ');
                 for (let cls of classes) {
                     if (cls.startsWith('fa-') && iconMap[cls]) {
-                        el.outerHTML = `<span style="font-style: normal; margin-right: 6px; display: inline-block;">${iconMap[cls]}</span>`;
+                        const hasNextText = el.nextSibling && el.nextSibling.textContent.trim().length > 0;
+                        const marginRight = hasNextText ? '6px' : '0px';
+                        el.outerHTML = `<span style="font-style: normal; margin-right: ${marginRight}; display: inline-block;">${iconMap[cls]}</span>`;
                         break;
                     }
                 }
@@ -273,10 +295,37 @@
             window.open(targetUrl, '_blank');
         }
 
+        let pdfModalZoom = 1.0;
+
+        function zoomPdfModal(delta) {
+            pdfModalZoom = Math.min(3.0, Math.max(0.5, parseFloat((pdfModalZoom + delta).toFixed(2))));
+            const zoomVal = document.getElementById('pdfModalZoomVal');
+            if (zoomVal) zoomVal.textContent = Math.round(pdfModalZoom * 100) + '%';
+            
+            const frame = document.getElementById('pdfFrame');
+            if (frame) {
+                frame.style.transform = `scale(${pdfModalZoom})`;
+                frame.style.transformOrigin = 'top center';
+            }
+        }
+
+        function resetPdfModalZoom() {
+            pdfModalZoom = 1.0;
+            const zoomVal = document.getElementById('pdfModalZoomVal');
+            if (zoomVal) zoomVal.textContent = '100%';
+            
+            const frame = document.getElementById('pdfFrame');
+            if (frame) {
+                frame.style.transform = 'scale(1)';
+                frame.style.transformOrigin = 'top center';
+            }
+        }
+
         function closePdfModal() {
             var modal = document.getElementById('pdfModal');
             if (!modal) return;
             modal.classList.remove('show');
+            resetPdfModalZoom();
             
             // Exit fullscreen if active
             if (document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement) {
@@ -348,9 +397,14 @@
 
         // 2. Automated Confirmation Guard for deletions
         document.addEventListener('click', function(e) {
+            if (e.defaultPrevented) return;
             var a = e.target.closest('a[href*="delete_"]');
-            if (a && !confirm('Are you absolutely certain you want to delete this catalog record permanently? This cannot be undone.')) {
-                e.preventDefault();
+            if (a) {
+                var onclickAttr = a.getAttribute('onclick') || '';
+                if (onclickAttr.includes('confirm')) return;
+                if (!confirm('Are you absolutely certain you want to delete this catalog record permanently? This cannot be undone.')) {
+                    e.preventDefault();
+                }
             }
         });
 
@@ -381,16 +435,28 @@
             });
         }
 
-        // SPA-like navigation logic
-        function navigateToUrl(url, pushState = true) {
+        // SPA In-Memory Tab Cache
+        window.spaTabCache = window.spaTabCache || new Map();
+
+        // Helper to extract and re-execute scripts from injected HTML content
+        function executeInjectedScripts(container) {
+            if (!container) return;
+            const scripts = container.querySelectorAll('script');
+            scripts.forEach(oldScript => {
+                const newScript = document.createElement('script');
+                Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+                newScript.text = oldScript.textContent;
+                oldScript.parentNode.replaceChild(newScript, oldScript);
+            });
+        }
+
+        // Optimized High-Performance SPA Navigation Engine
+        function navigateToUrl(url, pushState = true, useCache = true) {
             if (window.activeUploads && Object.keys(window.activeUploads).length > 0) {
                 if (!confirm("⚠️ WARNING: You have active background uploads in progress!\n\nNavigating away will abort these uploads. Do you want to cancel the uploads and proceed?")) {
                     return;
                 }
-                // Cancel all active uploads cleanly
-                Object.values(window.activeUploads).forEach(upload => {
-                    upload.cancel();
-                });
+                Object.values(window.activeUploads).forEach(upload => upload.cancel());
                 window.activeUploads = {};
                 updateHeaderUploadBadge();
             }
@@ -404,77 +470,148 @@
             
             progressBar.style.opacity = '1';
             progressBar.style.width = '30%';
-            
-            // Clear any active update poller intervals to avoid multiple loops running concurrently
+
             if (window.offlinePollerInterval) {
                 clearInterval(window.offlinePollerInterval);
                 window.offlinePollerInterval = null;
             }
+
+            // Normalize URL for cache key
+            const cleanUrl = url.replace(/&_t=\d+/, '');
             
-            const cacheBustUrl = url + (url.includes('?') ? '&' : '?') + '_t=' + Date.now();
-            fetch(cacheBustUrl, { cache: 'no-store' })
-                .then(response => {
-                    progressBar.style.width = '70%';
-                    if (!response.ok) throw new Error("Navigation request failed");
-                    return response.text();
-                })
-                .then(htmlText => {
-                    progressBar.style.width = '100%';
-                    
+            // Fast UI update function
+            function renderSpaData(data) {
+                if (data.title) {
+                    document.title = data.title;
+                }
+                
+                // Render main content area or .admin-content
+                const adminContent = document.querySelector('.admin-content');
+                const mainArea = document.querySelector('main');
+
+                if (adminContent && data.content) {
+                    adminContent.innerHTML = data.content;
+                    adminContent.classList.remove('spa-loading-overlay');
+                    adminContent.classList.add('spa-fade-in');
+                    setTimeout(() => adminContent.classList.remove('spa-fade-in'), 250);
+                    executeInjectedScripts(adminContent);
+                } else if (mainArea && data.content) {
+                    mainArea.innerHTML = data.content;
+                    executeInjectedScripts(mainArea);
+                }
+
+                // Update sidebar if returned
+                if (data.sidebar) {
+                    const currentSidebar = document.querySelector('.sidebar');
+                    if (currentSidebar) {
+                        currentSidebar.innerHTML = data.sidebar;
+                        executeInjectedScripts(currentSidebar);
+                    }
+                }
+
+                // Update badges if returned
+                if (data.reading_count !== undefined) {
+                    const badge = document.getElementById('sidebarReadingBadge');
+                    if (badge) {
+                        badge.textContent = data.reading_count;
+                        badge.style.display = data.reading_count > 0 ? '' : 'none';
+                    }
+                }
+                if (data.print_count !== undefined) {
+                    const badge = document.getElementById('sidebarPrintBadge');
+                    if (badge) {
+                        badge.textContent = data.print_count;
+                        badge.style.display = data.print_count > 0 ? '' : 'none';
+                    }
+                }
+
+                initializePageFeatures();
+            }
+
+            // 1. Instant Cache Render (0ms Latency) if available
+            const cachedData = window.spaTabCache.get(cleanUrl);
+            let renderedFromCache = false;
+            if (useCache && cachedData) {
+                renderSpaData(cachedData);
+                renderedFromCache = true;
+                progressBar.style.width = '100%';
+                setTimeout(() => {
+                    progressBar.style.opacity = '0';
+                    setTimeout(() => { progressBar.style.width = '0%'; }, 200);
+                }, 100);
+            }
+
+            // Immediate visual feedback if not cached
+            if (!renderedFromCache) {
+                const adminContent = document.querySelector('.admin-content');
+                if (adminContent) {
+                    adminContent.classList.add('spa-loading-overlay');
+                }
+            }
+
+            // 2. Fetch fresh SPA payload (&spa=1)
+            const spaFetchUrl = cleanUrl + (cleanUrl.includes('?') ? '&' : '?') + 'spa=1&_t=' + Date.now();
+            
+            fetch(spaFetchUrl, {
+                headers: {
+                    'X-SPA-Request': '1',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                cache: 'no-store'
+            })
+            .then(res => {
+                progressBar.style.width = '80%';
+                const contentType = res.headers.get('content-type') || '';
+                if (contentType.includes('application/json')) {
+                    return res.json();
+                } else {
+                    return res.text().then(text => ({ isHtml: true, text: text }));
+                }
+            })
+            .then(data => {
+                progressBar.style.width = '100%';
+
+                if (data.isHtml) {
+                    // Fallback DOMParser for HTML response
                     const parser = new DOMParser();
-                    const newDoc = parser.parseFromString(htmlText, 'text/html');
-                    
-                    // Update tab/page title
+                    const newDoc = parser.parseFromString(data.text, 'text/html');
                     document.title = newDoc.title;
-                    
-                    // Replace main content
+
                     const currentMain = document.querySelector('main');
                     const newMain = newDoc.querySelector('main');
                     if (currentMain && newMain) {
                         currentMain.innerHTML = newMain.innerHTML;
+                        executeInjectedScripts(currentMain);
                     }
-                    
-                    // Update active nav links
-                    const currentNavLinks = document.querySelector('.nav-links');
-                    const newNavLinks = newDoc.querySelector('.nav-links');
-                    if (currentNavLinks && newNavLinks) {
-                        currentNavLinks.innerHTML = newNavLinks.innerHTML;
-                    }
-                    
-                    // Update active sidebar selection
-                    const currentSidebar = document.querySelector('.sidebar');
-                    const newSidebar = newDoc.querySelector('.sidebar');
-                    if (currentSidebar && newSidebar) {
-                        currentSidebar.innerHTML = newSidebar.innerHTML;
-                    }
-                    
-                    // Inject & execute the tab-specific dynamic scripts
-                    newDoc.querySelectorAll('script.dynamic-script').forEach(script => {
-                        const newScript = document.createElement('script');
-                        newScript.className = 'dynamic-script';
-                        newScript.text = script.text;
-                        document.body.appendChild(newScript);
-                        newScript.remove(); // Cleanup executed script tag
-                    });
-
-                    // Re-initialize core forms/features on new nodes
                     initializePageFeatures();
-                    
-                    if (pushState) {
-                        history.pushState({ url: url }, '', url);
-                    }
-                    
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                    
-                    setTimeout(() => {
-                        progressBar.style.opacity = '0';
-                        setTimeout(() => { progressBar.style.width = '0%'; }, 400);
-                    }, 200);
-                })
-                .catch(err => {
-                    console.error("PJAX Navigation Error:", err);
+                } else if (data.success) {
+                    // Cache the JSON payload
+                    window.spaTabCache.set(cleanUrl, data);
+                    renderSpaData(data);
+                }
+
+                if (pushState) {
+                    history.pushState({ url: cleanUrl }, '', cleanUrl);
+                }
+
+                const adminContent = document.querySelector('.admin-content');
+                if (adminContent) {
+                    adminContent.classList.remove('spa-loading-overlay');
+                }
+
+                setTimeout(() => {
                     progressBar.style.opacity = '0';
-                });
+                    setTimeout(() => { progressBar.style.width = '0%'; }, 200);
+                }, 150);
+            })
+            .catch(err => {
+                console.error("SPA Navigation Error:", err);
+                const adminContent = document.querySelector('.admin-content');
+                if (adminContent) {
+                    adminContent.classList.remove('spa-loading-overlay');
+                }
+                progressBar.style.opacity = '0';
+            });
         }
         window.navigateToUrl = navigateToUrl;
 
@@ -492,9 +629,21 @@
                     return;
                 }
                 e.preventDefault();
+
+                // Immediately highlight target sidebar link in 0ms for instant feel
+                const sidebarLinks = document.querySelectorAll('.sidebar a');
+                sidebarLinks.forEach(link => {
+                    if (link.getAttribute('href') === href) {
+                        link.classList.add('active');
+                    } else {
+                        link.classList.remove('active');
+                    }
+                });
+
                 navigateToUrl(href);
             }
         });
+
 
         // Global Active Background Parallel Uploads tracker
         window.activeUploads = window.activeUploads || {};
@@ -666,17 +815,121 @@
             }
         });
 
-        // Centralized event-delegated form interceptor for all record deletions
+        // Centralized event-delegated form interceptor & SPA form submitter
         document.addEventListener('submit', function(e) {
+            if (e.defaultPrevented) return;
+
+            // Invalidate SPA Cache on every form submission to ensure fresh data
+            if (window.spaTabCache) {
+                window.spaTabCache.clear();
+            }
+
             const form = e.target;
-            const action = form.getAttribute('action') || '';
+            const submitter = e.submitter;
+
+            // 1. Confirm dialog check for delete actions
+            const onsubmitAttr = form.getAttribute('onsubmit') || '';
+            const onclickAttr = submitter ? (submitter.getAttribute('onclick') || '') : '';
+            const action = form.getAttribute('action') || (submitter ? submitter.getAttribute('formaction') : '') || '';
             const actionLower = action.toLowerCase();
-            if (actionLower.includes('delete_') || actionLower.includes('action=delete_')) {
-                const confirmMsg = "⚠️ WARNING: Are you absolutely sure you want to delete this record permanently?\n\nThis action is irreversible and cannot be undone.";
-                if (!confirm(confirmMsg)) {
-                    e.preventDefault();
+
+            if (!onsubmitAttr.includes('confirm') && !onclickAttr.includes('confirm')) {
+                if (actionLower.includes('delete_') || actionLower.includes('action=delete_')) {
+                    const confirmMsg = "⚠️ WARNING: Are you absolutely sure you want to delete this record permanently?\n\nThis action is irreversible and cannot be undone.";
+                    if (!confirm(confirmMsg)) {
+                        e.preventDefault();
+                        return;
+                    }
                 }
             }
+
+            // 2. SPA Form submission for single-click instant execution
+            if (form.enctype === 'multipart/form-data' || form.target === '_blank' || form.id === 'ebFormAdd' || form.id === 'ebFormEdit') {
+                return;
+            }
+
+            e.preventDefault();
+
+            // Disable submit button during in-flight request to prevent double clicks
+            if (submitter) {
+                submitter.disabled = true;
+            }
+
+            const formData = new FormData(form);
+            if (submitter && submitter.name) {
+                formData.append(submitter.name, submitter.value);
+            }
+
+            let targetUrl = action || window.location.href;
+            if (!targetUrl.includes('spa=1')) {
+                targetUrl += (targetUrl.includes('?') ? '&' : '?') + 'spa=1';
+            }
+
+            fetch(targetUrl, {
+                method: (form.method || 'POST').toUpperCase(),
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-SPA-Request': '1'
+                }
+            })
+            .then(res => {
+                if (window.spaTabCache) window.spaTabCache.clear();
+                const rawRedirectUrl = res.url || window.location.href;
+                return res.text().then(text => {
+                    let data = null;
+                    try {
+                        data = JSON.parse(text);
+                    } catch(err) {}
+                    return { data, rawRedirectUrl };
+                });
+            })
+            .then(({ data, rawRedirectUrl }) => {
+                const cleanUrl = rawRedirectUrl.replace(/([?&])spa=1(&|$)/, '$1').replace(/[?&]$/, '');
+                if (data && data.success && data.content) {
+                    if (window.history && window.history.pushState) {
+                        window.history.pushState({ url: cleanUrl }, '', cleanUrl);
+                    }
+                    const contentTarget = document.querySelector('.admin-content') || document.querySelector('#admin-content');
+                    if (contentTarget) {
+                        contentTarget.innerHTML = data.content;
+                        // Re-trigger dynamic inline scripts (such as toast alerts)
+                        const scripts = contentTarget.querySelectorAll('script');
+                        scripts.forEach(oldScript => {
+                            const newScript = document.createElement('script');
+                            Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+                            newScript.appendChild(document.createTextNode(oldScript.textContent));
+                            oldScript.parentNode.replaceChild(newScript, oldScript);
+                        });
+                    }
+                    if (data.sidebar) {
+                        const sidebarTarget = document.querySelector('.sidebar');
+                        if (sidebarTarget) {
+                            sidebarTarget.innerHTML = data.sidebar;
+                            const sbScripts = sidebarTarget.querySelectorAll('script');
+                            sbScripts.forEach(oldScript => {
+                                const newScript = document.createElement('script');
+                                Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+                                newScript.appendChild(document.createTextNode(oldScript.textContent));
+                                oldScript.parentNode.replaceChild(newScript, oldScript);
+                            });
+                        }
+                    }
+                    if (data.title) document.title = data.title;
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                } else {
+                    navigateToUrl(cleanUrl, true, false);
+                }
+            })
+            .catch(err => {
+                console.error("SPA Form Submission Error:", err);
+                form.submit();
+            })
+            .finally(() => {
+                if (submitter) {
+                    submitter.disabled = false;
+                }
+            });
         });
 
         // Web Browser Storage Cleanup on Logout

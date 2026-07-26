@@ -88,8 +88,143 @@ while ($row = $actRes->fetch_assoc()) {
     $active_reading_requests[] = $row;
 }
 $actStmt->close();
+
+$genderVal = strtolower(trim($me['gender'] ?? 'male'));
+if ($genderVal === 'female') {
+    $userEmoji = '👩‍💼';
+    $avatarBg = 'rgba(236, 72, 153, 0.2)';
+    $avatarBorder = '#ec4899';
+    $genderLabel = 'Female Member';
+} elseif ($genderVal === 'other') {
+    $userEmoji = '🧑‍💼';
+    $avatarBg = 'rgba(139, 92, 246, 0.2)';
+    $avatarBorder = '#8b5cf6';
+    $genderLabel = 'Member';
+} else {
+    $userEmoji = '👨‍💼';
+    $avatarBg = 'rgba(37, 99, 235, 0.25)';
+    $avatarBorder = '#3b82f6';
+    $genderLabel = 'Male Member';
+}
+
+if (is_spa_request()) {
+    $allowed_tabs = ['dashboard', 'books', 'physical_books', 'lending', 'reading_history', 'print_requests', 'membership_history', 'profile'];
+    
+    ob_start();
+    ?>
+    <div class="user-greeting-banner" style="background: linear-gradient(135deg, var(--navy-dark), var(--navy-light)); color: white; padding: 18px 24px; border-radius: 14px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(15, 23, 42, 0.12); flex-wrap: wrap; gap: 15px;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <div style="width: 52px; height: 52px; background: <?= $avatarBg ?>; border: 2px solid <?= $avatarBorder ?>; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 26px; flex-shrink: 0; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);" title="Gender: <?= $genderLabel ?>">
+                <span style="line-height: 1; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); cursor: default; user-select: none;"><?= $userEmoji ?></span>
+            </div>
+            <div>
+                <h2 style="margin: 0; font-size: 20px; font-weight: 700; color: #ffffff; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    Welcome, <?= e($me['name']) ?>
+                </h2>
+                <p style="margin: 4px 0 0 0; font-size: 13px; color: #94a3b8; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                    <span><i class="fa-solid fa-id-card" style="color: var(--primary);"></i> Membership ID: <strong style="color: #f1f5f9; font-weight: 600;"><?= e($me['membership_id']) ?></strong></span>
+                    <span style="color: rgba(255,255,255,0.2);">•</span>
+                    <span><i class="fa-solid fa-calendar-check" style="color: #34d399;"></i> Valid Until: <strong style="color: #f1f5f9; font-weight: 600;"><?= date('d-m-Y', strtotime($me['end_date'])) ?></strong></span>
+                </p>
+            </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <a href="?action=user&tab=profile" class="btn" style="background: rgba(255, 255, 255, 0.1); color: #ffffff; padding: 8px 14px; font-size: 13px; border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; font-weight: 500;">
+                <span><?= $userEmoji ?></span> Profile
+            </a>
+            <a href="?action=logout" class="btn" style="background: linear-gradient(135deg, #ef4444, #b91c1c); color: #ffffff; padding: 8px 14px; font-size: 13px; border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; font-weight: 600;">
+                <i class="fa-solid fa-right-from-bracket"></i> Logout
+            </a>
+        </div>
+    </div>
+    <?php if ($expiringSoon): ?>
+        <div class="notice" style="background:#fffbeb; color:var(--accent-orange); border-left:5px solid var(--accent-orange); box-shadow:0 4px 12px rgba(245, 158, 11, 0.08); margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <span>⚠️ Your e-Library pass is expiring in <strong><?= $daysLeft ?> day(s)</strong>. Kindly contact Librarian if you want to renew your membership</span>
+            </div>
+        </div>
+    <?php endif; ?>
+    <?php
+    if (in_array($tab, $allowed_tabs)) {
+        require __DIR__ . "/user/{$tab}.php";
+    } else {
+        require __DIR__ . "/user/dashboard.php";
+    }
+    $tab_html = get_flash_toast_script() . ob_get_clean();
+
+    ob_start();
+    ?>
+    <a href="?action=user&tab=dashboard" class="<?= $tab === 'dashboard' ? 'active' : '' ?>"><i class="fa-solid fa-house-chimney"></i> Home</a>
+    <a href="?action=user&tab=books" class="<?= $tab === 'books' ? 'active' : '' ?>"><i class="fa-solid fa-book-open"></i> Explore e-Library</a>
+    <a href="?action=user&tab=reading_history" class="<?= $tab === 'reading_history' ? 'active' : '' ?>"><i class="fa-solid fa-clock-rotate-left"></i> e-book Reading History</a>
+    <a href="?action=user&tab=print_requests" class="<?= $tab === 'print_requests' ? 'active' : '' ?>"><i class="fa-solid fa-print"></i> e-book Print History</a>
+    <a href="?action=user&tab=physical_books" class="<?= $tab === 'physical_books' ? 'active' : '' ?>"><i class="fa-solid fa-book"></i> Explore Physical Books</a>
+    <a href="?action=user&tab=lending" class="<?= $tab === 'lending' ? 'active' : '' ?>"><i class="fa-solid fa-clipboard-list"></i> Physical Book Lending History</a>
+    <a href="?action=user&tab=membership_history" class="<?= $tab === 'membership_history' ? 'active' : '' ?>"><i class="fa-solid fa-id-card-clip"></i> My Membership History</a>
+    <a href="?action=user&tab=profile" class="<?= $tab === 'profile' ? 'active' : '' ?>"><i class="fa-solid fa-user-gear"></i> My Profile</a>
+    <a href="?action=logout" style="margin-top:15px; color:#ef4444; border-top:1px solid var(--border-color); padding-top:12px; font-weight:600;"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+
+    <?php if (!empty($active_reading_requests)): ?>
+        <div style="margin-top:15px; padding-top:15px; border-top:1px solid var(--border-color);">
+            <div style="font-size:11px; font-weight:700; color:var(--primary); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+                <i class="fa-solid fa-bolt" style="color:var(--accent-orange);"></i> Active Reading Requests
+            </div>
+            <?php foreach ($active_reading_requests as $arr): ?>
+                <?php if ($arr['status'] === 'Approved'): ?>
+                    <?php 
+                    $isStarted = !empty($arr['started_reading_at']);
+                    $durMins = !empty($arr['duration_minutes']) ? (int)$arr['duration_minutes'] : 15;
+                    $remMins = $durMins;
+                    if ($isStarted && !empty($arr['expires_at'])) {
+                        $remSecs = strtotime($arr['expires_at']) - time();
+                        $remMins = max(1, (int)ceil($remSecs / 60));
+                    }
+                    ?>
+                    <div style="background:var(--bg-slate); border:1px solid var(--border-color); border-radius:8px; padding:10px; margin-bottom:8px; font-size:12px;" <?= $isStarted && !empty($arr['expires_at']) ? 'data-expires-at="' . strtotime($arr['expires_at']) . '"' : '' ?>>
+                        <strong style="display:block; color:var(--navy-dark); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><?= e($arr['title']) ?></strong>
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-top:6px;">
+                            <span class="badge badge-green" style="font-size:10px; padding:2px 6px;">Approved</span>
+                            <span style="font-size:11px; color:var(--text-muted); font-weight:600;"><i class="fa-solid fa-clock"></i> <?= $remMins ?>m left</span>
+                        </div>
+                        <button onclick="openPdfModal(<?= $arr['id'] ?>, <?= !empty($arr['expires_at']) ? strtotime($arr['expires_at']) : 0 ?>, '<?= e(addslashes($arr['title'])) ?>', false)" class="btn btn-success" style="width:100%; margin-top:8px; padding:4px 8px; font-size:11px; font-weight:600;"><i class="fa-solid fa-book-open"></i> Read Now</button>
+                    </div>
+                <?php else: ?>
+                    <div style="background:var(--bg-slate); border:1px solid var(--border-color); border-radius:8px; padding:10px; margin-bottom:8px; font-size:12px;">
+                        <strong style="display:block; color:var(--navy-dark); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><?= e($arr['title']) ?></strong>
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-top:6px;">
+                            <span class="badge badge-orange" style="font-size:10px; padding:2px 6px;">Pending</span>
+                            <span style="font-size:11px; color:var(--text-muted);"><i class="fa-solid fa-hourglass-half"></i> Awaiting Admin</span>
+                        </div>
+                    </div>
+                <?php endif; ?>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
+    <?php
+    $sidebar_html = ob_get_clean();
+
+    $tab_labels = [
+        'dashboard' => 'Home', 'books' => 'Explore e-Library', 'reading_history' => 'e-book Reading History',
+        'print_requests' => 'e-book Print History', 'physical_books' => 'Explore Physical Books',
+        'lending' => 'Lending History', 'membership_history' => 'Membership History', 'profile' => 'My Profile'
+    ];
+    $title_label = $tab_labels[$tab] ?? 'Member Portal';
+
+    header('Content-Type: application/json');
+    echo json_encode([
+        'success' => true,
+        'tab' => $tab,
+        'title' => 'MCB e-Library · ' . $title_label,
+        'content' => $tab_html,
+        'sidebar' => $sidebar_html
+    ]);
+    exit;
+}
 ?>
+
 <div class="admin-wrapper">
+
     
     <!-- Member Navigation Sidebar -->
     <div class="sidebar">
@@ -101,6 +236,7 @@ $actStmt->close();
         <a href="?action=user&tab=lending" class="<?= $tab === 'lending' ? 'active' : '' ?>"><i class="fa-solid fa-clipboard-list"></i> Physical Book Lending History</a>
         <a href="?action=user&tab=membership_history" class="<?= $tab === 'membership_history' ? 'active' : '' ?>"><i class="fa-solid fa-id-card-clip"></i> My Membership History</a>
         <a href="?action=user&tab=profile" class="<?= $tab === 'profile' ? 'active' : '' ?>"><i class="fa-solid fa-user-gear"></i> My Profile</a>
+        <a href="?action=logout" style="margin-top:15px; color:#ef4444; border-top:1px solid var(--border-color); padding-top:12px; font-weight:600;"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
 
         <?php if (!empty($active_reading_requests)): ?>
             <div style="margin-top:15px; padding-top:15px; border-top:1px solid var(--border-color);">
@@ -118,7 +254,7 @@ $actStmt->close();
                             $remMins = max(1, (int)ceil($remSecs / 60));
                         }
                         ?>
-                        <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:10px; margin-bottom:8px; display:flex; flex-direction:column; gap:6px;">
+                        <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:10px; margin-bottom:8px; display:flex; flex-direction:column; gap:6px;" <?= $isStarted && !empty($arr['expires_at']) ? 'data-expires-at="' . strtotime($arr['expires_at']) . '"' : '' ?>>
                             <div style="display:flex; align-items:center; justify-content:space-between; gap:4px;">
                                 <span style="font-size:12px; font-weight:700; color:#166534; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:130px;" title="<?= e($arr['title']) ?>"><i class="fa-solid fa-book-open"></i> <?= e($arr['title']) ?></span>
                                 <span class="badge badge-green" style="font-size:10px; padding:2px 6px;"><i class="fa-solid fa-clock"></i> <?= $isStarted ? $remMins . 'm' : $durMins . 'm Granted' ?></span>
@@ -142,25 +278,6 @@ $actStmt->close();
     <!-- Dynamic Member View Container -->
     <div class="admin-content">
         <!-- Member Greeting Header Banner -->
-        <?php
-        $genderVal = strtolower(trim($me['gender'] ?? 'male'));
-        if ($genderVal === 'female') {
-            $userEmoji = '👩‍💼';
-            $avatarBg = 'rgba(236, 72, 153, 0.2)';
-            $avatarBorder = '#ec4899';
-            $genderLabel = 'Female Member';
-        } elseif ($genderVal === 'other') {
-            $userEmoji = '🧑‍💼';
-            $avatarBg = 'rgba(139, 92, 246, 0.2)';
-            $avatarBorder = '#8b5cf6';
-            $genderLabel = 'Member';
-        } else {
-            $userEmoji = '👨‍💼';
-            $avatarBg = 'rgba(37, 99, 235, 0.25)';
-            $avatarBorder = '#3b82f6';
-            $genderLabel = 'Male Member';
-        }
-        ?>
         <div class="user-greeting-banner" style="background: linear-gradient(135deg, var(--navy-dark), var(--navy-light)); color: white; padding: 18px 24px; border-radius: 14px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(15, 23, 42, 0.12); flex-wrap: wrap; gap: 15px;">
             <div style="display: flex; align-items: center; gap: 16px;">
                 <div style="width: 52px; height: 52px; background: <?= $avatarBg ?>; border: 2px solid <?= $avatarBorder ?>; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 26px; flex-shrink: 0; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);" title="Gender: <?= $genderLabel ?>">
@@ -356,6 +473,12 @@ $actStmt->close();
                                 null,
                                 onDismissReload
                             );
+                        } else if (req.status === 'Expired') {
+                            showToastNotification(`Your e-book reading session for <strong>"${req.title}"</strong> has expired.`, 'warning');
+                            if (window.spaTabCache) window.spaTabCache.clear();
+                            if (typeof window.navigateToUrl === 'function') {
+                                window.navigateToUrl(window.location.href, false, false);
+                            }
                         }
                     };
 
@@ -431,5 +554,24 @@ $actStmt->close();
     // Poll every 4 seconds
     window.memberPollerInterval = setInterval(pollMemberNotifications, 4000);
     pollMemberNotifications();
+
+    // Auto-refresh reading list immediately when any active reading session expires
+    if (window.memberExpiryTicker) clearInterval(window.memberExpiryTicker);
+    window.memberExpiryTicker = setInterval(function() {
+        let hasExpiredSession = false;
+        document.querySelectorAll('[data-expires-at]').forEach(el => {
+            let exp = parseInt(el.getAttribute('data-expires-at') || '0', 10);
+            if (exp > 0 && exp <= Math.floor(Date.now() / 1000)) {
+                hasExpiredSession = true;
+                el.removeAttribute('data-expires-at');
+            }
+        });
+        if (hasExpiredSession) {
+            if (window.spaTabCache) window.spaTabCache.clear();
+            if (typeof window.navigateToUrl === 'function') {
+                window.navigateToUrl(window.location.href, false, false);
+            }
+        }
+    }, 1000);
 })();
 </script>

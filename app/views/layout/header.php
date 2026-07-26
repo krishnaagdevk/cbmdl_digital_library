@@ -28,6 +28,37 @@
             transition: all 0.2s ease-in-out;
         }
 
+        #top-progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #2563eb, #3b82f6, #60a5fa);
+            box-shadow: 0 0 10px rgba(37, 99, 235, 0.7);
+            z-index: 999999;
+            width: 0%;
+            opacity: 0;
+            transition: width 0.25s ease-in-out, opacity 0.2s ease-in-out;
+            pointer-events: none;
+        }
+
+        .spa-fade-in {
+            animation: spaFadeIn 0.2s ease-out forwards;
+        }
+
+        @keyframes spaFadeIn {
+            from { opacity: 0.6; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .spa-loading-overlay {
+            opacity: 0.65;
+            pointer-events: none;
+            filter: grayscale(10%);
+            transition: opacity 0.15s ease-in-out;
+        }
+
+
         body {
             margin: 0;
             font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -904,44 +935,7 @@ $is_login_view = in_array($_GET['action'] ?? '', ['admin-login', 'member-login',
     </script>
 
     <!-- Dynamic Session Flash Messages -->
-    <?php if ($f = flash()): ?>
-        <?php
-        $is_inactive_flash = (
-            stristr($f, 'inactive') !== false ||
-            stristr($f, 'expired') !== false
-        );
-        $is_error_flash = !$is_inactive_flash && (
-            str_contains($f, 'Duplicate') || 
-            str_contains($f, '⚠️') || 
-            str_contains($f, 'Error') || 
-            str_contains($f, 'Invalid') ||
-            stristr($f, 'warning') !== false ||
-            stristr($f, 'suspended') !== false ||
-            stristr($f, 'failed') !== false ||
-            stristr($f, 'rejected') !== false ||
-            stristr($f, 'cannot') !== false ||
-            stristr($f, 'required') !== false ||
-            stristr($f, 'empty') !== false ||
-            stristr($f, 'already exists') !== false
-        );
-        ?>
-        <script class="dynamic-script">
-            (function() {
-                var msg = <?= json_encode($f) ?>;
-                var isError = <?= json_encode($is_error_flash) ?>;
-                var isWarning = <?= json_encode($is_inactive_flash) ?>;
-                var type = isWarning ? 'warning' : (isError ? 'error' : 'success');
-                var fireToast = function() {
-                    if (window.showToast) window.showToast(msg, type);
-                };
-                if (document.readyState === 'loading') {
-                    document.addEventListener('DOMContentLoaded', fireToast);
-                } else {
-                    fireToast();
-                }
-            })();
-        </script>
-    <?php endif; ?>
+    <?= get_flash_toast_script() ?>
 
     <!-- Header Branding -->
     <div class="header-logo">

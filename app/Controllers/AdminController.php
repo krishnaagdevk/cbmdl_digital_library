@@ -1071,11 +1071,20 @@ final class AdminController {
         $mName = $mRes['name'] ?? 'Member';
         $mStmt->close();
 
+        // Retrieve latest end_date from membership_history to prevent compounding drift if DB history entries are removed/reset
+        $hStmt = $this->db->prepare("SELECT end_date FROM membership_history WHERE member_id = ? ORDER BY id DESC LIMIT 1");
+        $hStmt->bind_param("i", $id);
+        $hStmt->execute();
+        $hRes = $hStmt->get_result()->fetch_assoc();
+        $hStmt->close();
+
+        $baseEndDate = ($hRes && !empty($hRes['end_date'])) ? $hRes['end_date'] : ($mRes['end_date'] ?? '');
+
         $today = date('Y-m-d');
-        $isCurrentlyActive = ($mRes && !empty($mRes['end_date']) && $mRes['end_date'] >= $today && ($mRes['is_active'] ?? 1) == 1 && ($mRes['approved'] ?? 1) == 1);
+        $isCurrentlyActive = (!empty($baseEndDate) && $baseEndDate >= $today && ($mRes['is_active'] ?? 1) == 1 && ($mRes['approved'] ?? 1) == 1);
 
         if ($isCurrentlyActive) {
-            $start = date('Y-m-d', strtotime($mRes['end_date'] . ' +1 day'));
+            $start = date('Y-m-d', strtotime($baseEndDate . ' +1 day'));
         } else {
             $start = $today;
         }

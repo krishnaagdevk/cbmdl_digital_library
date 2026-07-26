@@ -23,6 +23,11 @@ function expire_member_reading_requests($memberId, mysqli $db) {
 }
 
 function go($url) {
+    if (is_spa_request()) {
+        if (!str_contains($url, 'spa=1')) {
+            $url .= (str_contains($url, '?') ? '&' : '?') . 'spa=1';
+        }
+    }
     // Build absolute URL to prevent relative-redirect mis-resolution (e.g. from /cbmdl/admin-login path)
     if (!preg_match('#^https?://#i', $url)) {
         $base = rtrim(BASE_URL, '/');
@@ -215,4 +220,42 @@ function log_membership_history($db, $member_id, $action_type = 'Initial Joining
             $histStmt->close();
         }
     }
+}
+
+function is_spa_request() {
+    if (isset($_GET['spa']) && $_GET['spa'] === '1') {
+        return true;
+    }
+    if (isset($_SERVER['HTTP_X_SPA_REQUEST']) && $_SERVER['HTTP_X_SPA_REQUEST'] === '1') {
+        return true;
+    }
+    return false;
+}
+
+function get_flash_toast_script() {
+    if ($f = flash()) {
+        $is_inactive_flash = (
+            stristr($f, 'inactive') !== false ||
+            stristr($f, 'expired') !== false
+        );
+        $is_error_flash = !$is_inactive_flash && (
+            str_contains($f, 'Duplicate') || 
+            str_contains($f, '⚠️') || 
+            str_contains($f, 'Error') || 
+            str_contains($f, 'Invalid') ||
+            stristr($f, 'warning') !== false ||
+            stristr($f, 'suspended') !== false ||
+            stristr($f, 'failed') !== false ||
+            stristr($f, 'rejected') !== false ||
+            stristr($f, 'cannot') !== false ||
+            stristr($f, 'required') !== false ||
+            stristr($f, 'empty') !== false ||
+            stristr($f, 'already exists') !== false
+        );
+        $type = $is_inactive_flash ? 'warning' : ($is_error_flash ? 'error' : 'success');
+        $msgJson = json_encode($f);
+        $typeJson = json_encode($type);
+        return "<script class=\"dynamic-script\">(function(){ var msg = {$msgJson}; var type = {$typeJson}; var fireToast = function(){ if (window.showToast) window.showToast(msg, type); }; if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', fireToast); } else { fireToast(); } })();</script>";
+    }
+    return '';
 }

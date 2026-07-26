@@ -271,6 +271,16 @@ if (member()) {
 }
 
 // 6. View Rendering
+if (is_spa_request()) {
+    if ($action === 'admin') {
+        require 'app/views/admin.php';
+        exit;
+    } elseif ($action === 'user') {
+        require 'app/views/user.php';
+        exit;
+    }
+}
+
 require 'app/views/layout/header.php';
 
 if ($action === 'admin_login' || $action === 'member_login') {
@@ -284,3 +294,4 @@ if ($action === 'admin_login' || $action === 'member_login') {
 }
 
 require 'app/views/layout/footer.php';
+

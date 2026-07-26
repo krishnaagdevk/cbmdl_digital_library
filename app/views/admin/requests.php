@@ -222,19 +222,19 @@ $stmt->close();
                         echo '<td style="vertical-align:middle;">';
                         if ($r['status'] === 'Pending') {
                             echo '
-                            <div style="display:inline-flex; gap:6px; align-items:center;">
-                                 <form method="post" action="?action=approve" style="display:inline-flex; gap:6px; align-items:center; margin:0;">
-                                     ' . csrf_input() . '
-                                     <input type="hidden" name="request_id" value="' . $r['id'] . '">
-                                     <input type="number" name="minutes" min="1" max="240" placeholder="Mins (Max 240)" required style="width:125px; margin:0; padding:8px;">
-                                     <button class="btn" style="padding:8px 12px; background:var(--accent-green);"><i class="fa-solid fa-check"></i> Grant Access</button>
-                                 </form>
-                                 <form method="post" action="?action=reject" style="display:inline-block; margin:0;">
-                                     ' . csrf_input() . '
-                                     <input type="hidden" name="request_id" value="' . $r['id'] . '">
-                                     <button class="btn btn-danger" style="padding:8px 12px;"><i class="fa-solid fa-xmark"></i> Reject</button>
-                                 </form>
-                            </div>';
+                             <div style="display:inline-flex; gap:6px; align-items:center;">
+                                  <form method="post" action="?action=approve" style="display:inline-flex; gap:6px; align-items:center; margin:0;">
+                                      ' . csrf_input() . '
+                                      <input type="hidden" name="request_id" value="' . $r['id'] . '">
+                                      <input type="number" name="minutes" min="1" max="240" placeholder="Mins (Max 240)" required style="width:125px; margin:0; padding:8px;">
+                                      <button type="submit" class="btn" style="padding:8px 12px; background:var(--accent-green);"><i class="fa-solid fa-check"></i> Grant Access</button>
+                                  </form>
+                                  <form method="post" action="?action=reject" style="display:inline-block; margin:0;">
+                                      ' . csrf_input() . '
+                                      <input type="hidden" name="request_id" value="' . $r['id'] . '">
+                                      <button type="submit" class="btn btn-danger" style="padding:8px 12px;"><i class="fa-solid fa-xmark"></i> Reject</button>
+                                  </form>
+                             </div>';
                         } elseif ($r['status'] === 'Approved' && !$isExp) {
                             if (!empty($r['expires_at'])) {
                                 echo '<span style="font-size:12px; color:var(--accent-green); font-weight:600;"><i class="fa-solid fa-book-open-reader"></i> Active session till ' . date('d-m-Y h:i A', strtotime($r['expires_at'])) . '</span>';

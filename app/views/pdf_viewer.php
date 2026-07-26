@@ -429,8 +429,8 @@
             <button id="zoomFitBtn" class="toolbar-btn" title="Fit Page Width">
                 <span class="fa-solid fa-arrows-alt"></span> Fit
             </button>
-            <span style="font-size: 11px; color: #9ca3af; background: rgba(255, 255, 255, 0.06); padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.12); white-space: nowrap; display: inline-flex; align-items: center; gap: 5px;" title="Tip">
-                <i class="fa-solid fa-circle-info" style="color: #60a5fa;"></i> Click "Fit" if page is not rendered correctly
+            <span style="font-size: 11px; color: #f70404ff; background: rgba(255, 255, 255, 0.93); padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.12); white-space: nowrap; display: inline-flex; align-items: center; gap: 5px;" title="Tip">
+                <i class="fa-solid fa-circle-info" style="color: #e63318ff;text-weight:bold"></i> Click "Fit" if page is not visible correctly
             </span>
             <div class="toolbar-divider"></div>
             <button id="rotateBtn" class="toolbar-btn" title="Rotate Clockwise 90°">
@@ -1041,14 +1041,14 @@
         };
 
         document.getElementById('zoomInBtn').onclick = () => {
-            if (currentScale >= 3.0) return;
+            if (currentScale >= 4.0) return;
             currentScale = +(currentScale + 0.2).toFixed(2);
             zoomPercentLabel.textContent = Math.round(currentScale * 100) + '%';
             relayoutAndRerender();
         };
 
         document.getElementById('zoomOutBtn').onclick = () => {
-            if (currentScale <= 0.5) return;
+            if (currentScale <= 0.3) return;
             currentScale = +(currentScale - 0.2).toFixed(2);
             zoomPercentLabel.textContent = Math.round(currentScale * 100) + '%';
             relayoutAndRerender();
@@ -1063,6 +1063,42 @@
                 relayoutAndRerender();
             });
         };
+
+        // Ctrl + Mouse Wheel Zooming
+        viewportScrollArea.addEventListener('wheel', function(e) {
+            if (e.ctrlKey || e.metaKey) {
+                e.preventDefault();
+                if (e.deltaY < 0) {
+                    if (currentScale < 4.0) {
+                        currentScale = +(currentScale + 0.15).toFixed(2);
+                        zoomPercentLabel.textContent = Math.round(currentScale * 100) + '%';
+                        relayoutAndRerender();
+                    }
+                } else if (e.deltaY > 0) {
+                    if (currentScale > 0.3) {
+                        currentScale = +(currentScale - 0.15).toFixed(2);
+                        zoomPercentLabel.textContent = Math.round(currentScale * 100) + '%';
+                        relayoutAndRerender();
+                    }
+                }
+            }
+        }, { passive: false });
+
+        // Keyboard shortcuts (+ / - / 0) for Zoom
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey || e.metaKey) {
+                if (e.key === '=' || e.key === '+' || e.code === 'NumpadAdd') {
+                    e.preventDefault();
+                    document.getElementById('zoomInBtn').click();
+                } else if (e.key === '-' || e.code === 'NumpadSubtract') {
+                    e.preventDefault();
+                    document.getElementById('zoomOutBtn').click();
+                } else if (e.key === '0' || e.code === 'Numpad0') {
+                    e.preventDefault();
+                    document.getElementById('zoomFitBtn').click();
+                }
+            }
+        });
 
         document.getElementById('rotateBtn').onclick = () => {
             currentRotation = (currentRotation + 90) % 360;
@@ -1110,6 +1146,16 @@
                         timerBadge.style.color       = '#ffffff';
                     }
                     CBMDL_PDFCache.clearAll().finally(() => {
+                        if (window.opener && !window.opener.closed) {
+                            try {
+                                if (window.opener.spaTabCache) window.opener.spaTabCache.clear();
+                                if (typeof window.opener.navigateToUrl === 'function') {
+                                    window.opener.navigateToUrl(window.opener.location.href, false, false);
+                                } else {
+                                    window.opener.location.reload();
+                                }
+                            } catch(e) {}
+                        }
                         alert('⏱️ Your active e-reading session time has expired.');
                         window.close();
                         window.location.href = '<?= BASE_URL ?>?action=user&tab=books';

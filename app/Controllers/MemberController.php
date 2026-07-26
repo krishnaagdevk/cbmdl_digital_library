@@ -104,6 +104,16 @@ final class MemberController {
         }
         $mid = (int)$_SESSION['member'];
         
+        // Auto-expire any active reading sessions where expires_at <= NOW()
+        $this->db->query("
+            UPDATE reading_requests 
+            SET status = 'Expired' 
+            WHERE member_id = $mid 
+              AND status = 'Approved' 
+              AND expires_at IS NOT NULL 
+              AND expires_at <= NOW()
+        ");
+        
         $read_query = $this->db->query("
             SELECT r.id, r.status, e.title, r.expires_at 
             FROM reading_requests r 
@@ -113,11 +123,13 @@ final class MemberController {
         ");
         $reading_reqs = [];
         while ($row = $read_query->fetch_assoc()) {
+            $isExpired = ($row['status'] === 'Expired') || (!empty($row['expires_at']) && strtotime($row['expires_at']) <= time());
+            $effStatus = $isExpired ? 'Expired' : $row['status'];
             $reading_reqs[] = [
                 'id' => (int)$row['id'],
                 'type' => 'reading',
                 'title' => $row['title'],
-                'status' => $row['status'],
+                'status' => $effStatus,
                 'expires_at' => $row['expires_at']
             ];
         }

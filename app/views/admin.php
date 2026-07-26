@@ -7,6 +7,101 @@ $side_prt_count = (int)$db->query("SELECT COUNT(*) c FROM print_requests WHERE s
 
 $master_data_tabs = ['categories', 'plans', 'active_plans', 'create_plan', 'shift_timings', 'login_window', 'admin_login_logs', 'member_login_logs'];
 $is_master_data_active = in_array($tab, $master_data_tabs);
+
+if (is_spa_request()) {
+    $allowed_tabs = [
+        'dashboard', 'categories', 'ebooks', 'view_ebooks', 
+        'physical', 'view_physical', 'requests', 'prints', 
+        'members', 'view_members', 'membership_history', 'plans', 
+        'active_plans', 'create_plan', 'shift_timings', 'login_window', 
+        'admin_login_logs', 'member_login_logs', 'lending', 'view_lending', 'profile', 'backups'
+    ];
+    
+    ob_start();
+    if (in_array($tab, $allowed_tabs)) {
+        require __DIR__ . "/admin/{$tab}.php";
+    } else {
+        require __DIR__ . "/admin/dashboard.php";
+    }
+    $tab_html = get_flash_toast_script() . ob_get_clean();
+
+    ob_start();
+    ?>
+    <a href="?action=admin&tab=dashboard" class="<?= $tab === 'dashboard' ? 'active' : '' ?>"><i class="fa-solid fa-chart-pie"></i>Home</a>
+    <a href="?action=admin&tab=ebooks" class="<?= $tab === 'ebooks' ? 'active' : '' ?>"><i class="fa-solid fa-file-pdf"></i> Manage E-Books</a>
+    <a href="?action=admin&tab=view_ebooks" class="<?= $tab === 'view_ebooks' ? 'active' : '' ?>"><i class="fa-solid fa-book-open"></i> View E-Books</a>
+    <a href="?action=admin&tab=requests" class="<?= $tab === 'requests' ? 'active' : '' ?>">
+        <i class="fa-solid fa-receipt"></i> Reading Requests
+        <span id="sidebarReadingBadge" class="badge badge-orange" style="margin-left:auto; font-size:10px; padding:2px 6px; font-weight:700; <?= $side_req_count > 0 ? '' : 'display:none;' ?>"><?= $side_req_count ?></span>
+    </a>
+    <a href="?action=admin&tab=prints" class="<?= $tab === 'prints' ? 'active' : '' ?>">
+        <i class="fa-solid fa-print"></i> Print Requests
+        <span id="sidebarPrintBadge" class="badge badge-blue" style="margin-left:auto; font-size:10px; padding:2px 6px; font-weight:700; <?= $side_prt_count > 0 ? '' : 'display:none;' ?>"><?= $side_prt_count ?></span>
+    </a>
+    <a href="?action=admin&tab=physical" class="<?= $tab === 'physical' ? 'active' : '' ?>"><i class="fa-solid fa-book"></i> Manage Physical Books</a>
+    <a href="?action=admin&tab=view_physical" class="<?= $tab === 'view_physical' ? 'active' : '' ?>"><i class="fa-solid fa-book"></i> View Physical Books</a>
+    <a href="?action=admin&tab=lending" class="<?= $tab === 'lending' ? 'active' : '' ?>"><i class="fa-solid fa-hand-holding-hand"></i>Issue Physical Book</a>
+    <a href="?action=admin&tab=view_lending" class="<?= $tab === 'view_lending' ? 'active' : '' ?>"><i class="fa-solid fa-clock-rotate-left"></i>View Lending List</a>
+    <a href="?action=admin&tab=members" class="<?= $tab === 'members' ? 'active' : '' ?>"><i class="fa-solid fa-user-plus"></i> Add Membership</a>
+    <a href="?action=admin&tab=view_members" class="<?= $tab === 'view_members' ? 'active' : '' ?>"><i class="fa-solid fa-users"></i>View Membership</a>
+    <a href="?action=admin&tab=membership_history" class="<?= $tab === 'membership_history' ? 'active' : '' ?>"><i class="fa-solid fa-clock-rotate-left"></i> Membership History</a>
+    
+    <!-- Master Data Collapsible Submenu -->
+    <div class="sidebar-item-group <?= $is_master_data_active ? 'open' : '' ?>">
+        <button type="button" class="sidebar-parent-btn <?= $is_master_data_active ? 'active-parent' : '' ?>" onclick="toggleSidebarSubmenu(this)">
+            <span><i class="fa-solid fa-database"></i> Master Data</span>
+            <i class="fa-solid fa-chevron-down toggle-icon"></i>
+        </button>
+        <div class="sidebar-submenu" style="<?= $is_master_data_active ? 'display:flex;' : 'display:none;' ?>">
+            <a href="?action=admin&tab=categories" class="<?= $tab === 'categories' ? 'active' : '' ?>">
+                <i class="fa-solid fa-folder-open"></i>E-Book Categories
+            </a>
+            <a href="?action=admin&tab=active_plans" class="<?= ($tab === 'active_plans' || $tab === 'plans') ? 'active' : '' ?>">
+                <i class="fa-solid fa-list-check"></i> Active Membership Plans
+            </a>
+            <a href="?action=admin&tab=login_window" class="<?= $tab === 'login_window' ? 'active' : '' ?>">
+                <i class="fa-solid fa-sliders"></i> Shift Timings
+            </a>
+            <a href="?action=admin&tab=admin_login_logs" class="<?= $tab === 'admin_login_logs' ? 'active' : '' ?>">
+                <i class="fa-solid fa-user-shield"></i> Admin Login Logs
+            </a>
+            <a href="?action=admin&tab=member_login_logs" class="<?= $tab === 'member_login_logs' ? 'active' : '' ?>">
+                <i class="fa-solid fa-users-rectangle"></i> Member Login Logs
+            </a>
+        </div>
+    </div>
+
+    <a href="?action=admin&tab=backups" class="<?= $tab === 'backups' ? 'active' : '' ?>"><i class="fa-solid fa-box-archive"></i>System Backups</a>
+    <a href="?action=admin&tab=profile" class="<?= $tab === 'profile' ? 'active' : '' ?>"><i class="fa-solid fa-user-shield"></i>Librarian Profile</a>
+    <a href="?action=logout" style="margin-top:15px; color:#ef4444; border-top:1px solid var(--border-color); padding-top:12px; font-weight:600;"><i class="fa-solid fa-right-from-bracket"></i>Logout Panel</a>
+    <?php
+    $sidebar_html = ob_get_clean();
+
+    $tab_labels = [
+        'dashboard' => 'Dashboard', 'categories' => 'Categories', 'ebooks' => 'Manage E-Books',
+        'view_ebooks' => 'View E-Books', 'physical' => 'Manage Physical Books', 'view_physical' => 'View Physical Books',
+        'requests' => 'Reading Requests', 'prints' => 'Print Requests', 'members' => 'Add Membership',
+        'view_members' => 'View Membership', 'membership_history' => 'Membership History',
+        'plans' => 'Plans', 'active_plans' => 'Active Plans', 'create_plan' => 'Create Plan',
+        'login_window' => 'Shift Timings', 'admin_login_logs' => 'Admin Login Logs',
+        'member_login_logs' => 'Member Login Logs', 'lending' => 'Issue Book', 'view_lending' => 'View Lending',
+        'profile' => 'Librarian Profile', 'backups' => 'System Backups'
+    ];
+    $title_label = $tab_labels[$tab] ?? 'Admin Panel';
+
+    header('Content-Type: application/json');
+    echo json_encode([
+        'success' => true,
+        'tab' => $tab,
+        'title' => 'MCB e-Library · ' . $title_label,
+        'content' => $tab_html,
+        'sidebar' => $sidebar_html,
+        'reading_count' => $side_req_count,
+        'print_count' => $side_prt_count
+    ]);
+    exit;
+}
+
 ?>
 <script>
 if (typeof window.toggleSidebarSubmenu !== 'function') {
