@@ -20,7 +20,7 @@ final class AuthController {
             clear_failed_attempts();
             session_regenerate_id(true);
             $_SESSION['admin'] = $admin['id'];
-            flash('Welcome back! Logged in as Admin.');
+            flash('Welcome back! Logged in as Librarian.');
             session_write_close();
             go('?action=admin');
         }

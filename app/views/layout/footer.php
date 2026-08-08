@@ -34,7 +34,7 @@
 
     <!-- Footer Area -->
     <footer>
-        &copy; 2026-<?= date('Y') ?> <strong>MCB e-Library</strong> · All Rights Reserved. Designed & Developed by <strong>KD Technologies</strong>
+        &copy; <?= date('Y') ?> <strong>MCB e-Library</strong> · All Rights Reserved. Designed & Developed by <strong>KD Technologies</strong>
     </footer>
 
     <!-- Client-Side JavaScript Logic -->
@@ -53,6 +53,9 @@
                 'fa-user-tie': '👤',
                 'fa-user-shield': '🛡️',
                 'fa-user-graduate': '🎓',
+                'fa-graduation-cap': '🎓',
+                'fa-arrow-up-right-from-square': '↗️',
+                'fa-external-link': '↗️',
                 'fa-lock': '🔒',
                 'fa-key': '🔑',
                 'fa-chart-pie': '📊',
@@ -435,6 +438,20 @@
             });
         }
 
+        // Clean spa=1 from address bar on page load if present
+        function getCleanSpaUrl(url) {
+            if (!url) return '';
+            return url.replace(/([?&])spa=1(&|$)/, function(match, p1, p2) {
+                return p2 === '&' ? p1 : '';
+            }).replace(/([?&])_t=\d+(&|$)/, function(match, p1, p2) {
+                return p2 === '&' ? p1 : '';
+            }).replace(/[?&]$/, '');
+        }
+
+        if (window.history && window.history.replaceState && window.location.search.includes('spa=1')) {
+            window.history.replaceState(history.state, '', getCleanSpaUrl(window.location.href));
+        }
+
         // SPA In-Memory Tab Cache
         window.spaTabCache = window.spaTabCache || new Map();
 
@@ -452,6 +469,19 @@
 
         // Optimized High-Performance SPA Navigation Engine
         function navigateToUrl(url, pushState = true, useCache = true) {
+            // Track unique navigation token and abort controller to prevent race conditions on rapid tab switching
+            window.currentSpaNavToken = (window.currentSpaNavToken || 0) + 1;
+            const navToken = window.currentSpaNavToken;
+
+            if (window.currentSpaAbortController) {
+                try { window.currentSpaAbortController.abort(); } catch(e) {}
+            }
+            if (typeof AbortController !== 'undefined') {
+                window.currentSpaAbortController = new AbortController();
+            } else {
+                window.currentSpaAbortController = null;
+            }
+
             if (window.activeUploads && Object.keys(window.activeUploads).length > 0) {
                 if (!confirm("⚠️ WARNING: You have active background uploads in progress!\n\nNavigating away will abort these uploads. Do you want to cancel the uploads and proceed?")) {
                     return;
@@ -476,34 +506,50 @@
                 window.offlinePollerInterval = null;
             }
 
-            // Normalize URL for cache key
-            const cleanUrl = url.replace(/&_t=\d+/, '');
+            // Normalize URL for cache key and browser history (strip spa=1 & timestamp)
+            const cleanUrl = getCleanSpaUrl(url);
             
             // Fast UI update function
-            function renderSpaData(data) {
+            function renderSpaData(data, isBackgroundRefresh = false) {
+                if (navToken !== window.currentSpaNavToken) return;
+
                 if (data.title) {
                     document.title = data.title;
                 }
                 
-                // Render main content area or .admin-content
+                // Target specific tab content containers to keep header/profile banners permanently intact
+                const adminTabContent = document.getElementById('adminTabContent');
+                const userTabContent = document.getElementById('userTabContent');
                 const adminContent = document.querySelector('.admin-content');
                 const mainArea = document.querySelector('main');
 
-                if (adminContent && data.content) {
-                    adminContent.innerHTML = data.content;
-                    adminContent.classList.remove('spa-loading-overlay');
-                    adminContent.classList.add('spa-fade-in');
-                    setTimeout(() => adminContent.classList.remove('spa-fade-in'), 250);
-                    executeInjectedScripts(adminContent);
+                const updateContainer = (container) => {
+                    if (!container || !data.content) return;
+                    if (isBackgroundRefresh && container.innerHTML === data.content) return;
+
+                    container.innerHTML = data.content;
+                    container.classList.remove('spa-loading-overlay');
+                    if (!isBackgroundRefresh) {
+                        container.classList.add('spa-fade-in');
+                        setTimeout(() => container.classList.remove('spa-fade-in'), 250);
+                    }
+                    executeInjectedScripts(container);
+                };
+
+                if (adminTabContent && data.content) {
+                    updateContainer(adminTabContent);
+                } else if (userTabContent && data.content) {
+                    updateContainer(userTabContent);
+                } else if (adminContent && data.content) {
+                    updateContainer(adminContent);
                 } else if (mainArea && data.content) {
-                    mainArea.innerHTML = data.content;
-                    executeInjectedScripts(mainArea);
+                    updateContainer(mainArea);
                 }
 
                 // Update sidebar if returned
                 if (data.sidebar) {
                     const currentSidebar = document.querySelector('.sidebar');
-                    if (currentSidebar) {
+                    if (currentSidebar && (!isBackgroundRefresh || currentSidebar.innerHTML !== data.sidebar)) {
                         currentSidebar.innerHTML = data.sidebar;
                         executeInjectedScripts(currentSidebar);
                     }
@@ -525,14 +571,34 @@
                     }
                 }
 
+                // Trigger toast notification instantly if flash message exists in JSON response
+                if (data.flash && window.showToast) {
+                    const msg = data.flash;
+                    const isSuccess = msg.includes('🎉') || msg.includes('✓') || msg.toLowerCase().startsWith('success');
+                    const isWarning = !isSuccess && (msg.toLowerCase().includes('inactive') || msg.toLowerCase().includes('expired'));
+                    const isError = !isSuccess && !isWarning && (
+                        msg.includes('Duplicate') || msg.includes('⚠️') || msg.includes('Error') ||
+                        msg.includes('Invalid') || msg.toLowerCase().includes('warning') ||
+                        msg.toLowerCase().includes('suspended') || msg.toLowerCase().includes('failed') ||
+                        msg.toLowerCase().includes('rejected') || msg.toLowerCase().includes('cannot') ||
+                        msg.toLowerCase().includes('required') || msg.toLowerCase().includes('empty') ||
+                        msg.toLowerCase().includes('already exists') || msg.toLowerCase().includes('no book found') ||
+                        msg.toLowerCase().includes('already issued')
+                    );
+                    const type = isWarning ? 'warning' : (isError ? 'error' : 'success');
+                    window.showToast(msg, type);
+                }
+
                 initializePageFeatures();
             }
+
+            window.renderSpaData = renderSpaData;
 
             // 1. Instant Cache Render (0ms Latency) if available
             const cachedData = window.spaTabCache.get(cleanUrl);
             let renderedFromCache = false;
             if (useCache && cachedData) {
-                renderSpaData(cachedData);
+                renderSpaData(cachedData, false);
                 renderedFromCache = true;
                 progressBar.style.width = '100%';
                 setTimeout(() => {
@@ -552,14 +618,20 @@
             // 2. Fetch fresh SPA payload (&spa=1)
             const spaFetchUrl = cleanUrl + (cleanUrl.includes('?') ? '&' : '?') + 'spa=1&_t=' + Date.now();
             
-            fetch(spaFetchUrl, {
+            const fetchOptions = {
                 headers: {
                     'X-SPA-Request': '1',
                     'X-Requested-With': 'XMLHttpRequest'
                 },
                 cache: 'no-store'
-            })
+            };
+            if (window.currentSpaAbortController) {
+                fetchOptions.signal = window.currentSpaAbortController.signal;
+            }
+
+            fetch(spaFetchUrl, fetchOptions)
             .then(res => {
+                if (navToken !== window.currentSpaNavToken) return null;
                 progressBar.style.width = '80%';
                 const contentType = res.headers.get('content-type') || '';
                 if (contentType.includes('application/json')) {
@@ -569,6 +641,8 @@
                 }
             })
             .then(data => {
+                if (!data || navToken !== window.currentSpaNavToken) return;
+
                 progressBar.style.width = '100%';
 
                 if (data.isHtml) {
@@ -585,9 +659,16 @@
                     }
                     initializePageFeatures();
                 } else if (data.success) {
-                    // Cache the JSON payload
-                    window.spaTabCache.set(cleanUrl, data);
-                    renderSpaData(data);
+                    const isContentIdentical = cachedData && (cachedData.content === data.content);
+                    // Cache the JSON payload (without flash message to avoid replaying on cache hit)
+                    const cacheData = { ...data };
+                    delete cacheData.flash;
+                    window.spaTabCache.set(cleanUrl, cacheData);
+                    
+                    // Only re-render if not already rendered from cache or if server data actually changed
+                    if (!renderedFromCache || !isContentIdentical) {
+                        renderSpaData(data, renderedFromCache);
+                    }
                 }
 
                 if (pushState) {
@@ -605,6 +686,8 @@
                 }, 150);
             })
             .catch(err => {
+                if (err.name === 'AbortError') return; // Cleanly ignore aborted requests
+                if (navToken !== window.currentSpaNavToken) return;
                 console.error("SPA Navigation Error:", err);
                 const adminContent = document.querySelector('.admin-content');
                 if (adminContent) {
@@ -643,6 +726,82 @@
                 navigateToUrl(href);
             }
         });
+
+        // Instant Hover / Pointer-Over Preloader for 0ms tab switching
+        document.addEventListener('pointerover', function(e) {
+            const anchor = e.target.closest('a');
+            if (!anchor) return;
+            const href = anchor.getAttribute('href');
+            if (!href) return;
+            if (href.startsWith('?action=admin') || href.startsWith('?action=user')) {
+                if (href.includes('action=delete_') || href.includes('action=logout') || href.includes('action=request_read') || href.includes('action=return_book')) {
+                    return;
+                }
+                const cleanUrl = getCleanSpaUrl(href);
+                if (window.spaTabCache && !window.spaTabCache.has(cleanUrl)) {
+                    const spaFetchUrl = cleanUrl + (cleanUrl.includes('?') ? '&' : '?') + 'spa=1';
+                    fetch(spaFetchUrl, {
+                        headers: {
+                            'X-SPA-Request': '1',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        cache: 'no-store'
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data && data.success && window.spaTabCache) {
+                            const cacheData = { ...data };
+                            delete cacheData.flash;
+                            window.spaTabCache.set(cleanUrl, cacheData);
+                        }
+                    })
+                    .catch(() => {});
+                }
+            }
+        }, { passive: true });
+
+        // Proactive Background Tab Warmer: Pre-load ALL sidebar menu tabs on page load during browser idle time
+        function warmAllSidebarTabCaches() {
+            const links = document.querySelectorAll('.sidebar a');
+            let delay = 25;
+            links.forEach(link => {
+                const href = link.getAttribute('href');
+                if (!href) return;
+                if (href.startsWith('?action=admin') || href.startsWith('?action=user')) {
+                    if (href.includes('action=delete_') || href.includes('action=logout') || href.includes('action=request_read') || href.includes('action=return_book')) {
+                        return;
+                    }
+                    const cleanUrl = getCleanSpaUrl(href);
+                    if (window.spaTabCache && !window.spaTabCache.has(cleanUrl)) {
+                        setTimeout(() => {
+                            if (window.spaTabCache && !window.spaTabCache.has(cleanUrl)) {
+                                const spaFetchUrl = cleanUrl + (cleanUrl.includes('?') ? '&' : '?') + 'spa=1';
+                                fetch(spaFetchUrl, {
+                                    headers: { 'X-SPA-Request': '1', 'X-Requested-With': 'XMLHttpRequest' },
+                                    cache: 'no-store'
+                                })
+                                .then(res => res.json())
+                                .then(data => {
+                                    if (data && data.success && window.spaTabCache) {
+                                        const cacheData = { ...data };
+                                        delete cacheData.flash;
+                                        window.spaTabCache.set(cleanUrl, cacheData);
+                                    }
+                                })
+                                .catch(() => {});
+                            }
+                        }, delay);
+                        delay += 25; // Stagger requests by 25ms so all tabs are ready within ~200ms
+                    }
+                }
+            });
+        }
+
+        if ('requestIdleCallback' in window) {
+            requestIdleCallback(warmAllSidebarTabCaches, { timeout: 1000 });
+        } else {
+            setTimeout(warmAllSidebarTabCaches, 200);
+        }
 
 
         // Global Active Background Parallel Uploads tracker
@@ -827,6 +986,12 @@
             const form = e.target;
             const submitter = e.submitter;
 
+            // Prevent rapid double form submissions
+            if (form.dataset.isSubmitting === 'true') {
+                e.preventDefault();
+                return;
+            }
+
             // 1. Confirm dialog check for delete actions
             const onsubmitAttr = form.getAttribute('onsubmit') || '';
             const onclickAttr = submitter ? (submitter.getAttribute('onclick') || '') : '';
@@ -843,27 +1008,62 @@
                 }
             }
 
+            // Validate HTML5 required fields before applying disabled loader state
+            if (form.checkValidity && !form.checkValidity()) {
+                return;
+            }
+
+            // Replace button content with spinner loader and disable to enforce single click
+            let originalSubmitterHtml = null;
+            let originalSubmitterVal = null;
+            if (submitter) {
+                submitter.disabled = true;
+                submitter.style.opacity = '0.75';
+                submitter.style.cursor = 'not-allowed';
+                submitter.style.pointerEvents = 'none';
+
+                const btnTxt = (submitter.textContent || '').trim();
+                let spinnerText = 'Processing...';
+                if (btnTxt.includes('Grant')) spinnerText = 'Granting...';
+                else if (btnTxt.includes('Reject')) spinnerText = 'Rejecting...';
+                else if (btnTxt.includes('Complete')) spinnerText = 'Completing...';
+                else if (btnTxt.includes('Return')) spinnerText = 'Returning...';
+
+                if (submitter.tagName === 'INPUT') {
+                    originalSubmitterVal = submitter.value;
+                    submitter.value = spinnerText;
+                } else {
+                    originalSubmitterHtml = submitter.innerHTML;
+                    submitter.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> ' + spinnerText;
+                }
+            }
+
             // 2. SPA Form submission for single-click instant execution
-            if (form.enctype === 'multipart/form-data' || form.target === '_blank' || form.id === 'ebFormAdd' || form.id === 'ebFormEdit') {
+            // Skip GET forms, file uploads, external targets, auth/login forms, or pages outside SPA panels
+            if (
+                (form.method || 'POST').toUpperCase() === 'GET' ||
+                form.enctype === 'multipart/form-data' || 
+                form.target === '_blank' || 
+                form.id === 'ebFormAdd' || 
+                form.id === 'ebFormEdit' ||
+                actionLower.includes('login') ||
+                actionLower.includes('logout') ||
+                actionLower.includes('forgot_password') ||
+                !document.querySelector('.admin-content, .user-layout, .sidebar')
+            ) {
+                form.dataset.isSubmitting = 'true';
                 return;
             }
 
             e.preventDefault();
-
-            // Disable submit button during in-flight request to prevent double clicks
-            if (submitter) {
-                submitter.disabled = true;
-            }
+            form.dataset.isSubmitting = 'true';
 
             const formData = new FormData(form);
             if (submitter && submitter.name) {
                 formData.append(submitter.name, submitter.value);
             }
 
-            let targetUrl = action || window.location.href;
-            if (!targetUrl.includes('spa=1')) {
-                targetUrl += (targetUrl.includes('?') ? '&' : '?') + 'spa=1';
-            }
+            const targetUrl = action || window.location.href;
 
             fetch(targetUrl, {
                 method: (form.method || 'POST').toUpperCase(),
@@ -875,50 +1075,57 @@
             })
             .then(res => {
                 if (window.spaTabCache) window.spaTabCache.clear();
-                const rawRedirectUrl = res.url || window.location.href;
-                return res.text().then(text => {
-                    let data = null;
-                    try {
-                        data = JSON.parse(text);
-                    } catch(err) {}
-                    return { data, rawRedirectUrl };
-                });
-            })
-            .then(({ data, rawRedirectUrl }) => {
-                const cleanUrl = rawRedirectUrl.replace(/([?&])spa=1(&|$)/, '$1').replace(/[?&]$/, '');
-                const contentTarget = document.querySelector('.admin-content') || document.querySelector('#admin-content');
-                const isLoginAction = actionLower.includes('login') || cleanUrl.includes('action=user') || cleanUrl.includes('action=admin');
-
-                if (data && data.success && data.content && contentTarget && !isLoginAction) {
-                    if (window.history && window.history.pushState) {
-                        window.history.pushState({ url: cleanUrl }, '', cleanUrl);
-                    }
-                    contentTarget.innerHTML = data.content;
-                    // Re-trigger dynamic inline scripts (such as toast alerts)
-                    const scripts = contentTarget.querySelectorAll('script');
-                    scripts.forEach(oldScript => {
-                        const newScript = document.createElement('script');
-                        Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
-                        newScript.appendChild(document.createTextNode(oldScript.textContent));
-                        oldScript.parentNode.replaceChild(newScript, oldScript);
-                    });
-                    if (data.sidebar) {
-                        const sidebarTarget = document.querySelector('.sidebar');
-                        if (sidebarTarget) {
-                            sidebarTarget.innerHTML = data.sidebar;
-                            const sbScripts = sidebarTarget.querySelectorAll('script');
-                            sbScripts.forEach(oldScript => {
-                                const newScript = document.createElement('script');
-                                Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
-                                newScript.appendChild(document.createTextNode(oldScript.textContent));
-                                oldScript.parentNode.replaceChild(newScript, oldScript);
-                            });
-                        }
-                    }
-                    if (data.title) document.title = data.title;
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                const redirectUrl = res.url || window.location.href;
+                const contentType = res.headers.get('content-type') || '';
+                if (contentType.includes('application/json')) {
+                    return res.json().then(data => ({ data, redirectUrl }));
                 } else {
-                    window.location.href = cleanUrl;
+                    return res.text().then(html => ({ html, redirectUrl }));
+                }
+            })
+            .then(({ data, html, redirectUrl }) => {
+                if (data && data.success) {
+                    renderSpaData(data);
+                    const cleanUrl = redirectUrl.replace(/([?&])spa=1(&|$)/, function(match, p1, p2) {
+                        return p2 === '&' ? p1 : '';
+                    }).replace(/([?&])_t=\d+(&|$)/, function(match, p1, p2) {
+                        return p2 === '&' ? p1 : '';
+                    }).replace(/[?&]$/, '');
+                    history.pushState({ url: cleanUrl }, '', cleanUrl);
+                } else if (html) {
+                    const parser = new DOMParser();
+                    const newDoc = parser.parseFromString(html, 'text/html');
+                    if (newDoc.title) document.title = newDoc.title;
+
+                    const adminTabContent = document.getElementById('adminTabContent');
+                    const userTabContent = document.getElementById('userTabContent');
+                    const currentMain = document.querySelector('main');
+                    
+                    const newAdminTab = newDoc.getElementById('adminTabContent');
+                    const newUserTab = newDoc.getElementById('userTabContent');
+                    const newMain = newDoc.querySelector('main');
+
+                    if (adminTabContent && newAdminTab) {
+                        adminTabContent.innerHTML = newAdminTab.innerHTML;
+                        executeInjectedScripts(adminTabContent);
+                    } else if (userTabContent && newUserTab) {
+                        userTabContent.innerHTML = newUserTab.innerHTML;
+                        executeInjectedScripts(userTabContent);
+                    } else if (currentMain && newMain) {
+                        currentMain.innerHTML = newMain.innerHTML;
+                        executeInjectedScripts(currentMain);
+                    }
+                    executeInjectedScripts(newDoc.body);
+                    if (typeof initializePageFeatures === 'function') initializePageFeatures();
+
+                    const cleanUrl = redirectUrl.replace(/([?&])spa=1(&|$)/, function(match, p1, p2) {
+                        return p2 === '&' ? p1 : '';
+                    }).replace(/([?&])_t=\d+(&|$)/, function(match, p1, p2) {
+                        return p2 === '&' ? p1 : '';
+                    }).replace(/[?&]$/, '');
+                    history.pushState({ url: cleanUrl }, '', cleanUrl);
+                } else {
+                    navigateToUrl(redirectUrl, true, false);
                 }
             })
             .catch(err => {
@@ -926,8 +1133,18 @@
                 form.submit();
             })
             .finally(() => {
+                delete form.dataset.isSubmitting;
                 if (submitter) {
                     submitter.disabled = false;
+                    submitter.style.opacity = '';
+                    submitter.style.cursor = '';
+                    submitter.style.pointerEvents = '';
+                    if (originalSubmitterVal !== null) {
+                        submitter.value = originalSubmitterVal;
+                    }
+                    if (originalSubmitterHtml !== null) {
+                        submitter.innerHTML = originalSubmitterHtml;
+                    }
                 }
             });
         });

@@ -25,7 +25,23 @@
 
         * {
             box-sizing: border-box;
-            transition: all 0.2s ease-in-out;
+        }
+
+        /* Targeted smooth transitions on interactive controls only (prevents global layout thrashing & UI lag) */
+        a, button, input, select, textarea, .btn, .card, .stat-card, .sidebar a, .badge, .notification-bell-btn {
+            transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        /* Hardware-Accelerated Rendering for Ultra-Low Latency UI on i5 12th Gen & i7 14th Gen */
+        .admin-wrapper, main, table, .table-responsive, .card {
+            transform: translateZ(0);
+            backface-visibility: hidden;
+        }
+
+        /* Off-Screen Table Row Virtualization for Instant Table Rendering */
+        .table-responsive tbody tr {
+            content-visibility: auto;
+            contain-intrinsic-size: 100px 40px;
         }
 
         #top-progress-bar {
@@ -43,19 +59,12 @@
         }
 
         .spa-fade-in {
-            animation: spaFadeIn 0.2s ease-out forwards;
-        }
-
-        @keyframes spaFadeIn {
-            from { opacity: 0.6; transform: translateY(4px); }
-            to { opacity: 1; transform: translateY(0); }
+            opacity: 1;
         }
 
         .spa-loading-overlay {
-            opacity: 0.65;
+            opacity: 0.95;
             pointer-events: none;
-            filter: grayscale(10%);
-            transition: opacity 0.15s ease-in-out;
         }
 
 
@@ -249,6 +258,40 @@
             color: white;
             font-weight: 600;
             box-shadow: 0 4px 15px rgba(37, 99, 235, 0.25);
+        }
+
+        /* NCERT Interactive Sidebar Link */
+        .sidebar a.ncert-btn {
+            margin-top: 6px;
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            border: 1px solid #bfdbfe;
+            color: #1e40af;
+            font-weight: 600;
+            justify-content: space-between;
+            box-shadow: 0 2px 6px rgba(37, 99, 235, 0.08);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .sidebar a.ncert-btn:hover {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            color: #ffffff !important;
+            border-color: #1d4ed8;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 18px rgba(37, 99, 235, 0.3);
+        }
+
+        .sidebar a.ncert-btn .ncert-ext-icon {
+            font-size: 11px;
+            color: #2563eb;
+            margin-left: auto;
+            transition: color 0.2s ease, transform 0.2s ease;
+        }
+
+        .sidebar a.ncert-btn:hover .ncert-ext-icon {
+            color: #ffffff !important;
+            transform: translate(2px, -2px);
         }
 
         /* Sidebar Accordion Submenu Styles */
@@ -806,6 +849,15 @@ $is_login_view = in_array($_GET['action'] ?? '', ['admin-login', 'member-login',
         window.showToast = function(msg, type, targetUrl) {
             if (!msg) return;
 
+            // Deduplicate identical toast messages triggered within 1.5 seconds
+            window._recentToasts = window._recentToasts || {};
+            var toastKey = (type || 'info') + ':' + msg + (targetUrl ? ':' + targetUrl : '');
+            var now = Date.now();
+            if (window._recentToasts[toastKey] && (now - window._recentToasts[toastKey] < 1500)) {
+                return;
+            }
+            window._recentToasts[toastKey] = now;
+
             // Auto-assign targetUrl based on toast type if not explicitly supplied
             if (!targetUrl) {
                 if (type === 'reading') {
@@ -935,13 +987,59 @@ $is_login_view = in_array($_GET['action'] ?? '', ['admin-login', 'member-login',
     </script>
 
     <!-- Dynamic Session Flash Messages -->
-    <?= get_flash_toast_script() ?>
+    <?php if ($f = flash()): ?>
+        <?php
+        $is_success_flash = (
+            str_contains($f, '🎉') || 
+            str_contains($f, '✓') || 
+            str_starts_with(strtolower($f), 'success')
+        );
+        $is_inactive_flash = !$is_success_flash && (
+            stristr($f, 'inactive') !== false ||
+            stristr($f, 'expired') !== false
+        );
+        $is_error_flash = !$is_success_flash && !$is_inactive_flash && (
+            str_contains($f, 'Duplicate') || 
+            str_contains($f, '⚠️') || 
+            str_contains($f, 'Error') || 
+            str_contains($f, 'Invalid') ||
+            stristr($f, 'warning') !== false ||
+            stristr($f, 'suspended') !== false ||
+            stristr($f, 'failed') !== false ||
+            stristr($f, 'rejected') !== false ||
+            stristr($f, 'cannot') !== false ||
+            stristr($f, 'required') !== false ||
+            stristr($f, 'empty') !== false ||
+            stristr($f, 'already exists') !== false ||
+            stristr($f, 'no book found') !== false ||
+            stristr($f, 'already issued') !== false
+        );
+        ?>
+        <script class="dynamic-script">
+            (function() {
+                var msg = <?= json_encode($f) ?>;
+                var isError = <?= json_encode($is_error_flash) ?>;
+                var isWarning = <?= json_encode($is_inactive_flash) ?>;
+                var type = isWarning ? 'warning' : (isError ? 'error' : 'success');
+                var fireToast = function() {
+                    if (window.showToast) window.showToast(msg, type);
+                };
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', fireToast);
+                } else {
+                    fireToast();
+                }
+            })();
+        </script>
+    <?php endif; ?>
 
     <!-- Header Branding -->
     <div class="header-logo">
-        <img src="<?= BASE_URL ?>images/mcb.png" alt="Branding Left" />
+        <img src="<?= BASE_URL ?>images/header_banner.png" alt="Branding Left" />
         <h1>श्री प्यारे लाल चिरन्जी लाल<br><span class="header-sub-text">कैन्टोनमेन्ट पुस्तकालय मेरठ</span></h1>
-        <img src="<?= BASE_URL ?>images/deo.png" alt="Branding Right" />
+        <div style="display:flex; align-items:center; gap:12px;">
+            <img src="<?= BASE_URL ?>images/2022111817.png" alt="Branding Right" />
+        </div>
     </div>
 
     <!-- Main Content Area -->

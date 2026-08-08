@@ -373,15 +373,15 @@ $link_base = "?action=user&tab=books&search=" . urlencode($p_search) . "&cat=" .
         $has_pending_print = $all_print_reqs[$r['id']] ?? null;
         
         // Dynamic cover gradient based on ID
-        $grad = $coverGradients[$r['id'] % count($coverGradients)];        $cardAction = '';
-        $cardExpAttr = '';
+        $grad = $coverGradients[$r['id'] % count($coverGradients)];
+
+        $cardAction = '';
         if ($req) {
             $isStarted = !empty($req['started_reading_at']);
             $isExpired = ($req['status'] === 'Expired') || (!empty($req['expires_at']) && strtotime($req['expires_at']) <= time());
             if ($req['status'] === 'Approved' && !$isExpired) {
                 $btnText = $isStarted ? 'Continue Reading' : 'Read Now (Granted)';
                 $expUnix = ($isStarted && !empty($req['expires_at'])) ? strtotime($req['expires_at']) : 0;
-                if ($expUnix > 0) $cardExpAttr = ' data-expires-at="' . $expUnix . '"';
                 $cardAction = '<button class="btn" style="width:100%; background:linear-gradient(135deg, #16a34a, #15803d); color:white; border:none; padding:10px 14px; font-weight:700; border-radius:8px; box-shadow:0 4px 12px rgba(22,163,74,0.25); display:flex; align-items:center; justify-content:center; gap:8px;" onclick="openPdfModal(' . $req['id'] . ', ' . $expUnix . ', \'' . addslashes(e($r['title'])) . '\')"><i class="fa-solid fa-book-open"></i> ' . $btnText . '</button>';
             } elseif ($req['status'] === 'Pending') {
                 $cardAction = '<button class="btn" style="width:100%; background:#fef3c7; color:#92400e; border:1px solid #fde047; padding:10px 14px; font-weight:700; border-radius:8px; cursor:not-allowed; display:flex; align-items:center; justify-content:center; gap:8px;" disabled><i class="fa-solid fa-clock"></i> Reading Request Pending</button>';
@@ -393,7 +393,7 @@ $link_base = "?action=user&tab=books&search=" . urlencode($p_search) . "&cat=" .
         }
 
         $printFormHtml = '
-        <form class="print-form-inline" method="post" action="?action=request_print" style="margin:0; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px 12px;" onsubmit="const btn = this.querySelector(\'button\'); setTimeout(() => { btn.disabled = true; btn.innerHTML = \'<i class=\\\'fa-solid fa-spinner fa-spin\\\'></i> Sending...\'; }, 10);">
+        <form class="print-form-inline" method="post" action="?action=request_print" style="margin:0; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px 12px;" onsubmit="const btn = this.querySelector(\'button\'); if(btn){ btn.disabled = true; btn.innerHTML = \'<i class=\\\'fa-solid fa-spinner fa-spin\\\'></i> Sending...\'; }">
             ' . csrf_input() . '
             <input type="hidden" name="ebook_id" value="' . $r['id'] . '">
             <div class="print-form-label" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
@@ -414,7 +414,7 @@ $link_base = "?action=user&tab=books&search=" . urlencode($p_search) . "&cat=" .
         </form>';
         
         echo '
-        <div class="ebook-card-item"' . $cardExpAttr . ' style="background:#ffffff; border-radius:14px; border:1px solid var(--border-color); overflow:hidden; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 14px rgba(15,23,42,0.03); transition:all 0.25s ease;" onmouseover="this.style.transform=\'translateY(-2px)\'; this.style.boxShadow=\'0 8px 20px rgba(15,23,42,0.06)\'; this.style.borderColor=\'var(--primary)\';" onmouseout="this.style.transform=\'translateY(0)\'; this.style.boxShadow=\'0 4px 14px rgba(15,23,42,0.03)\'; this.style.borderColor=\'var(--border-color)\';" data-ebook-id="' . $r['id'] . '">
+        <div class="ebook-card-item" style="background:#ffffff; border-radius:14px; border:1px solid var(--border-color); overflow:hidden; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 14px rgba(15,23,42,0.03); transition:all 0.25s ease;" onmouseover="this.style.transform=\'translateY(-2px)\'; this.style.boxShadow=\'0 8px 20px rgba(15,23,42,0.06)\'; this.style.borderColor=\'var(--primary)\';" onmouseout="this.style.transform=\'translateY(0)\'; this.style.boxShadow=\'0 4px 14px rgba(15,23,42,0.03)\'; this.style.borderColor=\'var(--border-color)\';" data-ebook-id="' . $r['id'] . '">
             
             <!-- Stylized E-Book Cover Header -->
             <div class="ebook-cover-header" style="background:' . $grad . '; height:42px; padding:8px 14px; position:relative; display:flex; align-items:center; justify-content:space-between; color:white; overflow:hidden;">

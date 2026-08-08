@@ -2,10 +2,10 @@
 // views/admin/view_lending.php
 if (!defined('BASE_URL')) exit;
 
-$status = $_GET['status'] ?? 'all';
+$status = $_GET['status'] ?? 'not_returned';
 $search = trim($_GET['search'] ?? '');
-$from_date = $_GET['from_date'] ?? date('Y-m-01');
-$to_date = $_GET['to_date'] ?? date('Y-m-d');
+$from_date = $_GET['from_date'] ?? '';
+$to_date = $_GET['to_date'] ?? '';
 
 $where = [];
 if ($status === 'returned') {
@@ -43,9 +43,9 @@ $whereClause = !empty($where) ? ' WHERE ' . implode(' AND ', $where) : '';
         <div>
             <label for="lendingStatusSelect">Return Status</label>
             <select id="lendingStatusSelect" name="status">
-                <option value="all" <?= $status === 'all' ? 'selected' : '' ?>>All Records</option>
-                <option value="returned" <?= $status === 'returned' ? 'selected' : '' ?>>Returned</option>
                 <option value="not_returned" <?= $status === 'not_returned' ? 'selected' : '' ?>>Not Returned</option>
+                <option value="returned" <?= $status === 'returned' ? 'selected' : '' ?>>Returned</option>
+                <option value="all" <?= $status === 'all' ? 'selected' : '' ?>>All Records</option>
             </select>
         </div>
 

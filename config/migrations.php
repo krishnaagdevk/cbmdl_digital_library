@@ -1,4 +1,14 @@
 <?php
+// Fast Migration Guard: Avoid running 30+ DDL queries on every single HTTP request
+$targetMigrationVersion = 10;
+$db->query("CREATE TABLE IF NOT EXISTS app_settings (k VARCHAR(50) PRIMARY KEY, val VARCHAR(255) NOT NULL)");
+$curVerRes = $db->query("SELECT val FROM app_settings WHERE k = 'migration_version'");
+$currentMigrationVersion = ($curVerRes && $row = $curVerRes->fetch_assoc()) ? (int)$row['val'] : 0;
+
+if ($currentMigrationVersion >= $targetMigrationVersion) {
+    return; // Migration already up to date — skip 30+ DDL queries instantly (0ms latency)!
+}
+
 // Auto-migration checks
 $resLending = $db->query("SHOW COLUMNS FROM lendings LIKE 'fine_status'");
 if ($resLending && $resLending->num_rows == 0) {
@@ -238,3 +248,6 @@ $db->query("CREATE TABLE IF NOT EXISTS renewal_requests (
     FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE,
     FOREIGN KEY (membership_plan_id) REFERENCES membership_plans(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+// Save current migration version so future requests skip DDL queries
+$db->query("INSERT INTO app_settings (k, val) VALUES ('migration_version', '$targetMigrationVersion') ON DUPLICATE KEY UPDATE val = '$targetMigrationVersion'");

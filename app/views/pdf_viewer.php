@@ -454,8 +454,9 @@
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = '<?= BASE_URL ?>js/pdf.worker.min.js';
 
-        const pdfUrl        = '<?= $streamUrl ?>';
-        const expiresAtUnix = <?= (int)$expiresAtUnix ?>;
+        const pdfUrl           = '<?= $streamUrl ?>';
+        const expiresAtUnix    = <?= (int)$expiresAtUnix ?>;
+        const targetExpiresUnix = <?= (int)$expiresAtUnix ?>;
         let pdfDoc = null;
         let numPages = 0;
         let currentPageNum = 1;
@@ -612,22 +613,35 @@
 
         async function loadPdfDocument() {
             loaderText.textContent = 'Checking local offline cache...';
-            const cachedBuffer = await CBMDL_PDFCache.get(pdfUrl);
+            let cachedBuffer = null;
+            try {
+                cachedBuffer = await CBMDL_PDFCache.get(pdfUrl);
+            } catch (e) {
+                console.warn('Cache read error:', e);
+            }
             
             if (cachedBuffer) {
-                loaderText.textContent = 'Loading pages from local offline cache...';
-                return pdfjsLib.getDocument({ data: new Uint8Array(cachedBuffer) }).promise;
-            } else {
-                loaderText.textContent = 'Streaming secure document from server...';
-                const response = await fetch(pdfUrl, { credentials: 'include' });
-                if (!response.ok) {
-                    throw new Error('Server HTTP status ' + response.status);
+                try {
+                    loaderText.textContent = 'Loading pages from local offline cache...';
+                    return await pdfjsLib.getDocument({ data: new Uint8Array(cachedBuffer) }).promise;
+                } catch (e) {
+                    console.warn('Cached PDF buffer invalid, streaming fresh from server:', e);
+                    await CBMDL_PDFCache.remove(pdfUrl);
                 }
-                const buffer = await response.arrayBuffer();
-                // Cache into browser IndexedDB for instant offline access
-                CBMDL_PDFCache.put(pdfUrl, buffer, expiresAtUnix);
-                return pdfjsLib.getDocument({ data: new Uint8Array(buffer) }).promise;
             }
+
+            loaderText.textContent = 'Streaming secure document from server...';
+            const response = await fetch(pdfUrl, { credentials: 'include' });
+            if (!response.ok) {
+                throw new Error('Server HTTP status ' + response.status);
+            }
+            const buffer = await response.arrayBuffer();
+            if (buffer.byteLength === 0) {
+                throw new Error('Received empty PDF stream');
+            }
+            // Cache into browser IndexedDB for instant offline access
+            CBMDL_PDFCache.put(pdfUrl, buffer, expiresAtUnix);
+            return pdfjsLib.getDocument({ data: new Uint8Array(buffer) }).promise;
         }
 
         loadPdfDocument().then(function(doc) {
@@ -741,12 +755,17 @@
                 wrapper.style.height = cssHeight + 'px';
 
                 const inner = wrapper.querySelector('.page-inner');
+                if (!inner) return;
+
                 let canvas = inner.querySelector('canvas');
-                if (!canvas) {
-                    canvas = document.createElement('canvas');
-                    canvas.className = 'pdf-page-canvas';
-                    inner.appendChild(canvas);
+                if (canvas) {
+                    canvas.width = 0;
+                    canvas.height = 0;
+                    canvas.remove();
                 }
+                canvas = document.createElement('canvas');
+                canvas.className = 'pdf-page-canvas';
+                inner.appendChild(canvas);
 
                 canvas.width  = Math.floor(viewport.width);
                 canvas.height = Math.floor(viewport.height);
@@ -789,36 +808,38 @@
 
         function unrenderPage(num) {
             if (renderTasks[num]) {
-                renderTasks[num].cancel();
+                try {
+                    renderTasks[num].cancel();
+                } catch(e) {}
                 delete renderTasks[num];
             }
             pendingRenders.delete(num);
-            if (!renderedPages.has(num)) return;
+            renderedPages.delete(num);
 
             const wrapper = pageWrappers[num];
             if (!wrapper) return;
-            const inner  = wrapper.querySelector('.page-inner');
-            const canvas = inner && inner.querySelector('canvas');
-            if (canvas) {
-                canvas.width  = 0;
-                canvas.height = 0;
-                canvas.remove();
+            const inner = wrapper.querySelector('.page-inner');
+            if (inner) {
+                const canvas = inner.querySelector('canvas');
+                if (canvas) {
+                    canvas.width = 0;
+                    canvas.height = 0;
+                    canvas.remove();
+                }
+                if (!inner.querySelector('.page-placeholder')) {
+                    const placeholder = document.createElement('div');
+                    placeholder.className = 'page-placeholder';
+                    placeholder.innerHTML = '<span class="fa-solid fa-file-pdf"></span><span class="page-placeholder-num">' + num + '</span>';
+                    inner.appendChild(placeholder);
+                }
             }
-            if (inner && !inner.querySelector('.page-placeholder')) {
-                const placeholder = document.createElement('div');
-                placeholder.className = 'page-placeholder';
-                placeholder.innerHTML = '<span class="fa-solid fa-file-pdf"></span><span class="page-placeholder-num">' + num + '</span>';
-                inner.appendChild(placeholder);
-            }
-            renderedPages.delete(num);
         }
 
         function updateVirtualization() {
             if (!pdfDoc) return;
             const containerRect = viewportScrollArea.getBoundingClientRect();
-            // Tighter buffer: half a viewport ahead/behind instead of a full one.
-            // Prevents 4-6 simultaneous renders on load of tall monitors.
-            const buffer = Math.max(containerRect.height * 0.5, 300);
+            // Hardware-Tuned Buffer for i5 12th Gen + 8GB RAM: Pre-render 3 pages ahead and 1 behind for 0ms page jumps
+            const buffer = Math.max(containerRect.height * 2.5, 1800);
 
             let bestPage = currentPageNum;
             let bestVisibleArea = -1;
@@ -888,6 +909,18 @@
             const wrapper = pageWrappers[num];
             if (!wrapper) return;
             wrapper.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' });
+            
+            // Predictive background pre-fetch for i5 12th Gen PCs: pre-render +3 ahead & -1 behind on idle thread
+            const toPrefetch = [num + 1, num + 2, num + 3, num - 1].filter(p => p >= 1 && p <= numPages);
+            if ('requestIdleCallback' in window) {
+                requestIdleCallback(function() {
+                    toPrefetch.forEach(p => renderPageIfNeeded(p));
+                });
+            } else {
+                setTimeout(function() {
+                    toPrefetch.forEach(p => renderPageIfNeeded(p));
+                }, 100);
+            }
         }
 
         function relayoutAndRerender() {
@@ -1132,13 +1165,17 @@
         });
 
         // ── Live e-Reading Countdown Timer ────────────────────────────────
-        let remainingSeconds = <?= max(0, $expiresAtUnix - time()) ?>;
-        if (expiresAtUnix > 0) {
+        if (targetExpiresUnix > 0) {
             const timerText  = document.getElementById('pdfTimerText');
             const timerBadge = document.getElementById('pdfTimerBadge');
+            let timerInterval = null;
 
             function updateReaderTimer() {
+                const nowUnix = Math.floor(Date.now() / 1000);
+                const remainingSeconds = Math.max(0, targetExpiresUnix - nowUnix);
+
                 if (remainingSeconds <= 0) {
+                    if (timerInterval) clearInterval(timerInterval);
                     if (timerText)  timerText.textContent = '00m 00s Expired';
                     if (timerBadge) {
                         timerBadge.style.background  = 'rgba(239, 68, 68, 0.4)';
@@ -1146,19 +1183,14 @@
                         timerBadge.style.color       = '#ffffff';
                     }
                     CBMDL_PDFCache.clearAll().finally(() => {
-                        if (window.opener && !window.opener.closed) {
-                            try {
-                                if (window.opener.spaTabCache) window.opener.spaTabCache.clear();
-                                if (typeof window.opener.navigateToUrl === 'function') {
-                                    window.opener.navigateToUrl(window.opener.location.href, false, false);
-                                } else {
-                                    window.opener.location.reload();
-                                }
-                            } catch(e) {}
-                        }
-                        alert('⏱️ Your active e-reading session time has expired.');
-                        window.close();
-                        window.location.href = '<?= BASE_URL ?>?action=user&tab=books';
+                        var expToast = document.createElement('div');
+                        expToast.style.cssText = 'position:fixed;top:24px;right:24px;z-index:999999;background:#ef4444;color:#ffffff;padding:16px 24px;border-radius:12px;font-weight:700;font-size:15px;box-shadow:0 12px 30px rgba(0,0,0,0.3);display:flex;align-items:center;gap:10px;font-family:sans-serif;';
+                        expToast.innerHTML = '<span>⏱️</span><span>Your active e-reading session time has expired.</span>';
+                        document.body.appendChild(expToast);
+                        setTimeout(function() {
+                            window.close();
+                            window.location.href = '<?= BASE_URL ?>?action=user&tab=books';
+                        }, 1800);
                     });
                     return;
                 }
@@ -1180,11 +1212,10 @@
                         timerBadge.style.color       = '#fbbf24';
                     }
                 }
-                remainingSeconds--;
             }
 
             updateReaderTimer();
-            setInterval(updateReaderTimer, 1000);
+            timerInterval = setInterval(updateReaderTimer, 1000);
         }
     </script>
 </body>

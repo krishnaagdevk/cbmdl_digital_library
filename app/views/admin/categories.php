@@ -5,7 +5,7 @@ if (!defined('BASE_URL')) exit;
 $cat_search = trim($_GET['cat_search'] ?? '');
 $cat_sort = trim($_GET['cat_sort'] ?? 'name_asc');
 $cat_page = max(1, (int)($_GET['cat_page'] ?? 1));
-$cat_limit = 12;
+$cat_limit = ($cat_search !== '') ? 500 : 50;
 
 $sort_options = [
     'name_asc' => 'c.name ASC',

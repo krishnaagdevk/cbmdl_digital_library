@@ -81,7 +81,8 @@ if ($viewId) {
                     <p><strong>Payment ID:</strong> <?= e($selected['payment_id']) ?></p>
                     <p><strong>Fee Paid:</strong> ₹<?= number_format((float)($selected['membership_fee'] ?? 0), 2) ?></p>
                     <?php 
-                        $isExpired = $selected['end_date'] < date('Y-m-d');
+                        $hasActiveNow = active_member($selected, $db);
+                        $isExpired = !$hasActiveNow && !empty($selected['end_date']) && $selected['end_date'] < date('Y-m-d');
                         if ($selected['is_active'] == 0) {
                             echo '<span class="badge badge-red" style="display:block; text-align:center; font-size:13px; padding:6px;"><i class="fa-solid fa-circle-xmark"></i> Membership Suspended/Inactive</span>';
                         } elseif ($isExpired) {
@@ -314,20 +315,24 @@ if ($viewId) {
         $dateWhere .= " AND created_at <= '" . $db->real_escape_string($to_date) . " 23:59:59'";
     }
 
-    // Fetch stats
-    $total_active = (int)$db->query("SELECT COUNT(*) c FROM members WHERE approved = 1 AND is_active = 1 AND start_date <= CURDATE() AND end_date >= CURDATE()" . $dateWhere)->fetch_assoc()['c'];
-    $total_inactive = (int)$db->query("SELECT COUNT(*) c FROM members WHERE approved = 1 AND is_active = 0" . $dateWhere)->fetch_assoc()['c'];
-    $total_expired = (int)$db->query("SELECT COUNT(*) c FROM members WHERE approved = 1 AND is_active = 1 AND (end_date < CURDATE() OR start_date > CURDATE())" . $dateWhere)->fetch_assoc()['c'];
+    // Fetch stats (accounting for early renewed active passes in history)
+    $activeCond = "is_active = 1 AND ((start_date <= CURDATE() AND end_date >= CURDATE()) OR EXISTS (SELECT 1 FROM membership_history h WHERE h.member_id = members.id AND h.start_date <= CURDATE() AND h.end_date >= CURDATE()))";
+    $inactiveCond = "is_active = 0";
+    $expiredCond = "is_active = 1 AND end_date < CURDATE() AND NOT EXISTS (SELECT 1 FROM membership_history h WHERE h.member_id = members.id AND h.start_date <= CURDATE() AND h.end_date >= CURDATE())";
+
+    $total_active = (int)$db->query("SELECT COUNT(*) c FROM members WHERE approved = 1 AND " . $activeCond . $dateWhere)->fetch_assoc()['c'];
+    $total_inactive = (int)$db->query("SELECT COUNT(*) c FROM members WHERE approved = 1 AND " . $inactiveCond . $dateWhere)->fetch_assoc()['c'];
+    $total_expired = (int)$db->query("SELECT COUNT(*) c FROM members WHERE approved = 1 AND " . $expiredCond . $dateWhere)->fetch_assoc()['c'];
     
     // Status Filter logic
     $status_filter = $_GET['status_filter'] ?? 'all';
     $whereClause = "approved = 1" . $dateWhere;
     if ($status_filter === 'active') {
-        $whereClause .= " AND is_active = 1 AND start_date <= CURDATE() AND end_date >= CURDATE()";
+        $whereClause .= " AND " . $activeCond;
     } elseif ($status_filter === 'inactive') {
-        $whereClause .= " AND is_active = 0";
+        $whereClause .= " AND " . $inactiveCond;
     } elseif ($status_filter === 'expired') {
-        $whereClause .= " AND is_active = 1 AND (end_date < CURDATE() OR start_date > CURDATE())";
+        $whereClause .= " AND " . $expiredCond;
     }
 
     // Fetch shift names directly from work_shifts database table
@@ -378,7 +383,7 @@ if ($viewId) {
 
             <div>
                 <label for="vm_from_date">Registered From Date</label>
-                <input type="date" id="vm_from_date" name="from_date" value="<?= e($from_date) ?>">
+                <input type="date" id="vm_from_date" name="from_date" >
             </div>
             
             <div>
@@ -501,16 +506,22 @@ if ($viewId) {
                         $gText = e($r['gender'] ?? 'Male');
                         if ($gText === 'Other') $gText = 'Others';
                         
-                        $isExpired = $r['end_date'] < date('Y-m-d');
-                        $isUpcoming = !empty($r['start_date']) && $r['start_date'] > date('Y-m-d');
+                        $hasActivePassNow = active_member($r, $db);
+                        $isUpcomingPass = !empty($r['start_date']) && $r['start_date'] > date('Y-m-d');
+                        $isExpiredPass = !$hasActivePassNow && !empty($r['end_date']) && $r['end_date'] < date('Y-m-d');
+
                         if ($r['is_active'] == 0) {
                             $statusBadge = '<span class="badge badge-red" style="font-size:11px;"><i class="fa-solid fa-circle-xmark"></i> Inactive</span>';
-                        } elseif ($isExpired) {
-                            $statusBadge = '<span class="badge badge-red" style="font-size:11px;"><i class="fa-solid fa-circle-exclamation"></i> Expired</span>';
-                        } elseif ($isUpcoming) {
+                        } elseif ($hasActivePassNow) {
+                            if ($isUpcomingPass) {
+                                $statusBadge = '<span class="badge badge-green" style="font-size:11px;"><i class="fa-solid fa-circle-check"></i> Active (Renewed)</span>';
+                            } else {
+                                $statusBadge = '<span class="badge badge-green" style="font-size:11px;"><i class="fa-solid fa-circle-check"></i> Active</span>';
+                            }
+                        } elseif ($isUpcomingPass) {
                             $statusBadge = '<span class="badge badge-blue" style="font-size:11px; background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd;"><i class="fa-solid fa-calendar-check"></i> Upcoming</span>';
                         } else {
-                            $statusBadge = '<span class="badge badge-green" style="font-size:11px;"><i class="fa-solid fa-circle-check"></i> Active</span>';
+                            $statusBadge = '<span class="badge badge-red" style="font-size:11px;"><i class="fa-solid fa-circle-exclamation"></i> Expired</span>';
                         }
                         
                         echo '

@@ -84,7 +84,7 @@
                         <a href="admin-forgot-password" style="font-size:12px; color:var(--primary); font-weight:600; text-decoration:none;"><i class="fa-solid fa-unlock-keyhole"></i> Forgot Password?</a>
                     </div>
                     
-                    <button style="width:100%; padding:13px; margin-top:4px; font-weight:600; font-size:14px;"><i class="fa-solid fa-shield-halved"></i> Verify & Authorize</button>
+                    <button disabled style="width:100%; padding:13px; margin-top:4px; font-weight:600; font-size:14px; opacity:0.5; cursor:not-allowed; transition:all 0.2s ease;"><i class="fa-solid fa-shield-halved"></i> Verify & Authorize</button>
                 </form>
             <?php else: ?>
                 <h3 style="text-align:center; border:none; margin-bottom:20px; font-size:18px;"><i class="fa-solid fa-user-graduate" style="color:var(--primary);"></i> Member Login</h3>
@@ -96,7 +96,7 @@
                     <label for="member_pwd" style="font-size:12.5px; font-weight:600; margin-bottom:5px; display:block;"><i class="fa-solid fa-key"></i> Password</label>
                     <input id="member_pwd" type="password" name="password" required placeholder="Enter password" maxlength="15" autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly');" style="padding:11px 14px; margin-bottom:16px; font-size:13.5px;">
                     
-                    <button style="width:100%; padding:13px; margin-top:4px; font-weight:600; font-size:14px;"><i class="fa-solid fa-right-to-bracket"></i> Login Account</button>
+                    <button disabled style="width:100%; padding:13px; margin-top:4px; font-weight:600; font-size:14px; opacity:0.5; cursor:not-allowed; transition:all 0.2s ease;"><i class="fa-solid fa-right-to-bracket"></i> Login Account</button>
                 </form>
             <?php endif; ?>
         </div>
@@ -213,6 +213,50 @@
         input.addEventListener('focus', function() {
             this.removeAttribute('readonly');
         });
+    });
+
+    // Real-time Login Button Enable/Disable Guard
+    const loginForms = document.querySelectorAll('.login-section form');
+    loginForms.forEach(function(form) {
+        const inputs = form.querySelectorAll('input[name="username"], input[name="mobile"], input[name="password"]');
+        const submitBtn = form.querySelector('button');
+
+        if (!submitBtn || inputs.length < 2) return;
+
+        function updateLoginButtonState() {
+            let allFilled = true;
+            inputs.forEach(function(input) {
+                if (!input.value || input.value.trim() === '') {
+                    allFilled = false;
+                }
+            });
+
+            if (allFilled) {
+                submitBtn.disabled = false;
+                submitBtn.style.opacity = '1';
+                submitBtn.style.cursor = 'pointer';
+            } else {
+                submitBtn.disabled = true;
+                submitBtn.style.opacity = '0.5';
+                submitBtn.style.cursor = 'not-allowed';
+            }
+        }
+
+        // Run initial check
+        updateLoginButtonState();
+
+        // Listen for user input events
+        inputs.forEach(function(input) {
+            ['input', 'keyup', 'change', 'paste', 'blur', 'focus'].forEach(function(evt) {
+                input.addEventListener(evt, updateLoginButtonState);
+            });
+        });
+
+        // Periodic checks to catch browser autofill or saved values
+        setTimeout(updateLoginButtonState, 100);
+        setTimeout(updateLoginButtonState, 300);
+        setTimeout(updateLoginButtonState, 800);
+        setInterval(updateLoginButtonState, 1000);
     });
 })();
 </script>

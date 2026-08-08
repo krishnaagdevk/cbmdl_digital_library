@@ -4,7 +4,7 @@ if (!defined('BASE_URL')) exit;
 
 $e_search = trim($_GET['e_search'] ?? '');
 $e_cat = (int)($_GET['e_cat'] ?? 0);
-$from_date = $_GET['from_date'] ?? date('Y-m-01');
+$from_date = $_GET['from_date'] ?? '';
 $to_date = $_GET['to_date'] ?? date('Y-m-d');
 
 $e_limit = max(5, min(200, (int)($_GET['e_limit'] ?? 10)));

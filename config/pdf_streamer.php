@@ -41,8 +41,27 @@ function stream_file_ranged($file, $contentType = 'application/pdf', $isPrivate 
     $end = $size - 1;
     
     if ($rangeHeader && preg_match('/bytes=(\d*)-(\d*)/', $rangeHeader, $m)) {
-        $start = $m[1] !== '' ? (int)$m[1] : $size - (int)$m[2];
-        $end   = $m[2] !== '' ? min((int)$m[2], $size - 1) : $size - 1;
+        if ($m[1] === '' && $m[2] !== '') {
+            // Suffix range: bytes=-500
+            $suffix = (int)$m[2];
+            $start = max(0, $size - $suffix);
+            $end = $size - 1;
+        } elseif ($m[1] !== '' && $m[2] === '') {
+            // Start-only range: bytes=1000-
+            $start = (int)$m[1];
+            $end = $size - 1;
+        } elseif ($m[1] !== '' && $m[2] !== '') {
+            // Explicit range: bytes=1000-1999
+            $start = (int)$m[1];
+            $end = min((int)$m[2], $size - 1);
+        }
+
+        if ($start > $end || $start >= $size) {
+            http_response_code(416);
+            header("Content-Range: bytes */$size");
+            exit;
+        }
+
         http_response_code(206);
         header("Content-Range: bytes $start-$end/$size");
     } else {

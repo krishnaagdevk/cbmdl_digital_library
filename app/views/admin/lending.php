@@ -70,7 +70,7 @@ if ($lookup !== '') {
                 <input id="ld_book" name="book_code" placeholder="Enter Book ID" required>
             </div>
             <div>
-                <label for="ld_due">Issue Return Due Date *</label>
+                <label for="ld_due">Return Due Date *</label>
                 <input id="ld_due" type="date" name="due_date" value="<?= date('Y-m-d', strtotime('+14 days')) ?>" required>
             </div>
             <div style="grid-column: span 2;">

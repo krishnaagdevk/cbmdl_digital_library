@@ -57,7 +57,6 @@ final class Database {
         }
 
         $this->connection->set_charset('utf8mb4');
-        $this->connection->query("SET time_zone = '+05:30'");
     }
 
     private function tryConnect(string $host, string $user, string $pass, string $name, int $port): bool {

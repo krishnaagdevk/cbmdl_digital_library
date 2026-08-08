@@ -104,16 +104,6 @@ final class MemberController {
         }
         $mid = (int)$_SESSION['member'];
         
-        // Auto-expire any active reading sessions where expires_at <= NOW()
-        $this->db->query("
-            UPDATE reading_requests 
-            SET status = 'Expired' 
-            WHERE member_id = $mid 
-              AND status = 'Approved' 
-              AND expires_at IS NOT NULL 
-              AND expires_at <= NOW()
-        ");
-        
         $read_query = $this->db->query("
             SELECT r.id, r.status, e.title, r.expires_at 
             FROM reading_requests r 
@@ -123,13 +113,11 @@ final class MemberController {
         ");
         $reading_reqs = [];
         while ($row = $read_query->fetch_assoc()) {
-            $isExpired = ($row['status'] === 'Expired') || (!empty($row['expires_at']) && strtotime($row['expires_at']) <= time());
-            $effStatus = $isExpired ? 'Expired' : $row['status'];
             $reading_reqs[] = [
                 'id' => (int)$row['id'],
                 'type' => 'reading',
                 'title' => $row['title'],
-                'status' => $effStatus,
+                'status' => $row['status'],
                 'expires_at' => $row['expires_at']
             ];
         }
@@ -169,6 +157,19 @@ final class MemberController {
         if ($p === '') {
             flash('⚠️ Please specify valid page numbers for printing.');
             go('?action=user&tab=books');
+        }
+
+        // Check if there is already a pending print request for this e-book or if a request was submitted in the last 10 seconds
+        $checkStmt = $this->db->prepare("SELECT id FROM print_requests WHERE member_id = ? AND ebook_id = ? AND (status = 'Pending' OR requested_at > NOW() - INTERVAL 10 SECOND)");
+        $checkStmt->bind_param("ii", $mid, $id);
+        $checkStmt->execute();
+        $existing = $checkStmt->get_result()->fetch_assoc();
+        $checkStmt->close();
+
+        if ($existing) {
+            flash('⚠️ A print request for this e-book is already pending approval.');
+            go('?action=user&tab=books');
+            return;
         }
         
         $stmt = $this->db->prepare("INSERT INTO print_requests (member_id, ebook_id, pages) VALUES (?, ?, ?)");

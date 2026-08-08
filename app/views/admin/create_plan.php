@@ -46,7 +46,6 @@ if ($editId) {
                         echo '<option ' . $sel . ' value="' . $term . '">' . $term . '</option>';
                     }
                     ?>
-                    <option value="Custom" <?= $is_custom ? 'selected' : '' ?>>Custom (Enter below)</option>
                 </select>
 
                 <input id="p_custom_duration" type="text" <?= $is_custom ? 'name="duration" required' : '' ?> value="<?= $is_custom ? e($editPlan['duration']) : '' ?>" placeholder="e.g. 3 Years, 2 Weeks, etc." style="display: <?= $is_custom ? 'block' : 'none' ?>; margin-bottom:15px; border-color: var(--primary);">
@@ -82,7 +81,6 @@ if ($editId) {
                     <option value="Quarterly">Quarterly</option>
                     <option value="Monthly">Monthly</option>
                     <option value="Daily">Daily</option>
-                    <option value="Custom">Custom (Enter below)</option>
                 </select>
 
                 <input id="p_custom_duration" type="text" placeholder="e.g. 3 Years, 2 Weeks, etc." style="display: none; margin-bottom:15px; border-color: var(--primary);">

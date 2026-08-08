@@ -156,6 +156,16 @@ if (typeof escapeHtml !== 'function') {
     }
 }
 
+if (typeof window.closeEbModal !== 'function') {
+    window.closeEbModal = function() {
+        const modal = document.getElementById('editEbModal') || document.getElementById('ebModal');
+        if (modal) {
+            modal.style.display = 'none';
+            if (modal.classList) modal.classList.remove('show');
+        }
+    };
+}
+
 function handleChunkedSubmit(e, isEdit) {
     e.preventDefault();
     const form = e.target;
@@ -179,14 +189,30 @@ function handleChunkedSubmit(e, isEdit) {
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving changes...';
         
         const fd = new FormData(form);
-        fetch('?action=update_ebook', {
+        fetch('?action=update_ebook&spa=1', {
             method: 'POST',
-            body: fd
+            body: fd,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-SPA-Request': '1'
+            }
         })
         .then(response => {
             if (!response.ok) throw new Error('Metadata update failed');
-            if (window.navigateToUrl) {
-                navigateToUrl('?action=admin&tab=ebooks');
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+                return response.json();
+            }
+            return null;
+        })
+        .then(data => {
+            if (typeof window.closeEbModal === 'function') {
+                window.closeEbModal();
+            }
+            if (data && data.success && window.renderSpaData) {
+                window.renderSpaData(data);
+            } else if (window.navigateToUrl) {
+                navigateToUrl('?action=admin&tab=ebooks', true, false);
             } else {
                 window.location.reload();
             }

@@ -164,7 +164,7 @@ if ($mem_shift_res) {
 <!-- Beautiful Dynamic Tabbed Layout Control -->
 <div class="dashboard-tabs" style="display:flex; gap:10px; margin-top:25px; margin-bottom:20px; border-bottom:2px solid var(--border-color); padding-bottom:10px; overflow-x:auto;">
 <button id="tab-lending" class="tab-btn active" onclick="switchDashboardTab('lending')">
-        ⏳ Lending Activity Logs
+        ⏳ Lending Activity
     </button>    
       <button id="tab-inbox" class="tab-btn" onclick="switchDashboardTab('inbox')">
         ⏰ Expiring Memberships

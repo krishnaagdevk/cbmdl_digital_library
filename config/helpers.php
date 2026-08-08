@@ -35,9 +35,12 @@ function go($url) {
             // Query/fragment-only: append to base app root
             $url = $base . '/' . $url;
         } elseif (!str_starts_with($url, '/')) {
-            // Relative path like 'admin-login' or 'member-login'
             $url = $base . '/' . $url;
         }
+    }
+    if (is_spa_request() && !str_contains($url, 'spa=1')) {
+        $sep = str_contains($url, '?') ? '&' : '?';
+        $url .= $sep . 'spa=1';
     }
     header('Location: ' . $url);
     exit;
@@ -223,39 +226,18 @@ function log_membership_history($db, $member_id, $action_type = 'Initial Joining
 }
 
 function is_spa_request() {
-    if (isset($_GET['spa']) && $_GET['spa'] === '1') {
-        return true;
+    // 1. Direct browser document loads/reloads (F5, address bar entry) must ALWAYS receive full HTML page
+    if (isset($_SERVER['HTTP_SEC_FETCH_DEST']) && $_SERVER['HTTP_SEC_FETCH_DEST'] === 'document') {
+        return false;
     }
+
+    // 2. Check for explicit SPA / AJAX headers sent by client JS fetch calls
     if (isset($_SERVER['HTTP_X_SPA_REQUEST']) && $_SERVER['HTTP_X_SPA_REQUEST'] === '1') {
         return true;
     }
-    return false;
-}
-
-function get_flash_toast_script() {
-    if ($f = flash()) {
-        $is_inactive_flash = (
-            stristr($f, 'inactive') !== false ||
-            stristr($f, 'expired') !== false
-        );
-        $is_error_flash = !$is_inactive_flash && (
-            str_contains($f, 'Duplicate') || 
-            str_contains($f, '⚠️') || 
-            str_contains($f, 'Error') || 
-            str_contains($f, 'Invalid') ||
-            stristr($f, 'warning') !== false ||
-            stristr($f, 'suspended') !== false ||
-            stristr($f, 'failed') !== false ||
-            stristr($f, 'rejected') !== false ||
-            stristr($f, 'cannot') !== false ||
-            stristr($f, 'required') !== false ||
-            stristr($f, 'empty') !== false ||
-            stristr($f, 'already exists') !== false
-        );
-        $type = $is_inactive_flash ? 'warning' : ($is_error_flash ? 'error' : 'success');
-        $msgJson = json_encode($f);
-        $typeJson = json_encode($type);
-        return "<script class=\"dynamic-script\">(function(){ var msg = {$msgJson}; var type = {$typeJson}; var fireToast = function(){ if (window.showToast) window.showToast(msg, type); }; if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', fireToast); } else { fireToast(); } })();</script>";
+    if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+        return true;
     }
-    return '';
+
+    return false;
 }

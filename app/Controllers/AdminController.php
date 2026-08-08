@@ -608,6 +608,15 @@ final class AdminController {
                         $price = (float)($data[5] ?? 0.00);
                         $rack = trim($data[6] ?? '');
                         $shelf_num = trim($data[7] ?? $rack);
+                        if ($shelf_num !== '') {
+                            $shelf_num = preg_replace('/[^0-9]/', '', $shelf_num);
+                            if ($shelf_num !== '') {
+                                $numVal = (int)$shelf_num;
+                                if ($numVal > 99) $numVal = 99;
+                                if ($numVal < 1) $numVal = 1;
+                                $shelf_num = (string)$numVal;
+                            }
+                        }
                         
                         if ($code === '' || $title === '') {
                             $skipped++;
@@ -1071,20 +1080,11 @@ final class AdminController {
         $mName = $mRes['name'] ?? 'Member';
         $mStmt->close();
 
-        // Retrieve latest end_date from membership_history to prevent compounding drift if DB history entries are removed/reset
-        $hStmt = $this->db->prepare("SELECT end_date FROM membership_history WHERE member_id = ? ORDER BY id DESC LIMIT 1");
-        $hStmt->bind_param("i", $id);
-        $hStmt->execute();
-        $hRes = $hStmt->get_result()->fetch_assoc();
-        $hStmt->close();
-
-        $baseEndDate = ($hRes && !empty($hRes['end_date'])) ? $hRes['end_date'] : ($mRes['end_date'] ?? '');
-
         $today = date('Y-m-d');
-        $isCurrentlyActive = (!empty($baseEndDate) && $baseEndDate >= $today && ($mRes['is_active'] ?? 1) == 1 && ($mRes['approved'] ?? 1) == 1);
+        $isCurrentlyActive = ($mRes && !empty($mRes['end_date']) && $mRes['end_date'] >= $today && ($mRes['is_active'] ?? 1) == 1 && ($mRes['approved'] ?? 1) == 1);
 
         if ($isCurrentlyActive) {
-            $start = date('Y-m-d', strtotime($baseEndDate . ' +1 day'));
+            $start = date('Y-m-d', strtotime($mRes['end_date'] . ' +1 day'));
         } else {
             $start = $today;
         }
@@ -1333,26 +1333,46 @@ final class AdminController {
         $this->checkAdmin();
         $id = (int)$_POST['id'];
         $shelf_number = trim($_POST['shelf_number'] ?? '');
+        if ($shelf_number !== '') {
+            $shelf_number = preg_replace('/[^0-9]/', '', $shelf_number);
+            if ($shelf_number !== '') {
+                $numVal = (int)$shelf_number;
+                if ($numVal > 99) $numVal = 99;
+                if ($numVal < 1) $numVal = 1;
+                $shelf_number = (string)$numVal;
+            }
+        }
         $title = trim($_POST['title'] ?? '');
         $book_code = trim($_POST['book_code'] ?? '');
         $price = (float)($_POST['price'] ?? 0.00);
         $author = trim($_POST['author'] ?? '');
         $publisher = trim($_POST['publisher'] ?? '');
         
-        if ($shelf_number !== '') {
-            if (!preg_match('/^[0-9]+$/', $shelf_number) || (int)$shelf_number > 99) {
-                flash('⚠️ Invalid Shelf Number: Must be numbers only up to 99.');
-                go('?action=admin&tab=physical&edit=' . $id);
+        if ($book_code !== '') {
+            $chkCode = $this->db->prepare("SELECT id FROM physical_books WHERE book_code = ? AND id != ? LIMIT 1");
+            $chkCode->bind_param("si", $book_code, $id);
+            $chkCode->execute();
+            $codeExists = $chkCode->get_result()->fetch_assoc();
+            $chkCode->close();
+
+            if ($codeExists) {
+                flash('⚠️ Duplicate Book Code / Bar Code: A physical book with ID "' . e($book_code) . '" already exists in the catalog database.');
+                go('?action=admin&tab=physical');
+                return;
             }
         }
 
         try {
             $stmt = $this->db->prepare("UPDATE physical_books SET shelf_number = ?, title = ?, book_code = ?, price = ?, author = ?, publisher = ? WHERE id = ?");
             $stmt->bind_param("sssdssi", $shelf_number, $title, $book_code, $price, $author, $publisher, $id);
-            $stmt->execute();
+            $execSuccess = $stmt->execute();
             $stmt->close();
-            flash('Physical book updated successfully.');
-        } catch (\mysqli_sql_exception $e) {
+            if ($execSuccess) {
+                flash('Physical book updated successfully.');
+            } else {
+                flash('⚠️ Duplicate Book Code / Bar Code: A physical book with ID "' . e($book_code) . '" already exists in the catalog database.');
+            }
+        } catch (\Throwable $e) {
             flash('⚠️ Duplicate Book Code / Bar Code: A physical book with ID "' . e($book_code) . '" already exists in the catalog database.');
         }
         go('?action=admin&tab=physical');
@@ -1361,26 +1381,46 @@ final class AdminController {
     public function addPhysical() {
         $this->checkAdmin();
         $shelf_number = trim($_POST['shelf_number'] ?? '');
+        if ($shelf_number !== '') {
+            $shelf_number = preg_replace('/[^0-9]/', '', $shelf_number);
+            if ($shelf_number !== '') {
+                $numVal = (int)$shelf_number;
+                if ($numVal > 99) $numVal = 99;
+                if ($numVal < 1) $numVal = 1;
+                $shelf_number = (string)$numVal;
+            }
+        }
         $title = trim($_POST['title'] ?? '');
         $book_code = trim($_POST['book_code'] ?? '');
         $price = (float)($_POST['price'] ?? 0.00);
         $author = trim($_POST['author'] ?? '');
         $publisher = trim($_POST['publisher'] ?? '');
         
-        if ($shelf_number !== '') {
-            if (!preg_match('/^[0-9]+$/', $shelf_number) || (int)$shelf_number > 99) {
-                flash('⚠️ Invalid Shelf Number: Must be numbers only up to 99.');
+        if ($book_code !== '') {
+            $chkCode = $this->db->prepare("SELECT id FROM physical_books WHERE book_code = ? LIMIT 1");
+            $chkCode->bind_param("s", $book_code);
+            $chkCode->execute();
+            $codeExists = $chkCode->get_result()->fetch_assoc();
+            $chkCode->close();
+
+            if ($codeExists) {
+                flash('⚠️ Duplicate Book Code / Bar Code: A physical book with ID "' . e($book_code) . '" already exists in the catalog database.');
                 go('?action=admin&tab=physical');
+                return;
             }
         }
 
         try {
             $stmt = $this->db->prepare("INSERT INTO physical_books (shelf_number, title, book_code, price, author, publisher) VALUES (?, ?, ?, ?, ?, ?)");
             $stmt->bind_param("sssdss", $shelf_number, $title, $book_code, $price, $author, $publisher);
-            $stmt->execute();
+            $execSuccess = $stmt->execute();
             $stmt->close();
-            flash('Physical book added successfully.');
-        } catch (\mysqli_sql_exception $e) {
+            if ($execSuccess) {
+                flash('Physical book added successfully.');
+            } else {
+                flash('⚠️ Duplicate Book Code / Bar Code: A physical book with ID "' . e($book_code) . '" already exists in the catalog database.');
+            }
+        } catch (\Throwable $e) {
             flash('⚠️ Duplicate Book Code / Bar Code: A physical book with ID "' . e($book_code) . '" already exists in the catalog database.');
         }
         go('?action=admin&tab=physical');
@@ -1428,6 +1468,7 @@ final class AdminController {
 
     public function lendBook() {
         $this->checkAdmin();
+        unset($_SESSION['flash']);
         $find = trim($_POST['member'] ?? '');
         $b = trim($_POST['book_code'] ?? '');
         $date = date('Y-m-d H:i:s');
@@ -1435,45 +1476,87 @@ final class AdminController {
         $tx = trim($_POST['transaction_id'] ?? '');
         
         if (!$tx) {
-            flash('⚠️ Payment / Transaction ID is mandatory.');
+            flash('⚠️ Payment Transaction ID is required.');
             go('?action=admin&tab=lending');
         }
+
+        if (empty($find)) {
+            flash('⚠️ Member ID or Mobile Number is required.');
+            go('?action=admin&tab=lending');
+        }
+
+        if (empty($b)) {
+            flash('⚠️ Book ID / Code is required.');
+            go('?action=admin&tab=lending');
+        }
+
+        $numericFind = is_numeric($find) ? (int)$find : 0;
+        if (str_starts_with(strtoupper($find), 'MID-')) {
+            $numericFind = (int)substr($find, 4);
+        }
         
-        $mStmt = $this->db->prepare("SELECT id, is_active, end_date FROM members WHERE membership_id = ? OR mobile = ? LIMIT 1");
-        $mStmt->bind_param("ss", $find, $find);
+        $mStmt = $this->db->prepare("SELECT id, name, is_active, start_date, end_date FROM members WHERE membership_id = ? OR mobile = ? OR LOWER(membership_id) = LOWER(?) OR (id = ? AND ? > 0) LIMIT 1");
+        $mStmt->bind_param("sssii", $find, $find, $find, $numericFind, $numericFind);
         $mStmt->execute();
         $m = $mStmt->get_result()->fetch_assoc();
         $mStmt->close();
         
-        if ($m) {
-            if ($m['is_active'] == 0) {
-                flash('⚠️ Issue Blocked: This member account is currently suspended/inactive.');
-                go('?action=admin&tab=lending');
-            }
-            if (strtotime($m['end_date']) < time()) {
-                flash('⚠️ Issue Blocked: This member account has expired.');
-                go('?action=admin&tab=lending');
-            }
+        if (!$m) {
+            flash('⚠️ No Member Found with ID or Mobile "' . e($find) . '".');
+            go('?action=admin&tab=lending');
         }
+
+        $today = date('Y-m-d');
+        if ($m['is_active'] == 0) {
+            flash('⚠️ Member account is inactive / suspended.');
+            go('?action=admin&tab=lending');
+        } elseif (strtotime($m['end_date']) < strtotime($today)) {
+            flash('⚠️ Member membership has expired.');
+            go('?action=admin&tab=lending');
+        } elseif (!empty($m['start_date']) && strtotime($m['start_date']) > strtotime($today)) {
+            flash('⚠️ Member membership start date is in the future.');
+            go('?action=admin&tab=lending');
+        }
+
+        $numericBook = is_numeric($b) ? (int)$b : 0;
         
-        $bStmt = $this->db->prepare("SELECT p.id FROM physical_books p WHERE p.book_code = ? AND NOT EXISTS (SELECT 1 FROM lendings l WHERE l.physical_book_id = p.id AND l.returned_at IS NULL) LIMIT 1");
-        $bStmt->bind_param("s", $b);
+        // 1. Check if book exists in database
+        $bStmt = $this->db->prepare("SELECT p.id, p.title, p.book_code FROM physical_books p WHERE p.book_code = ? OR LOWER(p.book_code) = LOWER(?) OR (p.id = ? AND ? > 0) LIMIT 1");
+        $bStmt->bind_param("ssii", $b, $b, $numericBook, $numericBook);
         $bStmt->execute();
         $book = $bStmt->get_result()->fetch_assoc();
         $bStmt->close();
         
-        if ($m && $book) {
-            $lStmt = $this->db->prepare("INSERT INTO lendings (member_id, physical_book_id, lent_at, due_date, transaction_id) VALUES (?, ?, ?, ?, ?)");
-            $lStmt->bind_param("iisss", $m['id'], $book['id'], $date, $due, $tx);
-            $lStmt->execute();
-            $lStmt->close();
-            
-            $this->db->query("UPDATE hold_requests SET status = 'Completed' WHERE physical_book_id = " . (int)$book['id'] . " AND member_id = " . (int)$m['id'] . " AND status IN ('Active', 'Awaiting Collection')");
-            
-            flash('Book issued successfully.');
-        } else {
-            flash('⚠️ Member or available book copy was not found.');
+        if (!$book) {
+            flash('⚠️ No Book Found');
+            go('?action=admin&tab=lending');
         }
+        
+        // 2. Check if book is already issued
+        $lCheckStmt = $this->db->prepare("SELECT l.id, l.member_id, l.transaction_id, m.name as borrower_name FROM lendings l JOIN members m ON m.id = l.member_id WHERE l.physical_book_id = ? AND l.returned_at IS NULL LIMIT 1");
+        $lCheckStmt->bind_param("i", $book['id']);
+        $lCheckStmt->execute();
+        $issuedLending = $lCheckStmt->get_result()->fetch_assoc();
+        $lCheckStmt->close();
+        
+        if ($issuedLending) {
+            if ((int)$issuedLending['member_id'] === (int)$m['id'] && !empty($tx) && (string)$issuedLending['transaction_id'] === (string)$tx) {
+                flash('✓ Physical book "' . e($book['title']) . '" issued successfully to ' . e($m['name']) . '.');
+                go('?action=admin&tab=lending');
+            }
+            flash('⚠️ Book "' . e($book['title']) . '" (' . e($book['book_code']) . ') is already issued.');
+            go('?action=admin&tab=lending');
+        }
+        
+        // 3. Issue book
+        $lStmt = $this->db->prepare("INSERT INTO lendings (member_id, physical_book_id, lent_at, due_date, transaction_id) VALUES (?, ?, ?, ?, ?)");
+        $lStmt->bind_param("iisss", $m['id'], $book['id'], $date, $due, $tx);
+        $lStmt->execute();
+        $lStmt->close();
+        
+        $this->db->query("UPDATE hold_requests SET status = 'Completed' WHERE physical_book_id = " . (int)$book['id'] . " AND member_id = " . (int)$m['id'] . " AND status IN ('Active', 'Awaiting Collection')");
+        
+        flash('✓ Physical book "' . e($book['title']) . '" issued successfully to ' . e($m['name']) . '.');
         go('?action=admin&tab=lending');
     }
 
